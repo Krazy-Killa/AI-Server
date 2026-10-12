@@ -13,6 +13,9 @@
 ## Phase 2 — Real Backend Features
 
 - Linux/Proxmox deployment preparation and acceptance checks
+- Kernel-aware Proxmox host preflight and optional base-tools setup script
+  (initial version; host validation and full inference-stack installation
+  remain outstanding)
 - Linux/Proxmox host GPU telemetry after the RX 6800 XT is moved to the server
 - Logging system
 - Config loader
@@ -21,9 +24,19 @@
 ## Phase 3 — GPU Integration
 
 - llama.cpp Vulkan (Windows test build complete)
-- Linux GPU runtime setup on the Proxmox host
-- vLLM GPU mode
+- Proxmox VE 9.x host stack (one RX 6800 XT): ROCm/HIP on the host,
+  llama.cpp ROCm build/`llama-server`, ONNX Runtime ROCm EP, and ComfyUI ROCm
+  (versions/support to verify; not yet installed or validated on the server)
+- Podman/Quadlet service setup, NGINX reverse proxy, and Qdrant deployment
+- Linux GPU telemetry for the Proxmox host
 - Real inference pipeline
+
+The host preparation script only inventories the host and optionally installs
+base tools after previewing an apt plan. It does not install the stack above.
+Keep ROCm and GPU-dependent installation blocked until compatibility is
+checked for the actual Proxmox release, running kernel, RX 6800 XT, and pinned
+component versions. AMD's published matrix currently does not list the
+planned GPU/Proxmox combination as officially supported.
 
 ## Phase 4 — Advanced Features
 

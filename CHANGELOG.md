@@ -11,6 +11,26 @@ principles and [Semantic Versioning](https://semver.org/).
 - Recorded multi-GPU inference as a future evaluation item for the Linux/
   Proxmox server, including model splitting versus per-GPU instances and
   benchmarking requirements.
+- Recorded the intended Proxmox host stack—ROCm/HIP, ROCm-built llama.cpp
+  `llama-server`, ONNX Runtime ROCm EP, ComfyUI ROCm, Podman/Quadlet, NGINX,
+  and Qdrant—in the transition and GPU plans.
+- Recorded Proxmox VE 9.x and one RX 6800 XT as the planned initial server
+  target; point release, kernel, and component versions remain to be verified.
+- Recorded the decision to install ROCm/HIP on the Proxmox host, pending
+  compatibility verification for its exact kernel and GPU.
+- Added a Proxmox host-preparation script with live ROCm compatibility checks,
+  kernel-aware prerequisite planning, and safeguards against kernel changes.
+  Its read-only preflight and optional base-tools setup are not a full inference
+  stack installer; ROCm and GPU-dependent components remain gated pending
+  compatibility verification on the actual Proxmox release, kernel, and GPU.
+
+### Changed
+
+- Documented that the preparation script requires a positively detected
+  Proxmox VE 9.x Debian host for package setup, previews the apt plan, and
+  refuses plans that change kernel packages. Corrected its Proxmox version
+  parsing and initialized the planned GPU detection before the compatibility
+  check.
 
 ## [0.3.0] - 2026-10-12
 

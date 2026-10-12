@@ -53,12 +53,33 @@ llama.cpp restarts.
 
 ## Planned deployment
 
-The RX 6800 XT is currently in the Windows development machine and is intended
-to move to the AI Server after a replacement GPU is acquired. The server is
-planned to run Linux under Proxmox, with the dashboard, backend, and AI
-runtime running on the host. Windows DirectML is for development tests, not
-the Linux deployment backend; Linux GPU runtimes and telemetry still need to
-be selected and validated.
+The initial target is a Proxmox VE 9.x host with one AMD RX 6800 XT. The GPU
+is currently in the Windows development machine and is intended to move to
+the AI Server after a replacement GPU is acquired. The planned host stack is
+ROCm/HIP, ROCm-built llama.cpp with `llama-server`, ONNX Runtime ROCm EP,
+ComfyUI ROCm, Podman/Quadlet, NGINX, and Qdrant; ROCm/HIP is intended to be
+installed on the Proxmox host. These are deployment targets, not installed or
+validated server components. AMD's published support matrix currently does
+not list this GPU and Proxmox combination as officially supported, so GPU
+installation remains gated on compatibility verification for the actual
+Proxmox release, kernel, and component versions.
+
+The initial host-preparation script is a preflight and optional base-tools
+installer, not an inference-stack installer:
+
+```bash
+bash scripts/proxmox/prepare-ai-host.sh --check
+sudo bash scripts/proxmox/prepare-ai-host.sh --install-base
+```
+
+`--check` inventories the host and checks AMD's live compatibility matrix
+without changing the system. `--install-base` is limited to a detected
+Proxmox VE 9.x Debian host, previews its apt plan, and refuses transactions
+that change kernel packages. Review the plan before confirming it, and use
+the script only on the eventual server. It does not install ROCm/HIP or
+configure the inference services. Linux GPU runtimes and telemetry still need
+to be selected and validated; Windows DirectML is for development tests, not
+the Linux deployment backend.
 
 ## Project layout
 

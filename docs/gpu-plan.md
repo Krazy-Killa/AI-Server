@@ -30,16 +30,21 @@ for deployment blockers, decisions, and acceptance checks.
 
 ## Linux/Proxmox deployment
 
-DirectML is Windows-specific and will not be the deployment backend. Select
-Linux-compatible GPU runtimes for LLM, vision, and image generation separately,
-and verify support for the RX 6800 XT and Proxmox host before deployment.
+DirectML is Windows-specific and will not be the deployment backend. For the
+planned Proxmox VE 9.x host with one RX 6800 XT, select Linux-compatible
+runtime versions and builds and verify support before deployment. The intended
+stack is ROCm/HIP, llama.cpp's ROCm build with `llama-server`, ONNX Runtime's
+ROCm Execution Provider, and ComfyUI with a compatible ROCm environment.
+ROCm/HIP is intended to be installed on the Proxmox host; Podman/Quadlet are
+intended for service/container management, NGINX for the web entry point, and
+Qdrant for vector storage. This is a planned stack only; exact versions and
+GPU compatibility remain unverified.
 The dashboard web server, backend API, and AI runtime are planned to run
-directly on the Proxmox host, so AI workloads and GPU telemetry will use the
-host's GPU rather than a GPU-passthrough guest. This avoids VM GPU-passthrough
-overhead and gives the host AI runtime direct access to the device. It does not
-guarantee exclusive use: host graphics, monitoring, or other GPU workloads can
-still consume resources. ROCm and other options remain candidates, not a
-confirmed production stack. GPU passthrough is only relevant if a future VM is
+on the Proxmox host, with Podman/Quadlet managing appropriate services. This
+avoids VM GPU-passthrough overhead and gives host processes or explicitly
+configured containers direct access to the device. It does not guarantee
+exclusive use: host graphics, monitoring, or other GPU workloads can still
+consume resources. GPU passthrough is only relevant if a future VM is
 intentionally assigned the GPU.
 
 ### Linux GPU telemetry — required after the GPU is moved
@@ -56,6 +61,12 @@ identity and VRAM reporting, before treating telemetry as operational. Proxmox
 host and guest workload attribution should be considered separately if GPU
 sharing with VMs is added later. Until Linux telemetry is implemented,
 non-Windows systems report live GPU load as unavailable.
+
+For the planned ROCm/HIP setup, choose the telemetry interface only after
+checking which tools and counters are supported by the installed ROCm version
+and RX 6800 XT. Validate whether host-level telemetry can be collected
+reliably when inference runs in Podman containers and with the service
+account's device permissions.
 
 ### Potential future: multi-GPU inference
 
@@ -79,9 +90,11 @@ against the single-GPU setup before deciding.
 4. Choose an image-generation framework and validate it on Windows.
 5. Record the Proxmox/OS layout and verify the exact kernel, GPU, and runtime
    combination against current upstream support information.
-6. Build and smoke-test the selected llama.cpp GPU backend on Linux.
+6. Install and smoke-test ROCm/HIP, llama.cpp `llama-server`, ONNX Runtime
+   ROCm EP, and ComfyUI against the selected Linux host.
 7. Implement Linux GPU telemetry behind the existing dashboard API contract.
-8. Integrate and validate host inference and telemetry under system services,
-   including model switching, restart recovery, and remote dashboard access.
+8. Deploy NGINX, Qdrant, and supported application services with Podman/
+   Quadlet where appropriate; validate host inference and telemetry,
+   model-switch recovery, and remote dashboard access.
 9. If multiple GPUs are installed, benchmark supported model-splitting and
    per-GPU model-instance routing approaches against the single-GPU baseline.
