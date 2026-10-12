@@ -1,14 +1,22 @@
+import asyncio
+import logging
+
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from system_stats import get_system_stats
+from gpu.windows_gpu import get_gpu_load
+from gpu.gpu_llm import LLMRuntimeError, run_llm
+from web_research import ResearchRuntimeError, run_research
 from bot_manager import get_bot_status, get_bot_logs, restart_bot
-from model_manager import list_models, select_model, get_active_model
+from model_manager import ModelSwitchError, list_models, switch_model
 from vision_stub import analyze_image_stub
 from embed_stub import embed_text_stub
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 # Allow dashboard access
 app.add_middleware(
@@ -23,6 +31,9 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
 
+class ResearchRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+
 class ModelSelectRequest(BaseModel):
     model_id: str
 
@@ -34,9 +45,22 @@ class EmbedRequest(BaseModel):
 # ===============================
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
-    user_msg = req.message
-    reply = f"AI backend received: '{user_msg}'. Real inference will be enabled once GPU is online."
-    return {"reply": reply}
+    try:
+        return await asyncio.to_thread(run_llm, req.message)
+    except LLMRuntimeError as error:
+        logger.warning("Local LLM request failed: %s", error)
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+# ===============================
+# /api/research — SearXNG + local LLM
+# ===============================
+@app.post("/api/research")
+async def research_endpoint(req: ResearchRequest):
+    try:
+        return await asyncio.to_thread(run_research, req.message)
+    except (ResearchRuntimeError, LLMRuntimeError) as error:
+        logger.warning("Web research request failed: %s", error)
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 # ===============================
 # /api/system — Live System Stats
@@ -72,18 +96,20 @@ async def bot_restart():
 # ===============================
 @app.get("/api/models")
 async def models_list():
-    return {
-        "active": get_active_model(),
-        "models": list_models()
-    }
+    return list_models()
 
 # ===============================
 # /api/model/select — Switch Model
 # ===============================
 @app.post("/api/model/select")
 async def model_select(req: ModelSelectRequest):
-    success = select_model(req.model_id)
-    return {"success": success}
+    try:
+        return await asyncio.to_thread(switch_model, req.model_id)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ModelSwitchError as error:
+        logger.error("Could not switch llama.cpp model: %s", error)
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 # ===============================
 # /api/vision — Stub
@@ -106,18 +132,16 @@ async def embed_stub(req: EmbedRequest):
 async def root():
     return {"status": "AI backend online"}
 from gpu.gpu_stub import (
-    get_gpu_stats_stub,
-    run_llm_stub,
     run_image_model_stub
 )
 
 @app.get("/api/gpu")
 async def gpu_stats():
-    return get_gpu_stats_stub()
+    return get_gpu_load()
 
 @app.post("/api/llm")
 async def llm_endpoint(req: ChatRequest):
-    return run_llm_stub(req.message)
+    return await chat_endpoint(req)
 
 @app.post("/api/vision/run")
 async def vision_run(image: bytes):

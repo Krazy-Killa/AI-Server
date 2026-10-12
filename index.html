@@ -21,8 +21,8 @@
         </div>
 
         <div class="header-metrics" aria-label="System metrics">
-            <div><span class="metric-label">GPU LOAD</span><span class="metric-value">32%</span></div>
-            <div><span class="metric-label">VRAM</span><span class="metric-value">6.1 / 16GB</span></div>
+            <div><span class="metric-label">GPU LOAD / PEAK ENGINE</span><span class="metric-value" id="gpu-load-header">N/A</span></div>
+            <div><span class="metric-label">VRAM / LIVE</span><span class="metric-value" id="vram-header">N/A</span></div>
             <div><span class="metric-label">CPU LOAD</span><span class="metric-value">18%</span></div>
         </div>
     </header>
@@ -54,18 +54,19 @@
             <div class="panel-header">
                 <div class="panel-title">Chat Interface</div>
                 <div class="panel-controls">
-                    <div class="pill pill-accent">Model: Llama 3 8B</div>
-                    <div class="pill">Response: Stream</div>
+                    <div class="pill pill-accent" id="active-model-label">Model: Checking…</div>
+                    <div class="pill">Response: Local LLM</div>
                 </div>
             </div>
 
             <div class="panel-body">
                 <div class="chat-header-row">
-                    <div class="select">
+                    <label class="select" for="active-model-select">
                         <span>MODEL</span>
-                        <strong>Llama 3 8B</strong>
-                        <span class="select-arrow" aria-hidden="true">▼</span>
-                    </div>
+                        <select class="model-select" id="active-model-select" aria-label="Available models">
+                            <option>Loading installed models…</option>
+                        </select>
+                    </label>
                     <div class="slider-label">TEMP: 0.7</div>
                     <input type="range" min="0" max="1" step="0.1" value="0.7" class="slider" aria-label="Temperature">
                 </div>
@@ -84,6 +85,10 @@
                 </div>
 
                 <div class="chat-input-row">
+                    <label class="research-toggle" for="research-mode">
+                        <input id="research-mode" type="checkbox">
+                        <span>Research Web</span>
+                    </label>
                     <input class="chat-input" id="chat-input" placeholder="Enter a message or command..." aria-label="Message" autocomplete="off">
                     <button class="btn" id="send-btn" type="button">Transmit</button>
                 </div>
@@ -95,21 +100,12 @@
                 <div class="panel-title">Model Registry</div>
                 <div class="panel-controls">
                     <div class="pill">Local Node</div>
-                    <div class="pill pill-success">Registry Ready</div>
+                    <div class="pill pill-success" id="model-registry-status">Checking inventory…</div>
                 </div>
             </div>
             <div class="panel-body">
-                <div class="model-list">
-                    <button class="model-card" type="button" data-model-id="llama3-8b" aria-label="Select Llama 3 8B">
-                        <div class="model-name">Llama 3 8B</div>
-                        <div class="model-meta"><span>CHAT MODEL</span><span>VRAM / 6.1 GB</span></div>
-                        <div class="model-bar"><div class="model-bar-fill" style="width: 38%;"></div></div>
-                    </button>
-                    <button class="model-card" type="button" data-model-id="mistral-7b" aria-label="Select Mistral 7B">
-                        <div class="model-name">Mistral 7B</div>
-                        <div class="model-meta"><span>REASONING</span><span>VRAM / 4.8 GB</span></div>
-                        <div class="model-bar"><div class="model-bar-fill" style="width: 30%;"></div></div>
-                    </button>
+                <div class="model-list" id="model-list" aria-live="polite">
+                    <div class="model-inventory-message">Loading installed models…</div>
                 </div>
             </div>
         </section>
@@ -117,13 +113,13 @@
         <section class="panel" id="system-panel" aria-label="System monitor">
             <div class="panel-header">
                 <div class="panel-title">System Monitor</div>
-                <div class="panel-controls"><div class="pill">Telemetry / Simulated</div></div>
+                <div class="panel-controls"><div class="pill" id="gpu-telemetry-status" title="GPU utilization status">GPU / Checking</div></div>
             </div>
             <div class="panel-body">
-                <div class="metric-row"><span>GPU</span><div class="metric-bar"><div class="metric-bar-fill gpu"></div></div><span>32%</span></div>
-                <div class="metric-row"><span>VRAM</span><div class="metric-bar"><div class="metric-bar-fill vram"></div></div><span>6.1 / 16GB</span></div>
+                <div class="metric-row"><span>GPU / PEAK ENGINE</span><div class="metric-bar"><div class="metric-bar-fill gpu"></div></div><span id="gpu-load-value">N/A</span></div>
+                <div class="metric-row"><span>VRAM / LIVE</span><div class="metric-bar"><div class="metric-bar-fill vram"></div></div><span id="vram-value">N/A</span></div>
                 <div class="metric-row"><span>CPU</span><div class="metric-bar"><div class="metric-bar-fill cpu"></div></div><span>18%</span></div>
-                <div class="metric-row"><span>RAM</span><div class="metric-bar"><div class="metric-bar-fill ram"></div></div><span>22%</span></div>
+                <div class="metric-row"><span>RAM</span><div class="metric-bar"><div class="metric-bar-fill ram"></div></div><span id="ram-value">N/A</span></div>
                 <div class="vm-list">
                     <div class="vm-item">&gt; WebServer-01 / Ubuntu</div>
                     <div class="vm-item">&gt; Win10-Gaming</div>

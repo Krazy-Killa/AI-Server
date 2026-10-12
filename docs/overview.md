@@ -9,14 +9,21 @@ The AI Command Interface is a unified dashboard, backend API, and Discord bot de
 - **Model Registry**
 - **System Monitor**
 - **Chat Interface**
-- **GPU Inference Pipeline** (future)
+- **Local LLM Chat** (llama.cpp test integration)
 
 ## Current Status
-The system runs fully in a local test environment using stub modules for GPU, LLM, and bot logic. The dashboard communicates with the backend and displays live telemetry, chat messages, model cards, and bot logs.
+The Windows test setup connects dashboard chat to a local llama.cpp Qwen2.5
+1.5B Instruct model and reports live RX 6800 XT load and VRAM telemetry.
+Model-registry actions, bot status/logs, vision, and image generation still
+have limitations: installed GGUF files are discovered, but only the model
+already loaded by llama.cpp is selectable; bot status/logs, vision, and image
+generation still use placeholders. VM, game-server, and network-service panels
+are planning views rather than live controls. Linux/Proxmox telemetry and
+runtime support remain to be implemented.
 
 ## Goals
 - Provide a unified control interface for local AI systems
 - Support multiple models and inference backends
-- Integrate real GPU telemetry and inference
+- Extend real GPU telemetry and inference to the Linux/Proxmox host
 - Provide Discord bot control and monitoring
 - Run on a dedicated AMD-powered server

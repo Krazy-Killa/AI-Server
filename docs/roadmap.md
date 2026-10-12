@@ -12,7 +12,7 @@
 
 ## Phase 2 — Real Backend Features
 
-- Real telemetry
+- Linux/Proxmox host GPU telemetry after the RX 6800 XT is moved to the server
 - Model registry
 - Logging system
 - Config loader
@@ -20,16 +20,19 @@
 
 ## Phase 3 — GPU Integration
 
-- llama.cpp (Windows)
-- ROCm server setup
+- llama.cpp Vulkan (Windows test build complete)
+- Linux GPU runtime setup on the Proxmox host
 - vLLM GPU mode
 - Real inference pipeline
 
 ## Phase 4 — Advanced Features
 
+- Explicit, cited web research through self-hosted SearXNG
+- Website-building agent limited to a configured workspace, with approval
+  before file changes or command execution
 - Multi-model routing
 - Agent workflows
-- VM management
+- VM management (separate from host AI/GPU telemetry)
 - Remote server control
 - Discord bot automation
 
