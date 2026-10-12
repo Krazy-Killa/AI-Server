@@ -6,6 +6,8 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
 ### Added
 
 - Linux/Proxmox transition runbook covering platform decisions, portability
@@ -17,14 +19,27 @@ principles and [Semantic Versioning](https://semver.org/).
   and the current launcher/API-origin limitations.
 - Windows Discord bot launcher and corrected `/models` and `/selectmodel`
   slash commands for the current model inventory and selection API.
-- Direct-mention replies from the Discord bot using the local AI chat backend.
-- Live Discord bot heartbeats, operational logs, dashboard restart control,
-  command listing, and active-model switching from the Discord Bot page.
+- Natural-language replies to direct Discord mentions, routed through the
+  local AI chat backend.
+- Discord Bot page controls for live status and latency, activity logs,
+  registered slash commands, bot restart, and switching the active model
+  shared with dashboard chat.
 
 ### Changed
 
 - Linked the transition runbook from the README, GPU plan, backend docs, and
   architecture overview; clarified Linux GPU support is not implemented.
+- Replaced simulated Discord bot status and logs with heartbeat-reported
+  runtime data and bounded operational logs.
+- Made dashboard restart requests restart the running bot process and report
+  success after it reconnects.
+- Enabled Discord Message Content Intent for direct-mention handling; it must
+  also be enabled in the Discord Developer Portal.
+
+### Fixed
+
+- Connected the Discord Bot page's previously inactive controls to the backend
+  APIs, including command listing and shared active-model selection.
 
 ## [0.2.0] - 2026-10-12
 
