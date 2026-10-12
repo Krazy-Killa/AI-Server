@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080c12">
+    <title>AI Server // Command Interface</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+    <header>
+        <div class="header-left">
+            <div class="logo-orb" aria-hidden="true"></div>
+            <div>
+                <div class="header-title">AI COMMAND INTERFACE</div>
+                <div class="header-status">
+                    Backend link <span id="backend-status">Checking…</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-metrics" aria-label="System metrics">
+            <div><span class="metric-label">GPU LOAD</span><span class="metric-value">32%</span></div>
+            <div><span class="metric-label">VRAM</span><span class="metric-value">6.1 / 16GB</span></div>
+            <div><span class="metric-label">CPU LOAD</span><span class="metric-value">18%</span></div>
+        </div>
+    </header>
+
+    <aside class="sidebar">
+        <div>
+            <div class="nav-section-title">Workspace</div>
+            <nav class="nav-list" aria-label="Main navigation">
+                <button class="nav-item active" type="button" data-panel="chat-panel" aria-current="page"><span class="nav-icon" aria-hidden="true">◎</span>AI Interface</button>
+                <button class="nav-item" type="button" data-panel="models-panel"><span class="nav-icon" aria-hidden="true">◉</span>Models</button>
+                <button class="nav-item" type="button" data-panel="system-panel"><span class="nav-icon" aria-hidden="true">◈</span>Host Monitor</button>
+                <button class="nav-item" type="button" data-panel="vms-panel"><span class="nav-icon" aria-hidden="true">▣</span>Virtual Machines</button>
+                <button class="nav-item" type="button" data-panel="games-panel"><span class="nav-icon" aria-hidden="true">ϟ</span>Game Servers</button>
+                <button class="nav-item" type="button" data-panel="network-panel"><span class="nav-icon" aria-hidden="true">⌘</span>Network Services</button>
+                <button class="nav-item" type="button" data-panel="bot-panel"><span class="nav-icon" aria-hidden="true">◌</span>Discord Bot</button>
+                <button class="nav-item" type="button" data-panel="settings-panel"><span class="nav-icon" aria-hidden="true">⚙</span>Settings</button>
+            </nav>
+        </div>
+
+        <div class="sidebar-footer">
+            NODE / HOMELAB-01<br>
+            GPU / RX 6800 XT<br>
+            MODE / RESEARCH
+        </div>
+    </aside>
+
+    <main class="main">
+        <section class="panel" id="chat-panel" aria-label="Chat interface">
+            <div class="panel-header">
+                <div class="panel-title">Chat Interface</div>
+                <div class="panel-controls">
+                    <div class="pill pill-accent">Model: Llama 3 8B</div>
+                    <div class="pill">Response: Stream</div>
+                </div>
+            </div>
+
+            <div class="panel-body">
+                <div class="chat-header-row">
+                    <div class="select">
+                        <span>MODEL</span>
+                        <strong>Llama 3 8B</strong>
+                        <span class="select-arrow" aria-hidden="true">▼</span>
+                    </div>
+                    <div class="slider-label">TEMP: 0.7</div>
+                    <input type="range" min="0" max="1" step="0.1" value="0.7" class="slider" aria-label="Temperature">
+                </div>
+
+                <div class="chat-window" id="chat-window" aria-live="polite" aria-label="Conversation">
+                    <div class="msg msg-ai">
+                        <div class="msg-label">AI / SYSTEM</div>
+                        <div class="msg-text">Neural interface online. Awaiting your directive.</div>
+                        <div class="msg-timestamp">14:02</div>
+                    </div>
+                    <div class="msg msg-user">
+                        <div class="msg-label">USER / COMMAND</div>
+                        <div class="msg-text">Show me system diagnostics.</div>
+                        <div class="msg-timestamp">14:03</div>
+                    </div>
+                </div>
+
+                <div class="chat-input-row">
+                    <input class="chat-input" id="chat-input" placeholder="Enter a message or command..." aria-label="Message" autocomplete="off">
+                    <button class="btn" id="send-btn" type="button">Transmit</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel" id="models-panel" aria-label="Models">
+            <div class="panel-header">
+                <div class="panel-title">Model Registry</div>
+                <div class="panel-controls">
+                    <div class="pill">Local Node</div>
+                    <div class="pill pill-success">Registry Ready</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="model-list">
+                    <button class="model-card" type="button" data-model-id="llama3-8b" aria-label="Select Llama 3 8B">
+                        <div class="model-name">Llama 3 8B</div>
+                        <div class="model-meta"><span>CHAT MODEL</span><span>VRAM / 6.1 GB</span></div>
+                        <div class="model-bar"><div class="model-bar-fill" style="width: 38%;"></div></div>
+                    </button>
+                    <button class="model-card" type="button" data-model-id="mistral-7b" aria-label="Select Mistral 7B">
+                        <div class="model-name">Mistral 7B</div>
+                        <div class="model-meta"><span>REASONING</span><span>VRAM / 4.8 GB</span></div>
+                        <div class="model-bar"><div class="model-bar-fill" style="width: 30%;"></div></div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel" id="system-panel" aria-label="System monitor">
+            <div class="panel-header">
+                <div class="panel-title">System Monitor</div>
+                <div class="panel-controls"><div class="pill">Telemetry / Simulated</div></div>
+            </div>
+            <div class="panel-body">
+                <div class="metric-row"><span>GPU</span><div class="metric-bar"><div class="metric-bar-fill gpu"></div></div><span>32%</span></div>
+                <div class="metric-row"><span>VRAM</span><div class="metric-bar"><div class="metric-bar-fill vram"></div></div><span>6.1 / 16GB</span></div>
+                <div class="metric-row"><span>CPU</span><div class="metric-bar"><div class="metric-bar-fill cpu"></div></div><span>18%</span></div>
+                <div class="metric-row"><span>RAM</span><div class="metric-bar"><div class="metric-bar-fill ram"></div></div><span>22%</span></div>
+                <div class="vm-list">
+                    <div class="vm-item">&gt; WebServer-01 / Ubuntu</div>
+                    <div class="vm-item">&gt; Win10-Gaming</div>
+                    <div class="vm-item">&gt; Bot-VM</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel" id="vms-panel" aria-label="Virtual machines">
+            <div class="panel-header">
+                <div class="panel-title">Virtual Machines</div>
+                <div class="panel-controls">
+                    <div class="pill">Hypervisor / Not Configured</div>
+                    <div class="pill">Planned</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="infra-summary">
+                    <div class="infra-stat"><span class="infra-label">HYPERVISOR</span><strong>Awaiting selection</strong></div>
+                    <div class="infra-stat"><span class="infra-label">VM INSTANCES</span><strong>Not connected</strong></div>
+                    <div class="infra-stat"><span class="infra-label">ISOLATION</span><strong>Per-VM boundaries</strong></div>
+                </div>
+                <div class="section-kicker">PLANNED ENVIRONMENTS</div>
+                <div class="infra-grid">
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">01</span><span class="pill">PLANNED</span></div>
+                        <h2>Game Hosting</h2>
+                        <p>Dedicated guests for game servers, separated from AI and internal services.</p>
+                        <div class="infra-meta"><span>ROLE / GAME SERVER HOSTS</span><span>STATUS / NOT DEPLOYED</span></div>
+                    </article>
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">02</span><span class="pill">PLANNED</span></div>
+                        <h2>Website Environment</h2>
+                        <p>A separate guest for the public website and its application stack.</p>
+                        <div class="infra-meta"><span>ROLE / WEB HOSTING</span><span>STATUS / NOT DEPLOYED</span></div>
+                    </article>
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">03</span><span class="pill">PLANNED</span></div>
+                        <h2>Internal Services</h2>
+                        <p>Isolated guests for trusted home-lab services and administration tools.</p>
+                        <div class="infra-meta"><span>ROLE / PRIVATE SERVICES</span><span>STATUS / NOT DEPLOYED</span></div>
+                    </article>
+                </div>
+                <div class="infra-notice">No hypervisor is connected. This is a planning view; no VM status or controls are live.</div>
+            </div>
+        </section>
+
+        <section class="panel" id="games-panel" aria-label="Game servers">
+            <div class="panel-header">
+                <div class="panel-title">Game Servers</div>
+                <div class="panel-controls">
+                    <div class="pill">Instances / 0</div>
+                    <div class="pill">Planned</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="infra-summary">
+                    <div class="infra-stat"><span class="infra-label">DEPLOYED INSTANCES</span><strong>None</strong></div>
+                    <div class="infra-stat"><span class="infra-label">HOST TARGET</span><strong>Isolated VM</strong></div>
+                    <div class="infra-stat"><span class="infra-label">CONTROLS</span><strong>Not connected</strong></div>
+                </div>
+                <div class="section-kicker">SERVER INVENTORY</div>
+                <div class="infra-grid">
+                    <article class="infra-card infra-card-empty">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">+</span><span class="pill">NO INSTANCE</span></div>
+                        <h2>No game servers configured</h2>
+                        <p>When hosting is ready, this space can show each server's game, player count, health, and assigned VM.</p>
+                        <div class="infra-meta"><span>READY FOR FUTURE INTEGRATION</span></div>
+                    </article>
+                </div>
+                <div class="infra-notice">Server start/stop, player, and performance data will appear here after a game-server manager is selected and connected.</div>
+            </div>
+        </section>
+
+        <section class="panel" id="network-panel" aria-label="Network services">
+            <div class="panel-header">
+                <div class="panel-title">Network Services</div>
+                <div class="panel-controls">
+                    <div class="pill">Internal Network</div>
+                    <div class="pill">Planning View</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="infra-summary">
+                    <div class="infra-stat"><span class="infra-label">NETWORK ROLE</span><strong>Not configured</strong></div>
+                    <div class="infra-stat"><span class="infra-label">ACTIVE SERVICES</span><strong>None connected</strong></div>
+                    <div class="infra-stat"><span class="infra-label">SERVICE ISOLATION</span><strong>Planned</strong></div>
+                </div>
+                <div class="section-kicker">POTENTIAL INTERNAL SERVICES</div>
+                <div class="infra-grid">
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">DNS</span><span class="pill">OPTIONAL</span></div>
+                        <h2>DNS</h2>
+                        <p>Internal name resolution for private hosts and services, if assigned to this server.</p>
+                        <div class="infra-meta"><span>EXAMPLE ROLE / LOCAL RESOLVER</span><span>STATUS / NOT RUNNING</span></div>
+                    </article>
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">DH</span><span class="pill">OPTIONAL</span></div>
+                        <h2>DHCP</h2>
+                        <p>Address assignment is a future option. Keep it disabled unless deliberately configured for the network.</p>
+                        <div class="infra-meta"><span>EXAMPLE ROLE / ADDRESS LEASES</span><span>STATUS / NOT RUNNING</span></div>
+                    </article>
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">GW</span><span class="pill">OPTIONAL</span></div>
+                        <h2>Gateway &amp; Routing</h2>
+                        <p>Network gateway functions may remain on existing network equipment instead of this host.</p>
+                        <div class="infra-meta"><span>EXAMPLE ROLE / NETWORK EDGE</span><span>STATUS / NOT ASSIGNED</span></div>
+                    </article>
+                </div>
+                <div class="infra-notice">DHCP and DNS can affect connectivity for the whole network. No services are enabled or configured by this interface.</div>
+            </div>
+        </section>
+
+        <section class="panel" id="bot-panel" aria-label="Discord bot">
+            <div class="panel-header">
+                <div class="panel-title">Discord Bot</div>
+                <div class="panel-controls">
+                    <div class="pill pill-success">Status: Online</div>
+                    <div class="pill">Latency: 42ms</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="log-window" aria-label="Bot activity log" aria-live="polite">
+                    <div class="log-line">[14:01:22] Connected to Discord API</div>
+                    <div class="log-line">[14:01:23] Loaded model: Llama 3 8B</div>
+                    <div class="log-line">[14:02:01] Awaiting commands...</div>
+                </div>
+                <div class="bot-controls">
+                    <button class="btn-secondary" type="button">Restart Bot</button>
+                    <button class="btn-secondary" type="button">View Commands</button>
+                    <button class="btn-secondary" type="button">Assign Model</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel" id="settings-panel" aria-label="Settings">
+            <div class="panel-header">
+                <div class="panel-title">Settings</div>
+                <div class="panel-controls"><div class="pill">Configuration</div></div>
+            </div>
+            <div class="panel-body">
+                <div class="settings-grid">
+                    <div class="settings-item">
+                        <div class="settings-label">Interface Theme</div>
+                        <div class="settings-value">Dark / Command</div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">Accent Spectrum</div>
+                        <div class="settings-value">Choose a system accent</div>
+                        <div class="color-swatches" aria-label="Accent colors">
+                            <button class="swatch blue" type="button" aria-label="Blue accent"></button>
+                            <button class="swatch green" type="button" aria-label="Green accent"></button>
+                            <button class="swatch purple" type="button" aria-label="Purple accent"></button>
+                            <button class="swatch orange" type="button" aria-label="Orange accent"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-footer">
+                    <button class="btn-save" type="button">Save Configuration</button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>
