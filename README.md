@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Command Interface
 
 A local AI and homelab control interface with a browser dashboard, FastAPI
@@ -25,6 +26,10 @@ network services are planning views, not live controls.
 
 The Windows test setup uses Python 3.12 and an isolated environment stored
 outside the OneDrive project folder at `%LOCALAPPDATA%\AI-Server\venv`.
+=======
+# **AI Command Interface**
+A unified control dashboard, backend API, and Discord bot designed for managing local AI models, system telemetry, GPU inference, and multi‑agent workflows. Built for AMD hardware (RX 6800 XT) and intended to run on a dedicated homelab server.
+>>>>>>> d6edea5af0bcad77c51b93af819c7b6e01e4e20e
 
 1. Run `setup-windows.bat` from the project root. This installs the backend,
    Discord bot, and ONNX Runtime DirectML dependencies, then runs a small ONNX
@@ -72,6 +77,7 @@ index.html        Dashboard interface
 
 ## Documentation
 
+<<<<<<< HEAD
 - [Project overview](./docs/overview.md)
 - [Architecture](./docs/architecture.md)
 - [Backend API](./docs/api.md)
@@ -80,3 +86,102 @@ index.html        Dashboard interface
 - [GPU plan](./docs/gpu-plan.md)
 - [Roadmap](./docs/roadmap.md)
 - [Local testing environment](./docs/testing-environment.md)
+=======
+## **Development Environment**
+- Visual Studio Code  
+- GitHub Copilot enabled  
+- FastAPI backend running locally  
+- Dashboard served via Live Server or `python -m http.server`  
+- RX 6800 XT available for testing GPU inference  
+- Windows development environment (ROCm not installed)  
+
+---
+
+## **GPU Integration Plan**
+The RX 6800 XT is currently installed in the main PC.
+
+### **Supported on Windows**
+- llama.cpp (HIP/DirectML)
+- ONNX Runtime + DirectML
+- Stable Diffusion (DirectML)
+
+### **Requires Linux**
+- ROCm  
+- vLLM GPU mode  
+
+The backend will eventually migrate to a dedicated server with ROCm installed.
+
+---
+
+## **Planned Features**
+### Backend
+- Replace stubs with real telemetry  
+- Add model registry  
+- Add logging system  
+- Add WebSocket streaming  
+- Integrate llama.cpp or vLLM  
+
+### Frontend
+- Scroll‑to‑bottom button  
+- Message fade‑in animation  
+- Collapsible sidebar  
+- Theme switching  
+- Model dropdown selector  
+
+### Discord Bot
+- Full slash command suite  
+- Bot‑side logging  
+- Model registry integration  
+
+---
+
+## **How to Run (Local Development)**
+
+### **Backend**
+```
+cd ai-backend
+python -m uvicorn main:app --host 0.0.0.0 --port 5000
+```
+
+### **Frontend**
+```
+cd ai-dashboard
+python -m http.server 8000
+```
+Open:  
+`http://localhost:8000`
+
+### **Discord Bot**
+```
+cd discord-bot
+python bot.py
+```
+
+---
+
+## **Contributing**
+This project is actively evolving. Contributions, refactors, and improvements are welcome — especially around:
+
+- GPU inference  
+- Model management  
+- Frontend UI/UX  
+- Logging and diagnostics  
+- Documentation  
+
+---
+
+## **License**
+MIT License (or whichever you choose later).
+
+---
+
+If you want, I can also generate:
+
+- `docs/architecture.md`  
+- `docs/api.md`  
+- `docs/frontend-structure.md`  
+- `docs/backend-structure.md`  
+- `docs/gpu-plan.md`  
+
+Just tell me which ones you want next.
+>>>>>>> d6edea5af0bcad77c51b93af819c7b6e01e4e20e
