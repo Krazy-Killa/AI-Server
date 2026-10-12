@@ -25,7 +25,8 @@
   the compatible framework and isolated dependencies still need to be chosen.
 
 See [the Windows test setup](./testing-environment.md) for exact environment
-details.
+details. See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
+for deployment blockers, decisions, and acceptance checks.
 
 ## Linux/Proxmox deployment
 
@@ -63,7 +64,9 @@ non-Windows systems report live GPU load as unavailable.
 2. Test Windows ONNX workloads using DirectML.
 3. Build and smoke-test llama.cpp with Vulkan on Windows.
 4. Choose an image-generation framework and validate it on Windows.
-5. Select Linux GPU runtimes for direct use on the Proxmox host.
-6. After moving the RX 6800 XT, implement and verify Linux GPU telemetry for
-   the host AI workload.
-7. Integrate Linux/Proxmox inference and telemetry with the API and dashboard.
+5. Record the Proxmox/OS layout and verify the exact kernel, GPU, and runtime
+   combination against current upstream support information.
+6. Build and smoke-test the selected llama.cpp GPU backend on Linux.
+7. Implement Linux GPU telemetry behind the existing dashboard API contract.
+8. Integrate and validate host inference and telemetry under system services,
+   including model switching, restart recovery, and remote dashboard access.

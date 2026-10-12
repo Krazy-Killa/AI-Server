@@ -1,16 +1,27 @@
 import asyncio
 import logging
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+# Load project configuration before importing modules that read environment variables.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
 from system_stats import get_system_stats
 from gpu.windows_gpu import get_gpu_load
 from gpu.gpu_llm import LLMRuntimeError, run_llm
 from web_research import ResearchRuntimeError, run_research
-from bot_manager import get_bot_status, get_bot_logs, restart_bot
+from bot_manager import (
+    add_bot_log,
+    get_bot_status,
+    get_bot_logs,
+    restart_bot,
+    update_bot_heartbeat,
+)
 from model_manager import ModelSwitchError, list_models, switch_model
 from vision_stub import analyze_image_stub
 from embed_stub import embed_text_stub
@@ -39,6 +50,13 @@ class ModelSelectRequest(BaseModel):
 
 class EmbedRequest(BaseModel):
     text: str
+
+class BotHeartbeatRequest(BaseModel):
+    latency_ms: int | None = Field(default=None, ge=0)
+    commands: list[str] = Field(default_factory=list, max_length=50)
+
+class BotLogRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=200)
 
 # ===============================
 # /api/chat — AI Chat Endpoint
@@ -84,12 +102,29 @@ async def bot_logs():
     return get_bot_logs()
 
 # ===============================
+# /api/bot/heartbeat
+# ===============================
+@app.post("/api/bot/heartbeat")
+async def bot_heartbeat(req: BotHeartbeatRequest):
+    restart_requested = update_bot_heartbeat(req.latency_ms, req.commands)
+    return {"restart_requested": restart_requested}
+
+# ===============================
+# /api/bot/logs
+# ===============================
+@app.post("/api/bot/logs")
+async def bot_log(req: BotLogRequest):
+    add_bot_log(req.message)
+    return {"success": True}
+
+# ===============================
 # /api/bot/restart
 # ===============================
 @app.post("/api/bot/restart")
 async def bot_restart():
-    restart_bot()
-    return {"status": "bot restarted"}
+    if not restart_bot():
+        raise HTTPException(status_code=409, detail="Discord bot is offline.")
+    return {"status": "restart_requested"}
 
 # ===============================
 # /api/models — List Models

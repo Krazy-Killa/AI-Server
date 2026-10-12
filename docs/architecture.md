@@ -65,3 +65,6 @@ GPU / LLM / Bot / System Stats
   may still share GPU resources.
 - VM workloads remain separate; GPU passthrough is only needed if a VM is
   intentionally assigned the GPU in the future.
+- Linux runtime, GPU telemetry, service management, and safe remote UI/API
+  access remain to be validated. See the
+  [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).

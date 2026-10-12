@@ -14,9 +14,19 @@ const sendBtn = document.getElementById('send-btn');
 const researchMode = document.getElementById('research-mode');
 
 // Bot panel elements
-const botStatusEl = document.querySelector('#bot-panel .pill-success');
-const botLatencyEl = document.querySelector('#bot-panel .pill:nth-child(2)');
-const botLogWindow = document.querySelector('#bot-panel .log-window');
+const botStatusEl = document.getElementById('bot-status');
+const botLatencyEl = document.getElementById('bot-latency');
+const botRestartTimeEl = document.getElementById('bot-restart-time');
+const botLogWindow = document.getElementById('bot-log-window');
+const botRestartButton = document.getElementById('bot-restart');
+const botToggleCommandsButton = document.getElementById('bot-toggle-commands');
+const botCommandsPanel = document.getElementById('bot-commands');
+const botCommandList = document.getElementById('bot-command-list');
+const botModelSelect = document.getElementById('bot-model-select');
+const botApplyModelButton = document.getElementById('bot-apply-model');
+const botFeedback = document.getElementById('bot-feedback');
+let botCommands = [];
+let botRestartPending = false;
 
 // Model panel elements
 const modelList = document.getElementById('model-list');
@@ -358,14 +368,29 @@ loadModelInventory();
 async function pollBotStatus() {
     try {
         const response = await fetch(`${API_BASE}/api/bot/status`);
+        if (!response.ok) throw new Error(`Bot status request failed: ${response.status}`);
         const data = await response.json();
 
-        botStatusEl.textContent = data.online ? "Status: Online" : "Status: Offline";
-        botLatencyEl.textContent = `Latency: ${data.latency_ms}ms`;
+        botStatusEl.textContent = data.online ? 'Status: Online' : 'Status: Offline';
+        botStatusEl.classList.toggle('pill-success', data.online);
+        botLatencyEl.textContent = Number.isFinite(data.latency_ms)
+            ? `Latency: ${data.latency_ms}ms`
+            : 'Latency: N/A';
+        botRestartTimeEl.textContent = data.last_restart
+            ? `Last restart: ${new Date(data.last_restart * 1000).toLocaleString()}`
+            : 'Last restart: Unknown';
+        botCommands = Array.isArray(data.commands) ? data.commands : [];
+        if (botRestartPending && data.online && !data.restart_pending) {
+            botRestartPending = false;
+            botFeedback.textContent = 'Bot restarted and is back online.';
+        }
+        if (!botCommandsPanel.hidden) renderBotCommands();
 
     } catch (err) {
-        botStatusEl.textContent = "Status: Offline";
-        botLatencyEl.textContent = "Latency: N/A";
+        botStatusEl.textContent = 'Status: Backend unavailable';
+        botStatusEl.classList.remove('pill-success');
+        botLatencyEl.textContent = 'Latency: N/A';
+        botRestartTimeEl.textContent = 'Last restart: Unknown';
     }
 }
 
@@ -400,6 +425,100 @@ async function pollBotLogs() {
 
 setInterval(pollBotLogs, 4000);
 pollBotLogs();
+
+function renderBotCommands() {
+    botCommandList.replaceChildren();
+    const commands = botCommands.length
+        ? botCommands
+        : ['No commands reported; confirm the bot is online.'];
+    commands.forEach(command => {
+        const item = document.createElement('li');
+        item.textContent = `/${command}`;
+        botCommandList.appendChild(item);
+    });
+}
+
+botToggleCommandsButton.addEventListener('click', () => {
+    const expanded = botToggleCommandsButton.getAttribute('aria-expanded') === 'true';
+    botToggleCommandsButton.setAttribute('aria-expanded', String(!expanded));
+    botToggleCommandsButton.textContent = expanded ? 'View Commands' : 'Hide Commands';
+    botCommandsPanel.hidden = expanded;
+    if (!expanded) renderBotCommands();
+});
+
+botRestartButton.addEventListener('click', async () => {
+    botRestartButton.disabled = true;
+    botFeedback.textContent = 'Sending restart request...';
+    try {
+        const response = await fetch(`${API_BASE}/api/bot/restart`, { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || `Restart failed (${response.status}).`);
+        botRestartPending = true;
+        botFeedback.textContent = 'Restart requested. Waiting for the bot to reconnect...';
+        window.setTimeout(pollBotStatus, 1000);
+    } catch (err) {
+        botFeedback.textContent = err instanceof Error ? err.message : 'Unable to restart the bot.';
+    } finally {
+        botRestartButton.disabled = false;
+    }
+});
+
+async function loadBotModels() {
+    try {
+        const response = await fetch(`${API_BASE}/api/models`);
+        if (!response.ok) throw new Error(`Model inventory request failed: ${response.status}`);
+        const inventory = await response.json();
+        const models = Array.isArray(inventory.models) ? inventory.models : [];
+        botModelSelect.replaceChildren();
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name}${model.loaded ? ' (active)' : ''}`;
+            option.selected = model.id === inventory.active_model;
+            botModelSelect.appendChild(option);
+        });
+        if (!models.length) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No installed models';
+            botModelSelect.appendChild(option);
+        }
+    } catch (err) {
+        botModelSelect.replaceChildren(new Option('Models unavailable', ''));
+        botFeedback.textContent = err instanceof Error ? err.message : 'Unable to load model inventory.';
+    }
+}
+
+botApplyModelButton.addEventListener('click', async () => {
+    const modelId = botModelSelect.value;
+    if (!modelId) {
+        botFeedback.textContent = 'Select an installed model first.';
+        return;
+    }
+
+    botApplyModelButton.disabled = true;
+    botFeedback.textContent = 'Switching the active server model...';
+    try {
+        const response = await fetch(`${API_BASE}/api/model/select`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model_id: modelId }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.detail || `Model switch failed (${response.status}).`);
+        }
+        botFeedback.textContent = `Active model changed to ${result.active_model}. This model is shared by dashboard and Discord chat.`;
+        await Promise.all([loadBotModels(), loadModelInventory()]);
+    } catch (err) {
+        botFeedback.textContent = err instanceof Error ? err.message : 'Unable to switch the active model.';
+        await loadBotModels();
+    } finally {
+        botApplyModelButton.disabled = false;
+    }
+});
+
+loadBotModels();
 
 // ===============================
 // SYSTEM STATS POLLING

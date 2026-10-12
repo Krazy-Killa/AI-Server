@@ -1,0 +1,37 @@
+# Local environment variables and credentials
+.env
+.env.*
+!.env.example
+
+# Python environments and bytecode
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test, type-check, and coverage output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local model weights, runtime logs, and generated artifacts
+models/
+logs/
+*.gguf
+*.safetensors
+*.onnx
+
+# Local build and editor/OS files
+build/
+dist/
+out/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

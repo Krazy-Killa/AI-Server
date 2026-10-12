@@ -889,6 +889,57 @@ header {
     color: var(--accent);
 }
 
+.bot-model-control {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+}
+
+.bot-model-control select {
+    min-height: 38px;
+    max-width: min(280px, 55vw);
+    padding: 0 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 3px;
+    background: rgba(12, 19, 27, 0.92);
+    color: var(--text-main);
+    font: inherit;
+    text-transform: none;
+}
+
+.bot-feedback {
+    min-height: 1.5em;
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.bot-commands {
+    padding: 12px 14px;
+    border: 1px solid var(--border-soft);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.bot-commands[hidden] {
+    display: none;
+}
+
+.bot-commands ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    margin: 10px 0 0;
+    padding-left: 18px;
+}
+
 /* Settings */
 .settings-grid {
     display: grid;

@@ -12,8 +12,8 @@
 
 ## Phase 2 — Real Backend Features
 
+- Linux/Proxmox deployment preparation and acceptance checks
 - Linux/Proxmox host GPU telemetry after the RX 6800 XT is moved to the server
-- Model registry
 - Logging system
 - Config loader
 - WebSocket streaming
@@ -42,3 +42,6 @@
 - Theme switching
 - Mobile layout
 - Collapsible sidebar
+
+See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md) for
+deployment decisions, blockers, and acceptance criteria.

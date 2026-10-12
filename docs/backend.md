@@ -22,7 +22,8 @@ main.py
 - CORS config  
 
 system_stats.py  
-- CPU and RAM telemetry, plus live Windows GPU-engine utilization  
+- CPU and RAM telemetry on supported systems  
+- Currently obtains live GPU telemetry through the Windows-only provider  
 - Live dedicated VRAM usage and device-local capacity on Windows  
 
 gpu/windows_gpu.py  
@@ -47,7 +48,16 @@ gpu_llm.py
 - OpenAI-compatible chat requests to the local llama.cpp server  
 
 gpu_rocm.py  
-- ROCm + vLLM integration (Linux)  
+- Placeholder only; Linux GPU telemetry/inference integration is not implemented  
+
+## Linux/Proxmox portability
+
+The backend's common Python dependencies are listed in
+`requirements.txt`; Windows DirectML packages are isolated in
+`requirements-windows.txt`. Linux GPU telemetry is not implemented: the
+current provider returns unavailable off Windows, and `gpu_rocm.py` is a
+stub. See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
+before deploying the backend or exposing it to other devices.
 
 ## Future Additions
 

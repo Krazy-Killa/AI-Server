@@ -22,8 +22,9 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
-- VM, game-server, and network-service panels are planning views. Discord bot
-  status and logs are still placeholders.
+- VM, game-server, and network-service panels are planning views. The Discord
+  page reports live bot heartbeats and operational logs and supports restart,
+  command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
   approval before file changes or command execution.
 
@@ -33,12 +34,17 @@ The Windows test environment uses Python 3.12. Its virtual environment and
 llama.cpp build/model files are kept outside the OneDrive project folder,
 under `%LOCALAPPDATA%\AI-Server`.
 
-1. Run `setup-windows.bat` from the project root.
-2. Download the Qwen2.5 1.5B Instruct GGUF as described in
+1. Copy `.env.example` to `.env` and adjust settings for this machine. The
+   backend and optional Discord bot load the project-root `.env`; the local
+   file is ignored by Git. Never add credentials to `.env.example`.
+2. Run `setup-windows.bat` from the project root.
+3. Download the Qwen2.5 1.5B Instruct GGUF as described in
    [the testing guide](./docs/testing-environment.md).
-3. Start `run-llama-server.bat` and leave it running.
-4. In separate terminals, run `run-backend.bat` and `run-dashboard.bat`.
-5. Open `http://127.0.0.1:8001`.
+4. Start `run-llama-server.bat` and leave it running.
+5. In separate terminals, run `run-backend.bat` and `run-dashboard.bat`.
+6. To start the optional Discord bot, run `run-discord-bot.bat` after
+   configuring `DISCORD_TOKEN` in `.env`.
+7. Open `http://127.0.0.1:8001`.
 
 The backend listens on `http://127.0.0.1:8000`; llama.cpp listens on
 `http://127.0.0.1:8080`. Use the dashboard's model dropdown or a model card to
@@ -68,10 +74,12 @@ index.html        Dashboard interface
 ## Documentation
 
 - [Windows testing environment](./docs/testing-environment.md)
+- [Configuration and secrets](./docs/configuration.md)
 - [Project overview](./docs/overview.md)
 - [Architecture](./docs/architecture.md)
 - [Backend API](./docs/api.md)
 - [Backend](./docs/backend.md)
 - [Frontend](./docs/frontend.md)
 - [GPU integration plan](./docs/gpu-plan.md)
+- [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)
 - [Roadmap](./docs/roadmap.md)

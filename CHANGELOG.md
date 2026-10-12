@@ -6,6 +6,26 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Linux/Proxmox transition runbook covering platform decisions, portability
+  gaps, deployment configuration, service/security requirements, and
+  acceptance checks.
+- Root `.gitignore`, local `.env`, and shareable `.env.example` configuration
+  template; backend and Discord bot load project-root `.env` settings.
+- Configuration documentation describing supported environment variables
+  and the current launcher/API-origin limitations.
+- Windows Discord bot launcher and corrected `/models` and `/selectmodel`
+  slash commands for the current model inventory and selection API.
+- Direct-mention replies from the Discord bot using the local AI chat backend.
+- Live Discord bot heartbeats, operational logs, dashboard restart control,
+  command listing, and active-model switching from the Discord Bot page.
+
+### Changed
+
+- Linked the transition runbook from the README, GPU plan, backend docs, and
+  architecture overview; clarified Linux GPU support is not implemented.
+
 ## [0.2.0] - 2026-10-12
 
 ### Added
@@ -67,4 +87,3 @@ principles and [Semantic Versioning](https://semver.org/).
 - Initial documentation, dashboard navigation and panels, model cards,
   system-monitor bars, chat layout, backend status indicator, and theme
   swatches.
-

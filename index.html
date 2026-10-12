@@ -237,20 +237,30 @@
             <div class="panel-header">
                 <div class="panel-title">Discord Bot</div>
                 <div class="panel-controls">
-                    <div class="pill pill-success">Status: Online</div>
-                    <div class="pill">Latency: 42ms</div>
+                    <div class="pill" id="bot-status">Status: Checking...</div>
+                    <div class="pill" id="bot-latency">Latency: N/A</div>
+                    <div class="pill" id="bot-restart-time">Last restart: Unknown</div>
                 </div>
             </div>
             <div class="panel-body">
-                <div class="log-window" aria-label="Bot activity log" aria-live="polite">
-                    <div class="log-line">[14:01:22] Connected to Discord API</div>
-                    <div class="log-line">[14:01:23] Loaded model: Llama 3 8B</div>
-                    <div class="log-line">[14:02:01] Awaiting commands...</div>
+                <div class="log-window" id="bot-log-window" aria-label="Bot activity log" aria-live="polite">
+                    <div class="log-line">Waiting for Discord bot status...</div>
                 </div>
                 <div class="bot-controls">
-                    <button class="btn-secondary" type="button">Restart Bot</button>
-                    <button class="btn-secondary" type="button">View Commands</button>
-                    <button class="btn-secondary" type="button">Assign Model</button>
+                    <button class="btn-secondary" id="bot-restart" type="button">Restart Bot</button>
+                    <button class="btn-secondary" id="bot-toggle-commands" type="button" aria-expanded="false" aria-controls="bot-commands">View Commands</button>
+                    <label class="bot-model-control" for="bot-model-select">
+                        <span>Active AI model</span>
+                        <select id="bot-model-select" aria-label="Select the active AI model for the server and Discord bot">
+                            <option value="">Loading models...</option>
+                        </select>
+                    </label>
+                    <button class="btn-secondary" id="bot-apply-model" type="button">Apply Model</button>
+                </div>
+                <p class="bot-feedback" id="bot-feedback" role="status" aria-live="polite"></p>
+                <div class="bot-commands" id="bot-commands" hidden>
+                    <strong>Registered slash commands</strong>
+                    <ul id="bot-command-list"></ul>
                 </div>
             </div>
         </section>
