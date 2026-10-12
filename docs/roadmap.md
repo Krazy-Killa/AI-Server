@@ -31,6 +31,11 @@
 - Website-building agent limited to a configured workspace, with approval
   before file changes or command execution
 - Multi-model routing
+- Evaluate multi-GPU inference on the eventual Linux/Proxmox hardware:
+  - Split one model across GPUs where the selected runtime supports it.
+  - Alternatively, run a model instance per GPU and route concurrent clients.
+  - Compare compatibility, VRAM use, throughput, latency, power, and stability
+    against the single-GPU baseline before selecting an approach.
 - Agent workflows
 - VM management (separate from host AI/GPU telemetry)
 - Remote server control

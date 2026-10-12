@@ -6,6 +6,12 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Recorded multi-GPU inference as a future evaluation item for the Linux/
+  Proxmox server, including model splitting versus per-GPU instances and
+  benchmarking requirements.
+
 ## [0.3.0] - 2026-10-12
 
 ### Added

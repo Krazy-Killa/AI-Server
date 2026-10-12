@@ -57,6 +57,19 @@ host and guest workload attribution should be considered separately if GPU
 sharing with VMs is added later. Until Linux telemetry is implemented,
 non-Windows systems report live GPU load as unavailable.
 
+### Potential future: multi-GPU inference
+
+After the final server GPU configuration and Linux runtime are known, evaluate
+using multiple GPUs for LLM inference. The options are to split one model
+across supported GPUs, or run a separate instance of the same model on each
+GPU and route dashboard and Discord requests independently. The latter can
+improve concurrent throughput but duplicates model memory; splitting may
+increase the model size that fits but does not combine VRAM without runtime
+support and may add inter-GPU communication overhead. Neither option is
+implemented or assumed to improve performance. Compare supported hardware and
+runtime combinations, VRAM use, throughput, latency, power, and stability
+against the single-GPU setup before deciding.
+
 ## Strategy
 
 1. Validate the dashboard and API with live llama.cpp chat and Windows GPU
@@ -70,3 +83,5 @@ non-Windows systems report live GPU load as unavailable.
 7. Implement Linux GPU telemetry behind the existing dashboard API contract.
 8. Integrate and validate host inference and telemetry under system services,
    including model switching, restart recovery, and remote dashboard access.
+9. If multiple GPUs are installed, benchmark supported model-splitting and
+   per-GPU model-instance routing approaches against the single-GPU baseline.
