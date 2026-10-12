@@ -1,15 +1,3 @@
-Absolutely, Michael — here’s a **clean, professional, repo‑ready `README.md`** that matches your project exactly and gives GitHub Copilot all the context it needs to help you build the rest of the system.
-
-This is written in proper Markdown, structured for a real software project, and tailored to the architecture you’ve already built.
-
-You can paste this directly into:
-
-`README.md`
-
-at the root of your repo.
-
----
-
 # **AI Command Interface**
 A unified control dashboard, backend API, and Discord bot designed for managing local AI models, system telemetry, GPU inference, and multi‑agent workflows. Built for AMD hardware (RX 6800 XT) and intended to run on a dedicated homelab server.
 
