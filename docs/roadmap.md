@@ -20,6 +20,12 @@
 - Logging system
 - Config loader
 - WebSocket streaming
+- **Authentication & Session Management** (JWT-based, documented in `docs/authentication.md`)
+  - User login/logout endpoints
+  - Token refresh mechanism
+  - Protected endpoint middleware
+  - Frontend login page and token management
+  - Rate limiting and security hardening
 
 ## Phase 3 — GPU Integration
 
@@ -30,6 +36,14 @@
 - Podman/Quadlet service setup, NGINX reverse proxy, and Qdrant deployment
 - Linux GPU telemetry for the Proxmox host
 - Real inference pipeline
+- **AI Diagnostics & Self-Healing System** (documented in `docs/ai-diagnostics-self-healing.md`)
+  - Real-time health monitoring and anomaly detection
+  - Diagnostic engine for root cause analysis
+  - Auto-remediation for safe operations (service restart, cache clear, config reload)
+  - Error reporting and escalation for critical issues
+  - Knowledge base of troubleshooting procedures and runbooks
+  - User intervention workflows and approval gates
+  - Audit logging of all diagnostic and remediation actions
 
 The host preparation script only inventories the host and optionally installs
 base tools after previewing an apt plan. It does not install the stack above.
@@ -53,6 +67,12 @@ planned GPU/Proxmox combination as officially supported.
 - VM management (separate from host AI/GPU telemetry)
 - Remote server control
 - Discord bot automation
+- **Advanced AI Diagnostics** (self-learning and ML-based detection)
+  - Machine learning-based anomaly detection
+  - Self-learning knowledge base updates from successful fixes
+  - Predictive issue detection
+  - Advanced remediation strategies
+  - Cross-service dependency analysis and recovery
 
 ## Phase 5 — Polish
 
@@ -61,5 +81,15 @@ planned GPU/Proxmox combination as officially supported.
 - Mobile layout
 - Collapsible sidebar
 
-See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md) for
-deployment decisions, blockers, and acceptance criteria.
+---
+
+## Documentation References
+
+- [Authentication & Session Management](./authentication.md) - JWT-based auth system design and implementation guide
+- [AI Diagnostics & Self-Healing System](./ai-diagnostics-self-healing.md) - AI-powered monitoring, diagnostics, and auto-remediation framework
+- [Linux/Proxmox Transition Runbook](./linux-proxmox-transition.md) - Deployment decisions, blockers, and acceptance criteria
+- [Architecture Overview](./architecture.md) - System components and data flow
+- [Configuration Guide](./configuration.md) - Environment variables and settings
+- [Backend Documentation](./backend.md) - FastAPI endpoints and modules
+- [Frontend Documentation](./frontend.md) - Dashboard UI and JavaScript structure
+
