@@ -66,7 +66,13 @@ navItems.forEach(item => {
         item.setAttribute('aria-current', 'page');
 
         panels.forEach(panel => {
-            panel.style.display = panel.id === item.dataset.panel ? 'flex' : 'none';
+            const active = panel.id === item.dataset.panel;
+            panel.style.display = active ? 'flex' : 'none';
+            panel.classList.remove('panel-enter');
+            if (active) {
+                void panel.offsetWidth;
+                panel.classList.add('panel-enter');
+            }
         });
     });
 });
@@ -130,6 +136,7 @@ function addMessage(text, sender = 'ai', latencyMs = null, sources = []) {
 
     chatWindow.appendChild(msg);
     chatWindow.scrollTop = chatWindow.scrollHeight;
+    return msg;
 }
 
 const backendStatusEl = document.getElementById('backend-status');
@@ -156,6 +163,93 @@ async function pollBackendStatus() {
 setInterval(pollBackendStatus, 3000);
 pollBackendStatus();
 
+const WS_BASE = API_BASE.replace(/^http/, 'ws');
+
+// Streams a reply over WebSocket. Rejects with { fallback: true } if the
+// stream could not start, so the caller can use the REST endpoint instead.
+function streamChat(text, thinkingMsg) {
+    return new Promise((resolve, reject) => {
+        let socket;
+        try {
+            socket = new WebSocket(`${WS_BASE}/ws/chat`);
+        } catch {
+            reject({ fallback: true });
+            return;
+        }
+
+        let replyEl = null;
+        let textEl = null;
+        let finished = false;
+
+        const append = (content) => {
+            if (!replyEl) {
+                thinkingMsg.remove();
+                replyEl = addMessage('', 'ai');
+                textEl = replyEl.querySelector('.msg-text');
+            }
+            textEl.textContent += content;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        };
+
+        socket.onopen = () => socket.send(JSON.stringify({ message: text }));
+
+        socket.onmessage = (event) => {
+            let data;
+            try {
+                data = JSON.parse(event.data);
+            } catch {
+                return;
+            }
+            if (data.type === 'token' && typeof data.content === 'string') {
+                append(data.content);
+            } else if (data.type === 'done') {
+                finished = true;
+                if (replyEl && typeof data.latency_ms === 'number') {
+                    const stamp = replyEl.querySelector('.msg-timestamp');
+                    stamp.textContent = `${stamp.textContent} · ${(data.latency_ms / 1000).toFixed(2)}s`;
+                }
+                socket.close();
+                resolve();
+            } else if (data.type === 'error') {
+                finished = true;
+                socket.close();
+                if (replyEl) {
+                    append(`\n[Error: ${data.detail || 'stream failed'}]`);
+                    resolve();
+                } else {
+                    reject(new Error(data.detail || 'Chat stream failed.'));
+                }
+            }
+        };
+
+        socket.onclose = () => {
+            if (finished) return;
+            finished = true;
+            if (replyEl) {
+                append('\n[Connection lost before the reply finished.]');
+                resolve();
+            } else {
+                reject({ fallback: true });
+            }
+        };
+    });
+}
+
+async function requestReply(text, useResearch) {
+    const response = await fetch(`${API_BASE}${useResearch ? '/api/research' : '/api/chat'}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.detail || `Chat request failed: ${response.status}`);
+    }
+    if (typeof data.reply !== 'string') throw new Error('Chat response did not contain a reply.');
+    return data;
+}
+
 async function sendMessage() {
     if (modelSwitchInProgress) return;
     const text = chatInput.value.trim();
@@ -169,17 +263,16 @@ async function sendMessage() {
     const thinkingMsg = chatWindow.lastElementChild;
 
     try {
-        const response = await fetch(`${API_BASE}${useResearch ? '/api/research' : '/api/chat'}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.detail || `Chat request failed: ${response.status}`);
+        if (!useResearch) {
+            try {
+                await streamChat(text, thinkingMsg);
+                return;
+            } catch (err) {
+                if (!(err && err.fallback)) throw err;
+            }
         }
-        if (typeof data.reply !== 'string') throw new Error('Chat response did not contain a reply.');
+
+        const data = await requestReply(text, useResearch);
         thinkingMsg.remove();
         addMessage(data.reply, 'ai', data.latency_ms, data.sources);
 
@@ -584,31 +677,94 @@ setInterval(pollSystemStats, 2000);
 pollSystemStats();
 
 // ===============================
-// SETTINGS — ACCENT COLOR SWITCHING
+// SETTINGS — THEME, ACCENT, SIDEBAR (persisted)
 // ===============================
-swatches.forEach(swatch => {
-    swatch.addEventListener('click', () => {
-        const color = getComputedStyle(swatch).backgroundColor;
-        root.style.setProperty('--accent', color);
-    });
-});
+const PREFS_KEY = 'ai-server-ui-prefs';
+const appEl = document.querySelector('.app');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const themeToggle = document.getElementById('theme-toggle');
+const themeLabel = document.getElementById('theme-label');
+const saveConfigButton = document.getElementById('save-config');
 
-// ===============================
-// SETTINGS — THEME SWITCHING (Dark/Light)
-// ===============================
-function applyTheme(theme) {
-    if (theme === "light") {
-        root.style.setProperty('--bg-main', '#f0f0f0');
-        root.style.setProperty('--bg-panel', '#ffffff');
-        root.style.setProperty('--text-main', '#000000');
-        root.style.setProperty('--text-muted', '#555555');
-    } else {
-        root.style.setProperty('--bg-main', '#0b0f16');
-        root.style.setProperty('--bg-panel', '#141922');
-        root.style.setProperty('--text-main', '#e0e0e0');
-        root.style.setProperty('--text-muted', '#9aa0b5');
+const ACCENTS = {
+    blue: '74, 140, 255',
+    green: '66, 245, 197',
+    purple: '180, 106, 255',
+    orange: '255, 154, 74',
+};
+
+function loadPrefs() {
+    try {
+        return JSON.parse(localStorage.getItem(PREFS_KEY)) || {};
+    } catch (error) {
+        return {};
     }
 }
 
-// Example theme toggle (you can wire this to a button later)
-applyTheme("dark");
+const prefs = Object.assign({ theme: 'dark', accent: 'green', sidebarCollapsed: false }, loadPrefs());
+
+function savePrefs() {
+    try {
+        localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    } catch (error) {
+        console.warn('Could not persist UI preferences', error);
+    }
+}
+
+function applyTheme(theme) {
+    prefs.theme = theme === 'light' ? 'light' : 'dark';
+    root.dataset.theme = prefs.theme;
+    if (themeLabel) themeLabel.textContent = prefs.theme === 'light' ? 'Light / Daylight' : 'Dark / Command';
+    if (themeToggle) themeToggle.textContent = prefs.theme === 'light' ? 'Switch to dark' : 'Switch to light';
+}
+
+function applyAccent(name) {
+    const rgb = ACCENTS[name] || ACCENTS.green;
+    prefs.accent = ACCENTS[name] ? name : 'green';
+    root.style.setProperty('--accent-rgb', rgb);
+    root.style.setProperty('--accent', `rgb(${rgb})`);
+    swatches.forEach(swatch => {
+        const active = swatch.classList.contains(prefs.accent);
+        swatch.classList.toggle('active', active);
+        swatch.setAttribute('aria-pressed', String(active));
+    });
+}
+
+function applySidebar(collapsed) {
+    prefs.sidebarCollapsed = Boolean(collapsed);
+    appEl.classList.toggle('sidebar-collapsed', prefs.sidebarCollapsed);
+    if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', String(!prefs.sidebarCollapsed));
+}
+
+swatches.forEach(swatch => {
+    swatch.addEventListener('click', () => {
+        applyAccent(Object.keys(ACCENTS).find(name => swatch.classList.contains(name)));
+        savePrefs();
+    });
+});
+
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        applyTheme(prefs.theme === 'light' ? 'dark' : 'light');
+        savePrefs();
+    });
+}
+
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        applySidebar(!prefs.sidebarCollapsed);
+        savePrefs();
+    });
+}
+
+if (saveConfigButton) {
+    saveConfigButton.addEventListener('click', () => {
+        savePrefs();
+        saveConfigButton.textContent = 'Saved ✓';
+        setTimeout(() => { saveConfigButton.textContent = 'Save Configuration'; }, 1500);
+    });
+}
+
+applyTheme(prefs.theme);
+applyAccent(prefs.accent);
+applySidebar(prefs.sidebarCollapsed);

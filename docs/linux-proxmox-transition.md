@@ -79,10 +79,11 @@ compatibility.
    device, not the AI Server. Configure a server-reachable API origin or put
    the dashboard and API behind a same-origin reverse proxy, and test from a
    separate LAN client. Do not expose the llama.cpp port to the LAN.
-5. **Harden access before LAN use.** FastAPI currently allows all CORS origins
-   and has no authentication. Do not expose the API, model-switch endpoint, or
-   llama.cpp to an untrusted network. Before remote/LAN access, decide and
-   implement authentication, restrictive CORS, firewall rules, TLS or a
+5. **Harden access before LAN use.** FastAPI's CORS and WebSocket origin
+   checks now default to the local dashboard origins (`AI_SERVER_CORS_ORIGINS`),
+   but there is still no authentication. Do not expose the API, model-switch
+   endpoint, or llama.cpp to an untrusted network. Before remote/LAN access,
+   decide and implement authentication, firewall rules, TLS or a
    trusted reverse proxy, and a safe model-switch policy.
 6. **Create Linux service management.** The `.bat` scripts only support
    Windows. Prepare Podman/Quadlet units for containerized services and
@@ -145,7 +146,12 @@ is an initial, deliberately conservative bootstrap:
   build/runtime and host tools and adds headers for the exact running kernel
   only when an apt candidate exists. It refuses a transaction that proposes
   replacing or removing a kernel package.
-
+- Run `sudo bash scripts/proxmox/prepare-ai-host.sh --install-searxng` on the
+  server to install SearXNG (the web-research backend). It runs as the
+  unprivileged `searxng` user under systemd, bound to `127.0.0.1:8888`, and is
+  independent of the GPU gate. The planned Podman/Quadlet layout may replace
+  this systemd service later; the loopback address and JSON format stay the
+  same, so `SEARXNG_BASE_URL` does not change.
 As of 2026-10-12, AMD's current compatibility matrix does not list the
 RX 6800 XT or Proxmox VE 9 as officially supported for ROCm. Therefore the
 script must not be treated as permission to install ROCm on this target, and

@@ -84,12 +84,31 @@ The Chat Interface includes a **Research Web** checkbox. When enabled, the
 next message uses `POST /api/research`; otherwise chat stays local and does not
 search. The research endpoint expects SearXNG at
 `http://127.0.0.1:8888` by default. Set `SEARXNG_BASE_URL` before launching
-the backend to use another instance. Enable SearXNG's `json` response format
-in its settings; the endpoint uses up to five result excerpts and returns
-their source links with the local model's answer. It does not yet fetch full
-pages. Search queries may be forwarded by SearXNG to its configured upstream
-search engines, so avoid sending secrets or private data in Research mode. The
-SearXNG service itself still needs to be installed and configured.
+the backend to use another instance. The endpoint uses up to five result
+excerpts and returns their source links with the local model's answer. It does
+not yet fetch full pages. Search queries may be forwarded by SearXNG to its
+configured upstream search engines, so avoid sending secrets or private data in
+Research mode.
+
+SearXNG does not support native Windows, so the test environment runs it inside
+WSL (Ubuntu) with no root access needed. One-time install from the project
+root:
+
+```powershell
+wsl bash scripts/searxng/install-searxng.sh
+```
+
+The installer downloads `uv`, a private Python 3.12 (SearXNG needs 3.11 or
+newer), and SearXNG into `~/searxng` in WSL, then creates `~/searxng/settings.yml`
+from `scripts/searxng/settings.yml` with a random secret key. The settings bind
+to `127.0.0.1:8888`, enable the `json` format the backend needs, and disable
+the bot limiter, which is meant for public instances. Re-running the installer
+updates SearXNG and keeps your settings. Start it with `run-searxng.bat` and
+leave that window open; close it or press Ctrl+C to stop. Check it with:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8888/search?q=test&format=json"
+```
 
 The Models page discovers `.gguf` files in
 `%LOCALAPPDATA%\AI-Server\models` and marks the file reported by llama.cpp's

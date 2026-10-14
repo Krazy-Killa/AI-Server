@@ -4,6 +4,8 @@
 
 ai-backend/
     main.py
+    config.py
+    logging_config.py
     system_stats.py
     model_manager.py
     bot_manager.py
@@ -12,14 +14,24 @@ ai-backend/
         gpu_stub.py
         gpu_llm.py
         gpu_rocm.py
-    config.py
 
 ## Modules
 
 main.py  
 - FastAPI app  
-- Route definitions  
-- CORS config  
+- Route definitions, including the `/ws/chat` streaming endpoint  
+- CORS limited to configured origins, plus WebSocket origin checks  
+- Request logging middleware (polled status endpoints log at DEBUG only)  
+
+config.py  
+- Reads and validates environment settings once at import into a frozen
+  `settings` object; invalid values stop startup with a clear message  
+- Covers llama.cpp, model-switch options, SearXNG, CORS, chat limits, and logging  
+
+logging_config.py  
+- Console plus rotating `backend.log` in `AI_SERVER_LOG_DIR` (default
+  `%LOCALAPPDATA%\AI-Server\logs`, or `~/AI-Server/logs`)  
+- Chat message text is not logged  
 
 system_stats.py  
 - CPU and RAM telemetry on supported systems  
@@ -45,7 +57,7 @@ gpu_stub.py
 - GPU placeholder statistics are no longer used by `/api/system` or `/api/gpu`  
 
 gpu_llm.py  
-- OpenAI-compatible chat requests to the local llama.cpp server  
+- OpenAI-compatible chat requests to the local llama.cpp server, including streaming  
 
 gpu_rocm.py  
 - Placeholder only; Linux GPU telemetry/inference integration is not implemented  
@@ -59,9 +71,13 @@ current provider returns unavailable off Windows, and `gpu_rocm.py` is a
 stub. See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
 before deploying the backend or exposing it to other devices.
 
+## Testing
+
+From `ai-backend/`, run `python -m unittest discover -s tests`. The WebSocket
+endpoint tests need `httpx` (development only) and are skipped without it.
+
 ## Future Additions
 
-- WebSocket streaming  
+- Streaming for web research responses
 - Linux/Proxmox GPU telemetry and inference integration
-- Persistent logs  
-- Config loader
+- Log shipping or dashboard log viewing for backend logs

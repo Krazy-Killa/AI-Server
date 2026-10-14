@@ -5,12 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#080c12">
     <title>AI Server // Command Interface</title>
+    <script>
+        try {
+            const p = JSON.parse(localStorage.getItem('ai-server-ui-prefs')) || {};
+            if (p.theme === 'light') document.documentElement.dataset.theme = 'light';
+        } catch (e) {}
+    </script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="app">
     <header>
         <div class="header-left">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="true">☰</button>
             <div class="logo-orb" aria-hidden="true"></div>
             <div>
                 <div class="header-title">AI COMMAND INTERFACE</div>
@@ -27,7 +34,7 @@
         </div>
     </header>
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div>
             <div class="nav-section-title">Workspace</div>
             <nav class="nav-list" aria-label="Main navigation">
@@ -274,7 +281,8 @@
                 <div class="settings-grid">
                     <div class="settings-item">
                         <div class="settings-label">Interface Theme</div>
-                        <div class="settings-value">Dark / Command</div>
+                        <div class="settings-value" id="theme-label">Dark / Command</div>
+                        <button class="btn theme-toggle" id="theme-toggle" type="button">Switch to light</button>
                     </div>
                     <div class="settings-item">
                         <div class="settings-label">Accent Spectrum</div>
@@ -288,7 +296,7 @@
                     </div>
                 </div>
                 <div class="settings-footer">
-                    <button class="btn-save" type="button">Save Configuration</button>
+                    <button class="btn-save" id="save-config" type="button">Save Configuration</button>
                 </div>
             </div>
         </section>

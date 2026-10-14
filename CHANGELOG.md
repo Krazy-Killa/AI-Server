@@ -8,6 +8,29 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Phase 5 polish: persistent dark/light theme toggle, collapsible icon-only
+  sidebar, panel fade-in animation, and persisted accent colour (also fixes
+  accent glows not following the chosen colour). Preferences are stored in
+  `localStorage` under `ai-server-ui-prefs`.
+- Validated backend configuration loader (`ai-backend/config.py`); invalid
+  settings now stop startup with a message naming the variable. New settings
+  cover timeouts, token and message limits, CORS origins, and logging.
+- Backend logging to the console and a rotating `backend.log`, with request
+  logging (polled status endpoints at DEBUG only; chat text is not logged).
+- WebSocket chat streaming at `/ws/chat`. The dashboard shows replies as they
+  are generated and falls back to `/api/chat` if streaming cannot start.
+  Closing the connection stops generation. Web research is not streamed.
+- Tests for the configuration loader, streaming client, and WebSocket endpoint.
+- SearXNG setup for the Windows test environment: `scripts/searxng/` installer,
+  run script and settings template (loopback-only, JSON enabled), plus
+  `run-searxng.bat`. It runs in WSL on a private Python 3.12 via `uv`, since
+  SearXNG needs Python 3.11+ and does not support native Windows.
+- `.gitattributes` keeping shell scripts and YAML on LF line endings.
+- `prepare-ai-host.sh --install-searxng`: installs SearXNG on the Proxmox VE 9.x
+  host as an unprivileged `searxng` user with a hardened systemd service on
+  `127.0.0.1:8888`, then verifies the JSON search API. Not subject to the ROCm
+  gate. Untested on a real Proxmox host; refusal outside Proxmox was verified.
+
 - Recorded multi-GPU inference as a future evaluation item for the Linux/
   Proxmox server, including model splitting versus per-GPU instances and
   benchmarking requirements.
@@ -26,6 +49,13 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- CORS now allows only the configured dashboard origins (default
+  `http://127.0.0.1:8001` and `http://localhost:8001`) instead of all origins.
+  Set `AI_SERVER_CORS_ORIGINS` if the dashboard is served from another origin.
+- Model-switch options, SearXNG URL, and llama.cpp settings now come from the
+  central configuration loader; the chat token limit is configurable.
+- Added `websockets` to the backend requirements; run
+  `pip install -r ai-backend/requirements.txt` to update an existing environment.
 - Documented that the preparation script requires a positively detected
   Proxmox VE 9.x Debian host for package setup, previews the apt plan, and
   refuses plans that change kernel packages. Corrected its Proxmox version

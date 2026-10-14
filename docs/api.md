@@ -52,6 +52,24 @@ with `SEARXNG_BASE_URL` (default `http://127.0.0.1:8888`); its JSON output must
 be enabled in the SearXNG configuration. Queries may be forwarded by SearXNG
 to its upstream search engines; do not include secrets or private data.
 
+WS /ws/chat  
+Streams a local chat reply as llama.cpp generates it. The connection stays open
+for multiple requests, one at a time. Browsers must connect from an origin in
+`AI_SERVER_CORS_ORIGINS`; connections from other origins are rejected.
+
+Client sends: `{"message": "Hello"}` (1 to `AI_SERVER_MAX_CHAT_CHARS`
+characters, default 4000).
+
+Server sends JSON messages:
+- `{"type": "token", "content": "..."}` for each text chunk.
+- `{"type": "done", "latency_ms": 1234}` when the reply is complete.
+- `{"type": "error", "detail": "..."}` for invalid input (the connection stays
+  open) or when llama.cpp is unreachable or returns an invalid stream.
+
+Closing the connection mid-reply stops generation. The dashboard uses this
+endpoint for ordinary chat and falls back to `POST /api/chat` if the stream
+cannot start. Web research remains non-streaming.
+
 ---
 
 ## Model Endpoints

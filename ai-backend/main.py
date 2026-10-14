@@ -1,9 +1,11 @@
 import asyncio
 import logging
+from contextlib import suppress
 from pathlib import Path
+from time import monotonic
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -11,9 +13,14 @@ from pydantic import BaseModel, Field
 # Load project configuration before importing modules that read environment variables.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+from config import settings
+from logging_config import setup_logging
+
+setup_logging(settings)
+
 from system_stats import get_system_stats
 from gpu.windows_gpu import get_gpu_load
-from gpu.gpu_llm import LLMRuntimeError, run_llm
+from gpu.gpu_llm import LLMRuntimeError, run_llm, stream_llm
 from web_research import ResearchRuntimeError, run_research
 from bot_manager import (
     add_bot_log,
@@ -28,15 +35,39 @@ from embed_stub import embed_text_stub
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
+logger.info("Backend starting (log level %s, logs in %s).", settings.log_level, settings.log_directory)
 
-# Allow dashboard access
+# Browsers send these polled paths constantly; log them at DEBUG only.
+QUIET_PATHS = {"/api/system", "/api/bot/status", "/api/bot/logs", "/api/bot/heartbeat"}
+
+# Allow dashboard access from configured origins only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=list(settings.cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    started_at = monotonic()
+    level = logging.DEBUG if request.url.path in QUIET_PATHS else logging.INFO
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("%s %s failed", request.method, request.url.path)
+        raise
+    logger.log(
+        level,
+        "%s %s -> %d (%d ms)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        round((monotonic() - started_at) * 1000),
+    )
+    return response
 
 # Chat request model
 class ChatRequest(BaseModel):
@@ -68,6 +99,65 @@ async def chat_endpoint(req: ChatRequest):
     except LLMRuntimeError as error:
         logger.warning("Local LLM request failed: %s", error)
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+# ===============================
+# /ws/chat — Streaming AI Chat
+# ===============================
+async def _send_error(websocket: WebSocket, detail: str) -> None:
+    await websocket.send_json({"type": "error", "detail": detail})
+
+
+@app.websocket("/ws/chat")
+async def chat_stream_endpoint(websocket: WebSocket):
+    # Browsers do not apply CORS to WebSockets, so check the origin explicitly.
+    origin = websocket.headers.get("origin")
+    if origin is not None and origin.rstrip("/") not in settings.cors_origins:
+        logger.warning("Rejected chat WebSocket from origin %s", origin)
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    logger.info("Chat WebSocket connected")
+    try:
+        while True:
+            try:
+                payload = await websocket.receive_json()
+            except ValueError:
+                await _send_error(websocket, "Messages must be valid JSON.")
+                continue
+
+            message = payload.get("message") if isinstance(payload, dict) else None
+            if not isinstance(message, str) or not message.strip():
+                await _send_error(websocket, "A non-empty 'message' string is required.")
+                continue
+            if len(message) > settings.max_chat_chars:
+                await _send_error(
+                    websocket, f"Message exceeds {settings.max_chat_chars} characters."
+                )
+                continue
+
+            started_at = monotonic()
+            stream = stream_llm(message)
+            sentinel = object()
+            try:
+                while True:
+                    chunk = await asyncio.to_thread(next, stream, sentinel)
+                    if chunk is sentinel:
+                        break
+                    await websocket.send_json({"type": "token", "content": chunk})
+                await websocket.send_json(
+                    {"type": "done", "latency_ms": round((monotonic() - started_at) * 1000)}
+                )
+            except LLMRuntimeError as error:
+                logger.warning("Streaming LLM request failed: %s", error)
+                await _send_error(websocket, str(error))
+            finally:
+                # Closing the generator stops llama.cpp generation if the client left early.
+                with suppress(ValueError):
+                    stream.close()
+    except WebSocketDisconnect:
+        logger.info("Chat WebSocket disconnected")
+
 
 # ===============================
 # /api/research — SearXNG + local LLM

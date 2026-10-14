@@ -27,6 +27,19 @@ sync with `LLAMA_CPP_DEVICE`, `LLAMA_CPP_GPU_LAYERS`, and
 | `SEARXNG_BASE_URL` | Optional SearXNG endpoint; defaults to `http://127.0.0.1:8888`. |
 | `DISCORD_TOKEN` | Optional Discord bot credential. Leave unset/empty until the bot is configured; never commit a real token. |
 | `AI_SERVER_API_BASE` | API base URL used by the Discord bot; defaults to `http://127.0.0.1:8000`. |
+| `LLAMA_CPP_TIMEOUT_SECONDS` | Timeout for llama.cpp chat requests; defaults to `120`. |
+| `AI_SERVER_MAX_TOKENS` | Maximum tokens generated per chat reply; defaults to `256`. |
+| `AI_SERVER_MAX_CHAT_CHARS` | Maximum characters accepted per streamed chat message; defaults to `4000`. |
+| `AI_SERVER_CORS_ORIGINS` | Comma-separated browser origins allowed to call the API and open `/ws/chat`; defaults to `http://127.0.0.1:8001,http://localhost:8001`. `*` is rejected. Add the dashboard's origin here before serving it from another host. |
+| `AI_SERVER_LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; defaults to `INFO`. |
+| `AI_SERVER_LOG_DIR` | Backend log directory; defaults to `%LOCALAPPDATA%\AI-Server\logs` on Windows or `~/AI-Server/logs` elsewhere. |
+| `AI_SERVER_LOG_MAX_BYTES` / `AI_SERVER_LOG_BACKUP_COUNT` | Size of each `backend.log` file (default 5,000,000) and number of rotated files kept (default 5). |
+
+Backend settings are validated once at startup by `ai-backend/config.py`.
+A non-numeric or non-positive number, an unknown log level, or a wildcard CORS
+origin stops startup with an error naming the variable. Blank values use the
+default. Logs go to the console and a rotating `backend.log`; chat message
+text is not logged.
 
 The Discord bot is optional. On Windows, `setup-windows.bat` installs its
 dependencies and `run-discord-bot.bat` starts it. Slash commands require the

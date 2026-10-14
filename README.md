@@ -18,7 +18,9 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 
 ### Not yet operational
 
-- SearXNG must be installed and configured before web research can search.
+- Web research needs SearXNG running. On Windows it runs in WSL: install once
+  with `wsl bash scripts/searxng/install-searxng.sh`, then start it with
+  `run-searxng.bat` (see `docs/testing-environment.md`).
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
@@ -70,14 +72,19 @@ installer, not an inference-stack installer:
 ```bash
 bash scripts/proxmox/prepare-ai-host.sh --check
 sudo bash scripts/proxmox/prepare-ai-host.sh --install-base
+sudo bash scripts/proxmox/prepare-ai-host.sh --install-searxng
 ```
 
 `--check` inventories the host and checks AMD's live compatibility matrix
 without changing the system. `--install-base` is limited to a detected
 Proxmox VE 9.x Debian host, previews its apt plan, and refuses transactions
-that change kernel packages. Review the plan before confirming it, and use
-the script only on the eventual server. It does not install ROCm/HIP or
-configure the inference services. Linux GPU runtimes and telemetry still need
+that change kernel packages. `--install-searxng` is also limited to that host.
+It installs SearXNG for dashboard web research as an unprivileged `searxng`
+user with a systemd service on `127.0.0.1:8888`, then verifies a JSON search.
+It does not depend on the GPU, so the ROCm gate does not block it. Review the
+plans before confirming them, and use the script only on the eventual server.
+It does not install ROCm/HIP or configure the inference services. Linux GPU
+runtimes and telemetry still need
 to be selected and validated; Windows DirectML is for development tests, not
 the Linux deployment backend.
 

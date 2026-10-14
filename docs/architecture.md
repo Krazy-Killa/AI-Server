@@ -29,7 +29,7 @@ GPU / LLM / Bot / System Stats
   - gpu/gpu_llm.py
   - gpu/gpu_rocm.py
 - Provides REST endpoints for all dashboard features
-- Will later support WebSocket streaming
+- Streams local chat replies over WebSocket (`/ws/chat`)
 
 ## Web Research
 

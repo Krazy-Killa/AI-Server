@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 import psutil
+from config import settings
 from gpu.gpu_llm import LLAMA_CPP_BASE_URL
 
 _switch_lock = threading.Lock()
@@ -260,11 +261,11 @@ def _server_command(executable: Path, model_path: Path, host: str, port: int) ->
         "--port",
         str(port),
         "--device",
-        os.environ.get("LLAMA_CPP_DEVICE", "Vulkan0" if os.name == "nt" else "ROCm0"),
+        settings.llama_cpp_device,
         "--gpu-layers",
-        os.environ.get("LLAMA_CPP_GPU_LAYERS", "99"),
+        str(settings.llama_cpp_gpu_layers),
         "--ctx-size",
-        os.environ.get("LLAMA_CPP_CTX_SIZE", "4096"),
+        str(settings.llama_cpp_ctx_size),
         "--alias",
         model_path.stem,
     ]

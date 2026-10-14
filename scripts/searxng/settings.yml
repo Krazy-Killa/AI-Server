@@ -1,0 +1,23 @@
+# Private SearXNG settings for the AI Server web-research feature.
+# The installer replaces __SECRET_KEY__ with a random value.
+use_default_settings: true
+
+general:
+  instance_name: "AI Server Search"
+  debug: false
+
+search:
+  safe_search: 1
+  # json is required by ai-backend/web_research.py
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "127.0.0.1"
+  port: 8888
+  secret_key: "__SECRET_KEY__"
+  # Private, loopback-only instance; the bot limiter needs a Valkey server.
+  limiter: false
+  public_instance: false
+  image_proxy: false

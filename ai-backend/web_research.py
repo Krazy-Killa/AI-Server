@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import json
-import os
 from time import monotonic
 from typing import TypedDict
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
+from config import settings
 from gpu.gpu_llm import run_llm
 
-SEARXNG_BASE_URL = os.environ.get("SEARXNG_BASE_URL", "http://127.0.0.1:8888").rstrip("/")
+SEARXNG_BASE_URL = settings.searxng_base_url
 SEARXNG_TIMEOUT_SECONDS = 10
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_RESULTS = 5

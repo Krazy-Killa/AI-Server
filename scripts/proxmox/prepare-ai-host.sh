@@ -6,11 +6,14 @@ MODE="check"
 
 usage() {
     cat <<'EOF'
-Usage: prepare-ai-host.sh [--check | --install-base]
+Usage: prepare-ai-host.sh [--check | --install-base | --install-searxng]
 
-  --check          Read-only host inventory and current AMD support check (default)
-  --install-base   Install common host tools after showing the apt plan
-  --help           Show this help
+  --check             Read-only host inventory and current AMD support check (default)
+  --install-base      Install common host tools after showing the apt plan
+  --install-searxng   Install SearXNG (private web search for the dashboard) as the
+                      unprivileged 'searxng' user and a systemd service bound to
+                      127.0.0.1:8888. Not GPU-dependent, so the ROCm gate does not apply.
+  --help              Show this help
 
 This does not install ROCm, llama.cpp, ONNX Runtime, ComfyUI, NGINX, or
 Qdrant's application configuration. GPU stack installation remains blocked
@@ -31,6 +34,9 @@ while (($#)); do
             ;;
         --install-base)
             MODE="install-base"
+            ;;
+        --install-searxng)
+            MODE="install-searxng"
             ;;
         --help|-h)
             usage
@@ -91,7 +97,7 @@ fi
 if [[ "$ID" != "debian" ]] || [[ ! "$PVE_VERSION" =~ ^9(\.|$) ]]; then
     TARGET_VALID="no"
     printf '%s\n' "Target check: this installer requires a positively detected Proxmox VE 9.x Debian host."
-    if [[ "$MODE" == "install-base" ]]; then
+    if [[ "$MODE" != "check" ]]; then
         fail "Refusing package installation outside a detected Proxmox VE host."
     fi
 fi
@@ -206,6 +212,85 @@ if [[ "$MODE" == "check" ]]; then
         exit 2
     fi
     exit 0
+fi
+
+if [[ "$MODE" == "install-searxng" ]]; then
+    [[ "$EUID" -eq 0 ]] || fail "--install-searxng must be run as root."
+    command -v apt-get >/dev/null 2>&1 || fail "apt-get is required."
+    command -v systemctl >/dev/null 2>&1 || fail "systemd is required."
+    [[ "$ARCH" == "x86_64" ]] || fail "SearXNG setup currently only targets x86_64."
+
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SEARXNG_SRC="$SCRIPT_DIR/../searxng"
+    for file in install-searxng.sh run-searxng.sh settings.yml; do
+        [[ -r "$SEARXNG_SRC/$file" ]] || fail "Missing $SEARXNG_SRC/$file"
+    done
+
+    SEARXNG_USER="searxng"
+    SEARXNG_ROOT="/var/lib/searxng"
+    SEARXNG_HOME_DIR="$SEARXNG_ROOT/app"
+    SEARXNG_UNIT="/etc/systemd/system/searxng.service"
+
+    printf '\n%s\n' "SearXNG plan:"
+    printf '  - apt install: ca-certificates curl git\n'
+    printf '  - system user "%s" (no login shell) owning %s\n' "$SEARXNG_USER" "$SEARXNG_ROOT"
+    printf '  - SearXNG and a private Python 3.12 (via uv) installed as that user\n'
+    printf '  - systemd service %s listening on 127.0.0.1:8888 only\n' "$SEARXNG_UNIT"
+    read -r -p "Install SearXNG on this Proxmox host? [y/N] " answer
+    [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "Cancelled; nothing installed."
+
+    apt-get update
+    apt-get install --no-install-recommends -y ca-certificates curl git
+
+    if ! id "$SEARXNG_USER" >/dev/null 2>&1; then
+        useradd --system --home-dir "$SEARXNG_ROOT" --create-home \
+            --shell /usr/sbin/nologin "$SEARXNG_USER"
+    fi
+    install -d -o "$SEARXNG_USER" -g "$SEARXNG_USER" -m 0750 "$SEARXNG_ROOT/setup"
+    install -o "$SEARXNG_USER" -g "$SEARXNG_USER" -m 0755 \
+        "$SEARXNG_SRC/install-searxng.sh" "$SEARXNG_ROOT/setup/install-searxng.sh"
+    install -o "$SEARXNG_USER" -g "$SEARXNG_USER" -m 0755 \
+        "$SEARXNG_SRC/run-searxng.sh" "$SEARXNG_ROOT/setup/run-searxng.sh"
+    install -o "$SEARXNG_USER" -g "$SEARXNG_USER" -m 0644 \
+        "$SEARXNG_SRC/settings.yml" "$SEARXNG_ROOT/setup/settings.yml"
+
+    runuser -u "$SEARXNG_USER" -- env HOME="$SEARXNG_ROOT" SEARXNG_HOME="$SEARXNG_HOME_DIR" \
+        bash "$SEARXNG_ROOT/setup/install-searxng.sh"
+
+    cat >"$SEARXNG_UNIT" <<EOF
+[Unit]
+Description=SearXNG private search for AI Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=$SEARXNG_USER
+Group=$SEARXNG_USER
+Environment=SEARXNG_HOME=$SEARXNG_HOME_DIR
+ExecStart=/usr/bin/bash $SEARXNG_ROOT/setup/run-searxng.sh
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=$SEARXNG_ROOT
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now searxng.service
+
+    printf '\n%s\n' "SearXNG installed. Verifying JSON search..."
+    for _ in $(seq 1 30); do
+        if curl -fsS --max-time 10 "http://127.0.0.1:8888/search?q=test&format=json" >/dev/null 2>&1; then
+            printf '%s\n' "SearXNG is answering on http://127.0.0.1:8888 (SEARXNG_BASE_URL default)."
+            exit 0
+        fi
+        sleep 2
+    done
+    fail "SearXNG did not respond; check: journalctl -u searxng.service"
 fi
 
 [[ "$EUID" -eq 0 ]] || fail "--install-base must be run as root."
