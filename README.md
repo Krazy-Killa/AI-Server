@@ -76,8 +76,11 @@ ComfyUI ROCm, Podman/Quadlet, NGINX, and Qdrant; ROCm/HIP is intended to be
 installed on the Proxmox host. These are deployment targets, not installed or
 validated server components. AMD's published support matrix currently does
 not list this GPU and Proxmox combination as officially supported, so GPU
-installation remains gated on compatibility verification for the actual
-Proxmox release, kernel, and component versions.
+installation is experimental and requires compatibility checks and staged
+verification on the actual Proxmox release, kernel, and component versions.
+The GPU will be used directly by the Proxmox host; VM passthrough is not
+planned. Community reports are leads only; see the
+[GPU plan](./docs/gpu-plan.md#experimental-rx-6800-xt-community-evidence).
 
 The initial host-preparation script is a preflight and optional base-tools
 installer, not an inference-stack installer:
@@ -89,9 +92,14 @@ sudo bash scripts/proxmox/prepare-ai-host.sh --install-searxng
 ```
 
 `--check` inventories the host and checks AMD's live compatibility matrix
-without changing the system. `--install-base` is limited to a detected
-Proxmox VE 9.x Debian host, previews its apt plan, and refuses transactions
-that change kernel packages. `--install-searxng` is also limited to that host.
+without changing the system. Use
+`bash scripts/proxmox/prepare-ai-host.sh --report` on the server to generate a
+private, redacted Markdown reference snapshot for implementation planning;
+review it before sharing. The report stays local, though report generation
+makes the same read-only request to AMD's public compatibility matrix as
+`--check`. `--install-base` is limited to a detected Proxmox VE 9.x Debian
+host, previews its apt plan, and refuses transactions that change kernel
+packages. `--install-searxng` is also limited to that host.
 It installs SearXNG for dashboard web research as an unprivileged `searxng`
 user with a systemd service on `127.0.0.1:8888`, then verifies a JSON search.
 It does not depend on the GPU, so the ROCm gate does not block it. Review the

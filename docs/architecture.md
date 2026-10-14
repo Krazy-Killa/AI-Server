@@ -61,10 +61,9 @@ GPU / LLM / Bot / System Stats
 - The dashboard web server, FastAPI backend, and AI runtime are planned to run
   directly on the Proxmox host.
 - Host GPU telemetry will read the RX 6800 XT used by the host AI runtime.
-- Direct host access avoids VM GPU-passthrough overhead; other host workloads
-  may still share GPU resources.
-- VM workloads remain separate; GPU passthrough is only needed if a VM is
-  intentionally assigned the GPU in the future.
+- The RX 6800 XT is intended for direct Proxmox host use; GPU passthrough to a
+  VM is not part of the deployment plan. Host workloads may share GPU
+  resources.
 - Linux runtime, GPU telemetry, service management, and safe remote UI/API
   access remain to be validated. See the
   [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).

@@ -33,9 +33,14 @@ The planned components are:
 The exact point release, kernel, ROCm/HIP and application versions, container
 boundaries, persistent storage paths, network bindings, and installation
 sources remain to be recorded and verified before generating version-pinned
-installation steps. In particular, verify AMD's current support for installing
-ROCm/HIP on the exact Proxmox host/kernel/RX 6800 XT combination; do not assume
-the Windows Vulkan results establish ROCm, HIP, or ROCm telemetry
+installation steps. Treat ROCm/HIP on the planned RX 6800 XT + Proxmox host as
+**experimental and community-supported only**: AMD's current support matrix
+does not list this GPU/OS combination. Community reports cover related
+`gfx1030` cards on other Linux distributions, but do not prove native ROCm
+operation on this host. The GPU is intended for direct host use; assigning it
+to a VM via passthrough is not part of this design. See the
+[experimental community evidence and limitations](./gpu-plan.md#experimental-rx-6800-xt-community-evidence).
+Do not assume the Windows Vulkan results establish ROCm, HIP, or ROCm telemetry
 compatibility.
 
 ## What is portable now
@@ -57,15 +62,18 @@ compatibility.
 1. **Record the operating-system target.** Services are intended to run on
    the Proxmox VE 9.x host, managed through Podman/Quadlet. Record the exact
    Proxmox point release, kernel, boot mode, GPU ownership, storage locations,
-   and recovery access before driver work. Moving services into a guest
-   changes GPU access and telemetry requirements and needs an explicit design
-   change.
-2. **Verify the GPU software stack for the exact target.** Check the current
-   official AMD ROCm support matrix for the selected Proxmox release/kernel,
-   RX 6800 XT (and any additional GPUs), and ROCm/HIP version. Then build
-   llama.cpp with the ROCm backend and record its pinned revision, build
-   flags, device name, and smoke-test results. Windows Vulkan test results do
-   not certify this build.
+   and recovery access before driver work. The GPU is for direct host use;
+   moving services into a guest or assigning the GPU via passthrough would
+   change the architecture and is not planned.
+2. **Investigate the experimental GPU software stack for the exact target.**
+   Check the current official AMD ROCm support matrix for the selected
+   Proxmox release/kernel, RX 6800 XT (and any additional GPUs), and ROCm/HIP
+   version. The current combination is not listed as officially supported;
+   community reports are leads, not a support guarantee. Only proceed with a
+   reviewed recovery plan and explicit acceptance of the experimental risk.
+   Then build llama.cpp with the ROCm backend and record its pinned revision,
+   build flags, device name, and smoke-test results. Windows Vulkan test
+   results do not certify this build.
 3. **Implement a Linux telemetry provider.** `system_stats.py` currently
    imports `gpu.windows_gpu`; that provider intentionally returns unavailable
    on non-Windows systems. `gpu/gpu_rocm.py` is only a stub. Implement a Linux
@@ -141,6 +149,20 @@ is an initial, deliberately conservative bootstrap:
   [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html)
   and fails closed unless the RX 6800 XT, Proxmox VE 9, and installed kernel
   family are explicitly listed.
+- Run `bash scripts/proxmox/prepare-ai-host.sh --report` to create
+  `ai-server-host-report.md` in the current directory, or pass a new output
+  path with `--report /path/to/report.md`. This read-only snapshot records
+  platform/kernel, CPU and memory, storage capacity/models, display device and
+  driver details, GPU kernel-module and Secure Boot status, relevant installed
+  package versions, selected service states, and the AMD compatibility-check
+  result.
+  The report is created with owner-only permissions and the script refuses to
+  overwrite an existing destination. It excludes hostnames, usernames,
+  network addresses, serial numbers, credentials, environment variables,
+  configuration contents, and logs. It is not uploaded; the report mode does
+  make the same read-only request to AMD's public compatibility matrix as
+  `--check`. Review it before sharing. It supports implementation planning but
+  does not replace live integration tests or prove that host features work.
 - Run `sudo bash scripts/proxmox/prepare-ai-host.sh --install-base` only on
   the server, after reviewing its simulated apt plan. It installs common
   build/runtime and host tools and adds headers for the exact running kernel

@@ -7,8 +7,9 @@
   validation.
 - **In progress** — implementation is actively underway.
 - **Not started** — planned, but implementation has not begun.
-- **Waiting for server** — depends on the Proxmox host, its kernel, or the
-  production hardware.
+- **Experimental / waiting for server** — unsupported-by-vendor work that
+  depends on the Proxmox host, its kernel, or the production hardware; staged
+  investigation is possible, but runtime validation is still required.
 
 There are currently no roadmap items in active implementation. The dashboard,
 Windows backend foundation, operational logging and Phase 5 interface polish
@@ -40,6 +41,11 @@ it through a diagnostics API and dashboard view.
 - Initial Proxmox host preparation script, including `--check`,
   `--install-base`, and `--install-searxng` modes. These modes have not been
   validated on the target Proxmox host.
+- Explicit read-only `--report` mode in the Proxmox host preparation script
+  writes a private, redacted Markdown snapshot of host facts to support
+  implementation planning. It does not upload data or validate runtime
+  behavior; review the report before sharing, and capture fresh data on the
+  actual server.
 - Proxmox authentication groundwork: HTTPS ticket-client and typed interface,
   mocked response tests, and a disabled dashboard sign-in preview. This is not
   production authentication.
@@ -125,7 +131,12 @@ it through a diagnostics API and dashboard view.
 
 ### Waiting for server and compatibility verification
 
-- ROCm/HIP on the Proxmox host and ROCm-built llama.cpp / `llama-server`
+- **Experimental:** investigate ROCm/HIP for direct host use and ROCm-built
+  llama.cpp / `llama-server`. AMD does not list the RX 6800 XT + Proxmox
+  combination as officially supported; community reports on related
+  `gfx1030` cards are useful leads, not proof of a working configuration.
+  GPU passthrough to a VM is not planned. Follow the staged verification and
+  recovery requirements in the [GPU plan](./gpu-plan.md).
 - ONNX Runtime ROCm execution provider and ComfyUI ROCm
 - Implement and validate Linux/Proxmox GPU telemetry after the RX 6800 XT is
   installed in the host; the current live provider is Windows-specific.

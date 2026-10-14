@@ -3,17 +3,26 @@ set -Eeuo pipefail
 
 AMD_ROCM_MATRIX_URL="https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html"
 MODE="check"
+REPORT_PATH="ai-server-host-report.md"
 
 usage() {
     cat <<'EOF'
-Usage: prepare-ai-host.sh [--check | --install-base | --install-searxng]
+Usage: prepare-ai-host.sh [--check | --report [FILE] | --install-base | --install-searxng]
 
   --check             Read-only host inventory and current AMD support check (default)
+  --report [FILE]     Write a private, redacted Markdown host reference report
+                      (default: ./ai-server-host-report.md)
   --install-base      Install common host tools after showing the apt plan
   --install-searxng   Install SearXNG (private web search for the dashboard) as the
                       unprivileged 'searxng' user and a systemd service bound to
                       127.0.0.1:8888. Not GPU-dependent, so the ROCm gate does not apply.
   --help              Show this help
+
+The report is a local diagnostic reference, not a support bundle. It excludes
+hostnames, network addresses, serial numbers, credentials, configuration contents,
+and logs. Review it before sharing; the report is not uploaded anywhere. This
+mode does make the same read-only request to AMD's public compatibility matrix
+as --check.
 
 This does not install ROCm, llama.cpp, ONNX Runtime, ComfyUI, NGINX, or
 Qdrant's application configuration. GPU stack installation remains blocked
@@ -37,6 +46,13 @@ while (($#)); do
             ;;
         --install-searxng)
             MODE="install-searxng"
+            ;;
+        --report)
+            MODE="report"
+            if (($# > 1)) && [[ "$2" != --* ]]; then
+                REPORT_PATH="$2"
+                shift
+            fi
             ;;
         --help|-h)
             usage
@@ -97,7 +113,7 @@ fi
 if [[ "$ID" != "debian" ]] || [[ ! "$PVE_VERSION" =~ ^9(\.|$) ]]; then
     TARGET_VALID="no"
     printf '%s\n' "Target check: this installer requires a positively detected Proxmox VE 9.x Debian host."
-    if [[ "$MODE" != "check" ]]; then
+    if [[ "$MODE" != "check" && "$MODE" != "report" ]]; then
         fail "Refusing package installation outside a detected Proxmox VE host."
     fi
 fi
@@ -211,6 +227,171 @@ if [[ "$MODE" == "check" ]]; then
     if [[ "$AMD_CHECK" != "supported" ]]; then
         exit 2
     fi
+    exit 0
+fi
+
+if [[ "$MODE" == "report" ]]; then
+    [[ ! -e "$REPORT_PATH" && ! -L "$REPORT_PATH" ]] ||
+        fail "Report destination already exists; choose a new path: $REPORT_PATH"
+    REPORT_DIR="$(dirname -- "$REPORT_PATH")"
+    [[ -d "$REPORT_DIR" ]] || fail "Report directory does not exist: $REPORT_DIR"
+
+    GENERATED_AT="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+    CPU_INFO="$(lscpu 2>/dev/null | grep -E '^(Architecture|CPU\(s\)|Thread\(s\) per core|Core\(s\) per socket|Socket\(s\)|Vendor ID|Model name|Virtualization|Virtualization type):' || true)"
+    MEMORY_INFO="$(awk '/^(MemTotal|MemAvailable|SwapTotal|SwapFree):/ {printf "%s: %.1f GiB\n", $1, $2 / 1048576}' /proc/meminfo 2>/dev/null || true)"
+    STORAGE_INFO="$(lsblk -dn -e 7 -o SIZE,TYPE,ROTA,TRAN,MODEL 2>/dev/null || true)"
+    ROOT_FILESYSTEM_INFO="$(df -hP / 2>/dev/null | awk 'NR == 2 {printf "Size: %s, used: %s, available: %s (%s used)\n", $2, $3, $4, $5}')"
+    DISPLAY_INFO=""
+    if command -v lspci >/dev/null 2>&1; then
+        DISPLAY_INFO="$(lspci -nnk 2>/dev/null | awk '
+            /^[[:xdigit:]]+:[[:xdigit:]]+(:[[:xdigit:]]+)?\.[[:digit:]]/ {
+                capture = tolower($0) ~ /(vga compatible controller|3d controller|display controller)/
+                if (capture) print
+                next
+            }
+            capture && /^[[:space:]]+(Subsystem|Kernel driver in use|Kernel modules):/ { print }
+        ' || true)"
+    fi
+    MODULE_INFO=""
+    for module in amdgpu amdkfd; do
+        if [[ -d "/sys/module/$module" ]]; then
+            MODULE_INFO+="$module: loaded"$'\n'
+        else
+            MODULE_INFO+="$module: not loaded"$'\n'
+        fi
+    done
+    SECURE_BOOT_INFO="mokutil unavailable"
+    if command -v mokutil >/dev/null 2>&1; then
+        SECURE_BOOT_INFO="$(mokutil --sb-state 2>/dev/null || printf '%s' 'status unavailable')"
+    fi
+    PACKAGE_INFO=""
+    if command -v dpkg-query >/dev/null 2>&1; then
+        PACKAGE_INFO="$(dpkg-query -W -f='${binary:Package}\t${Version}\n' 2>/dev/null |
+            awk 'tolower($1) ~ /^(pve-manager|proxmox|rocm|hip|amdgpu|podman|nginx|python3|searxng|llama)/' |
+            sort || true)"
+    fi
+    SERVICE_INFO=""
+    if command -v systemctl >/dev/null 2>&1; then
+        for service in pveproxy pvedaemon pvestatd pve-cluster searxng; do
+            active="$(systemctl is-active "$service.service" 2>/dev/null || true)"
+            enabled="$(systemctl is-enabled "$service.service" 2>/dev/null || true)"
+            SERVICE_INFO+="$service: active=${active:-unknown}, enabled=${enabled:-unknown}"$'\n'
+        done
+    else
+        SERVICE_INFO="systemctl unavailable"
+    fi
+    PODMAN_VERSION="$(podman --version 2>/dev/null || printf '%s' 'not installed')"
+    PYTHON_VERSION="$(python3 --version 2>/dev/null || printf '%s' 'not installed')"
+
+    umask 077
+    REPORT_TMP="$(mktemp -- "${REPORT_PATH}.tmp.XXXXXX")" ||
+        fail "Could not create a temporary report beside: $REPORT_PATH"
+    cleanup_report_tmp() {
+        if [[ -n "${REPORT_TMP:-}" && -e "$REPORT_TMP" ]]; then
+            rm -f -- "$REPORT_TMP"
+        fi
+    }
+    trap cleanup_report_tmp EXIT
+    {
+        cat <<EOF
+# AI Server Proxmox Host Reference
+
+Generated: $GENERATED_AT
+Purpose: provide reviewed host facts for implementation and deployment planning.
+This report was generated locally and has not been uploaded.
+
+## Privacy and scope
+
+This report intentionally excludes hostnames, usernames, IP/MAC addresses,
+serial numbers, credentials, environment variables, configuration contents,
+and logs. It includes hardware models, PCI device identifiers, installed
+package versions, and selected service states. Review it before sharing.
+
+## Platform
+
+\`\`\`text
+Distribution: ${PRETTY_NAME:-unknown} (${ID:-unknown} ${VERSION_ID:-})
+Proxmox VE: $PVE_VERSION
+Kernel: $KERNEL_RELEASE
+Architecture: $ARCH
+Target check: $TARGET_VALID
+\`\`\`
+
+## CPU
+
+\`\`\`text
+${CPU_INFO:-CPU details unavailable (lscpu not installed)}
+\`\`\`
+
+## Memory and root filesystem
+
+\`\`\`text
+${MEMORY_INFO:-Memory details unavailable}
+${ROOT_FILESYSTEM_INFO:-Root filesystem details unavailable}
+\`\`\`
+
+## Block devices
+
+\`\`\`text
+${STORAGE_INFO:-Block device details unavailable (lsblk not installed)}
+\`\`\`
+
+## Display devices and kernel drivers
+
+\`\`\`text
+${DISPLAY_INFO:-Display device details unavailable (lspci not installed or no display controller found)}
+\`\`\`
+
+## GPU compute-driver signals
+
+\`\`\`text
+$MODULE_INFO
+Secure boot: $SECURE_BOOT_INFO
+\`\`\`
+
+## Relevant installed packages
+
+\`\`\`text
+${PACKAGE_INFO:-No matching packages detected (dpkg-query unavailable or none installed)}
+\`\`\`
+
+## Relevant service states
+
+\`\`\`text
+$SERVICE_INFO
+\`\`\`
+
+## Selected tool versions
+
+\`\`\`text
+$PODMAN_VERSION
+$PYTHON_VERSION
+\`\`\`
+
+## AMD ROCm compatibility check
+
+\`\`\`text
+Result: $AMD_CHECK
+Source: $AMD_ROCM_MATRIX_URL
+\`\`\`
+
+This snapshot is not proof that ROCm, inference, authentication, or service
+recovery works. The GPU is intended for direct host use, not VM passthrough.
+Capture a fresh report after significant host changes.
+EOF
+    } >"$REPORT_TMP" || {
+        rm -f -- "$REPORT_TMP"
+        fail "Could not write host reference report."
+    }
+    if ! mv -n -- "$REPORT_TMP" "$REPORT_PATH" || [[ -e "$REPORT_TMP" ]]; then
+        rm -f -- "$REPORT_TMP"
+        fail "Could not safely create report; destination may already exist: $REPORT_PATH"
+    fi
+    chmod 600 "$REPORT_PATH"
+    printf 'Host reference report written to: %s\n' "$REPORT_PATH"
+    printf '%s\n' "Review the report and remove anything you do not want to share."
+    printf 'ROCm compatibility check: %s\n' "$AMD_CHECK"
+    printf '%s\n' "No system configuration or packages were changed."
     exit 0
 fi
 

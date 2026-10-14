@@ -6,8 +6,20 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-14
+
 ### Added
 
+- Documented RX 6800 XT ROCm/HIP on Proxmox as experimental and added
+  community references for related `gfx1030` Linux compute reports and an
+  RX 6800 XT llama.cpp guide, with explicit scope and verification caveats.
+  Clarified direct host GPU use (no VM passthrough) in deployment docs and
+  removed passthrough-specific fields from the host reference report.
+- `prepare-ai-host.sh --report [FILE]` creates an owner-readable,
+  privacy-conscious Markdown snapshot of selected Proxmox host, hardware,
+  driver, package, service, and compatibility-check facts. It is local-only,
+  refuses to overwrite an existing file, and excludes hostnames, network
+  addresses, serial numbers, credentials, configuration contents, and logs.
 - Initial observe-only diagnostics core in `ai-backend/diagnostics.py`:
   bounded local service health probes, CPU/RAM/disk/backend RSS sampling,
   observation evidence, process-local incident open/update/recovery tracking,
