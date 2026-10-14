@@ -15,6 +15,11 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   telemetry.
 - ONNX Runtime DirectML setup and a synthetic inference smoke test.
 - Explicit web-research UI and backend integration for SearXNG.
+- Streaming local chat over WebSocket, validated configuration, and rotating
+  backend logs. Backend tests: `python -m unittest discover` in `ai-backend`
+  (the WebSocket tests need `httpx`).
+- Dashboard polish: persistent dark/light theme, accent colour, collapsible
+  sidebar, and panel transitions (Settings page and header toggle).
 
 ### Not yet operational
 
@@ -29,8 +34,11 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
   approval before file changes or command execution.
-- Authentication and user session management system (planned for Phase 2)
-- AI-powered diagnostics and self-healing system (planned for Phase 3)
+- Authentication and user session management (designed, planned for Phase 2).
+  CORS is restricted to the dashboard origins, but there is no login yet, so
+  do not expose the backend beyond this machine.
+- AI-powered diagnostics and self-healing (design specification only, planned
+  for Phase 3).
 
 ## Windows quick start
 
@@ -113,13 +121,13 @@ index.html        Dashboard interface
 - ✅ Operational logging
 
 ### Phase 2 — Real Backend Features
-- Linux/Proxmox deployment preparation
-- Kernel-aware host validation scripts
+- Linux/Proxmox deployment preparation (preflight and base-tools script done)
+- SearXNG setup (Windows test setup done; Proxmox mode written, untested)
 - Linux GPU telemetry integration
-- Production logging system
-- Configuration management
-- WebSocket streaming support
-- **JWT-based Authentication & Session Management**
+- ✅ Logging system (no backend log viewer in the dashboard yet)
+- ✅ Configuration management and restricted CORS/WebSocket origins
+- ✅ WebSocket streaming for local chat
+- **JWT-based Authentication & Session Management** (not yet implemented)
   - Secure user login/logout
   - Token refresh mechanism
   - Protected API endpoints
@@ -135,7 +143,7 @@ index.html        Dashboard interface
 - Container orchestration (Podman/Quadlet)
 - NGINX reverse proxy setup
 - Vector storage (Qdrant)
-- **AI Diagnostics & Self-Healing System**
+- **AI Diagnostics & Self-Healing System** (design specification only)
   - Real-time health monitoring and anomaly detection
   - Diagnostic engine for root cause analysis
   - Auto-remediation for safe operations
@@ -160,10 +168,10 @@ index.html        Dashboard interface
   - Cross-service dependency analysis
 
 ### Phase 5 — Polish
-- UI animations and transitions
-- Theme switching (dark/light modes)
-- Mobile-responsive layout
-- Collapsible sidebar navigation
+- ✅ UI animations and transitions
+- ✅ Theme switching (dark/light modes)
+- ✅ Mobile-responsive layout (real-device testing pending)
+- ✅ Collapsible sidebar navigation
 
 ## Documentation
 

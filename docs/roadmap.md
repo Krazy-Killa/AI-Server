@@ -19,24 +19,19 @@
 - SearXNG setup for web research: Windows test setup done (WSL, `scripts/searxng/`);
   Proxmox `--install-searxng` mode written but not yet tested on the server
 - Linux/Proxmox host GPU telemetry after the RX 6800 XT is moved to the server
-<<<<<<< HEAD
 - Logging system (done: console and rotating file logs; no dashboard log viewer
   for backend logs yet)
 - Config loader (done: validated environment settings)
 - WebSocket streaming (done for local chat; web research still non-streaming)
-- Restrict CORS and WebSocket origins to the dashboard (done); authentication
-  is still outstanding before any LAN/remote access
-=======
-- Logging system
-- Config loader
-- WebSocket streaming
-- **Authentication & Session Management** (JWT-based, documented in `docs/authentication.md`)
+- Restrict CORS and WebSocket origins to the dashboard (done)
+- **Authentication & Session Management** (JWT-based, designed in
+  `docs/authentication.md`, not yet implemented; required before any
+  LAN/remote access)
   - User login/logout endpoints
   - Token refresh mechanism
   - Protected endpoint middleware
   - Frontend login page and token management
   - Rate limiting and security hardening
->>>>>>> 3fe6e1dd81ae75ce9eab2baf2825a9270433a4cd
 
 ## Phase 3 — GPU Integration
 
@@ -47,7 +42,9 @@
 - Podman/Quadlet service setup, NGINX reverse proxy, and Qdrant deployment
 - Linux GPU telemetry for the Proxmox host
 - Real inference pipeline
-- **AI Diagnostics & Self-Healing System** (documented in `docs/ai-diagnostics-self-healing.md`)
+- **AI Diagnostics & Self-Healing System** (design specification in
+  `docs/ai-diagnostics-self-healing.md`, not yet implemented; starts in
+  `observe` mode)
   - Real-time health monitoring and anomaly detection
   - Diagnostic engine for root cause analysis
   - Auto-remediation for safe operations (service restart, cache clear, config reload)
@@ -89,12 +86,12 @@ planned GPU/Proxmox combination as officially supported.
 
 ## Phase 5 — Polish
 
-- ~~Animations~~ — panel fade-in, sidebar slide, reduced-motion respected
-- ~~Theme switching~~ — dark/light toggle, persisted
-- ~~Mobile layout~~ — compact header and scrolling nav under 760px
-- ~~Collapsible sidebar~~ — icon-only rail on desktop, persisted
-- Accent colour switching now persists
-- Remaining: browser-test on real mobile devices once the server is live
+- Animations (done: panel fade-in and sidebar transition; reduced motion respected)
+- Theme switching (done: dark/light toggle, persisted)
+- Mobile layout (done: compact header and scrolling nav under 760px)
+- Collapsible sidebar (done: icon-only rail on desktop, persisted)
+- Accent colour selection now persists
+- Remaining: test on real mobile devices once the server is live
 
 ---
 
