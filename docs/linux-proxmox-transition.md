@@ -43,6 +43,33 @@ to a VM via passthrough is not part of this design. See the
 Do not assume the Windows Vulkan results establish ROCm, HIP, or ROCm telemetry
 compatibility.
 
+## Provisional host hardware and storage plan
+
+This planning outline is not a finalized bill of materials. The exact AMD CPU
+and core count remain open; choose them against the intended VM count and
+concurrent workloads, including Proxmox overhead and host services. Start with
+32 GB system RAM, with a possible upgrade to 64 GB after measuring actual
+headroom. System RAM does not replace or add to the RX 6800 XT's 16 GB VRAM.
+
+The initial storage target is a 2 TB NVMe drive for Proxmox/application
+storage, active or write-intensive VM disks, databases, and frequently used
+models. Additional NVMe devices may be added later. Larger HDDs are intended
+for bulk file data and lower-I/O VMs such as DHCP and DNS. A file-hosting VM
+can keep its OS and applications on NVMe while storing bulk files on an HDD
+pool. Expect HDD-backed VMs to have slower boots and disk-intensive operations.
+
+The model library may be tiered between HDD capacity and NVMe: keep frequently
+used or pinned models on NVMe and less-used models on HDD. The eventual model
+manager must verify copies and avoid moving models while loaded or in use.
+This tiering chiefly reduces model access and load time; it does not make
+inference faster once the model is loaded.
+
+An HDD RAID/redundant pool is being considered, but the drive count, exact
+layout, controller mode, usable capacity, filesystem, and expansion method
+have not been selected. Storage redundancy does not replace separate backups;
+document and test backup restoration. Finalize storage ownership and pool
+design before creating production VM disks or file shares.
+
 ## What is portable now
 
 - The dashboard is static HTML, CSS, and JavaScript.
@@ -56,6 +83,10 @@ compatibility.
   Linux llama.cpp device name of `ROCm0`. This is not proof that the eventual
   llama.cpp build exposes that device name or that ROCm supports the chosen
   OS/kernel/GPU combination.
+
+These portability points describe code/configuration paths, not an integrated
+or production-validated Proxmox deployment. Treat each component as unverified
+until it passes the staged host checks and end-to-end acceptance below.
 
 ## Linux blockers to close
 
@@ -118,6 +149,16 @@ compatibility.
    JSON response format before enabling web research. Set its URL through
    `SEARXNG_BASE_URL`. If the Discord bot is enabled, set a real token outside
    source control and set `AI_SERVER_API_BASE` to a reachable API address.
+10. **Integrate and verify the existing application as a whole.** Run the
+    backend unit tests on Linux; start each service under its intended
+    supervisor with persistent paths; verify backend-to-llama.cpp model
+    discovery, switching, chat and streaming; verify dashboard access and
+    WebSocket traffic through the selected reverse proxy; verify logs and the
+    observe-only diagnostics API/dashboard; then test optional SearXNG
+    research and Discord commands/heartbeat when configured. Exercise service
+    restart and host reboot recovery. Record failures and exact tested
+    versions; do not mark Windows-only, mocked, or planned features as
+    integrated.
 
 ## Deployment configuration inventory
 
@@ -251,12 +292,21 @@ for the template and limitations.
       GPU measurements are `null`, with an explicit status/error.
 - [ ] `/api/chat`, `/api/models`, model switching, and recovery tested after
       service restart and host reboot.
+- [ ] Linux backend unit tests pass; backend, llama-server, and dashboard
+      integrate under their documented service lifecycle with persistent
+      model/log paths and correct ownership.
 - [ ] Dashboard works from a separate client; API origin, proxy, CORS,
-      authentication, firewall, and TLS decisions documented.
+      WebSocket routing, authentication, firewall, and TLS decisions
+      documented and tested.
+- [ ] Observe-only diagnostics API and dashboard operate against live host
+      checks and never perform remediation; backend log access remains
+      protected/local-only until authentication is implemented.
 - [ ] llama.cpp remains loopback-only and only the intended services are
       reachable from approved networks.
 - [ ] SearXNG, if deployed, returns JSON results; secrets are stored outside
       the repository.
+- [ ] Discord bot, if deployed, reaches the configured API, reports heartbeat,
+      and handles intended commands without exposing its token.
 - [ ] Backup/restore and recovery access verified; versions and known gaps
       recorded for handoff.
 

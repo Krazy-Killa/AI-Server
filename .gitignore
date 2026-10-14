@@ -25,6 +25,7 @@ logs/
 *.gguf
 *.safetensors
 *.onnx
+/AI Server.code-workspace
 /ai-server-host-report*.md
 
 # Local build and editor/OS files

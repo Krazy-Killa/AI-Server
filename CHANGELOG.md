@@ -6,6 +6,30 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Expanded the diagnostics design to define a staged path toward bounded
+  autonomous repairs, using an incident history of evidence, user
+  approval/denial feedback, attempted actions, and verified outcomes to inform
+  similar future cases. Historical cases remain distinct from reviewed
+  runbooks; neither feedback nor model confidence alone grants permissions.
+- Added a phase-gated scheduled maintenance runbook with preflight, workload
+  draining, diagnostic-model loading, authorized actions, verification,
+  rollback, service restoration, and explicit failure escalation. It remains
+  a design requirement, not a validated Proxmox procedure.
+- Recorded provisional Proxmox host hardware and storage targets: AMD CPU,
+  32 GB initial RAM with possible 64 GB, 2 TB initial NVMe with future
+  expansion, HDD-backed bulk/lower-I/O workloads, model tiering, and an
+  undecided redundant HDD layout. Exact parts and storage topology remain open.
+- Split planned image-generation work across Phases 2 and 3: Phase 2 covers
+  backend prompt-to-brief/API/job groundwork and metadata; Phase 3 covers
+  image-runtime integration, Windows DirectML development, and experimental
+  Proxmox ROCm/GPU validation.
+- Added a Proxmox integration gate for the currently built dashboard, backend,
+  model serving/switching, logging, optional research and Discord services,
+  and observe-only diagnostics, with Linux, proxy, persistence, and recovery
+  acceptance checks.
+
 ## [0.4.0] - 2026-10-14
 
 ### Added

@@ -14,9 +14,9 @@
 There are currently no roadmap items in active implementation. The dashboard,
 Windows backend foundation, operational logging and Phase 5 interface polish
 are implemented. Proxmox authentication is groundwork only; diagnostics and
-the production Linux/Proxmox stack remain largely unimplemented. A first
-read-only diagnostics core now exists; the next recommended work is to expose
-it through a diagnostics API and dashboard view.
+the production Linux/Proxmox stack remain largely unimplemented. The
+observe-only diagnostics core, API, and dashboard view are implemented and
+still need persistence and production-host integration.
 
 ## Phase 1 — Local Test Environment
 
@@ -61,6 +61,15 @@ it through a diagnostics API and dashboard view.
   fetching and streaming remain.
 - Complete login and session UI after the backend authentication/session
   design is implemented. The current sign-in UI is an inert preview.
+- Image-generation backend groundwork: translate text requests into a
+  structured, editable image brief (subject/details, setting,
+  composition/viewpoint, style, mood, lighting, palette, aspect ratio/use, and
+  exclusions); preserve original prompt and user edits; define an API/job
+  contract for submitting approved briefs to an image runtime; and retain
+  reproducibility metadata (model/checkpoint, optional LoRAs/reference inputs,
+  seed, and generation settings). Add tests for intent preservation,
+  validation, revision state, and metadata capture. This phase need not run an
+  image model or require GPU acceleration.
 
 ### Waiting for server
 
@@ -76,7 +85,16 @@ it through a diagnostics API and dashboard view.
   integration against the target service manager and hardware: safely pause
   and restore workloads, keep the control plane available, retrieve local RAG
   data, validate proposals, restore the normal model, and verify updates and
-  rollback.
+  rollback. Exercise every phase and failed-gate recovery in the maintenance
+  runbook before enabling the schedule.
+- Integrate the currently implemented dashboard, FastAPI backend, llama.cpp
+  model serving/switching, logging, optional SearXNG research, optional Discord
+  bot, and observe-only diagnostics on the Proxmox host. Validate Linux
+  dependencies, persistent paths and permissions, service startup/recovery,
+  API and WebSocket routing through the chosen proxy, and end-to-end behavior
+  using the acceptance checklist in the
+  [Linux/Proxmox transition runbook](./linux-proxmox-transition.md). Windows
+  success and mocked tests do not count as Proxmox integration verification.
 
 ## Phase 3 — GPU Integration and Diagnostics
 
@@ -109,19 +127,30 @@ it through a diagnostics API and dashboard view.
 
 ### Not started — buildable in the Windows test environment
 
+- Image-generation GPU/runtime development: choose and test a Windows
+  DirectML-compatible framework and model; integrate it with the Phase 2
+  image-brief/API workflow. Measure GPU offload, VRAM/RAM headroom, generation
+  latency, and output quality. Display generated results and support targeted
+  revisions while retaining relevant settings/seed. Exact lettering should
+  use a separate text/layout step rather than relying on image-model spelling.
 - Complete Diagnostics Phase 1: persist incident/evidence/audit history,
-  implement broader health checks, threshold durations and hysteresis,
-  automated log analysis and reports, then add recurring scheduling only
-  after cadence, retention, and failure behavior are tested. Current
-  observations remain manual and process-local.
+  including user feedback, attempted actions, and independently verified
+  outcomes; implement broader health checks, threshold durations and
+  hysteresis, automated log analysis and reports, then add recurring
+  scheduling only after cadence, retention, and failure behavior are tested.
+  Current observations remain manual and process-local.
 - Curated platform-specific knowledge-base runbooks and fault-injection tests.
-- Build local RAG groundwork: reviewed diagnostics procedures and known-issue
-  references, local development vector store and embeddings, metadata filtering,
-  and retrieval tests. Keep diagnostic data and source knowledge local;
-  incident-derived content remains an untrusted draft pending review.
+- Build local retrieval groundwork: reviewed diagnostics procedures and
+  known-issue references plus a searchable history of similar incidents and
+  their verified outcomes; local development vector store and embeddings,
+  metadata filtering, and retrieval tests. Keep incident records distinct
+  from curated knowledge: past cases inform decisions but are not trusted
+  procedures, and incident-derived runbooks remain drafts pending review.
 - Define a structured repair-proposal schema and prototype independent
   backend-executor validation with mocked actions. The model must never run
-  commands or authorize its own proposals.
+  commands or grant itself authority; the long-term goal is for a separate
+  deterministic policy to autonomously authorize individually eligible,
+  registered repairs under explicit user settings.
 - After the observe-mode, RAG, and proposal foundations exist, prototype the
   scheduled 03:00–04:00 lifecycle with a mocked clock/model manager. Simulate
   pausing normal workloads while retaining the maintenance control plane,
@@ -143,11 +172,52 @@ it through a diagnostics API and dashboard view.
 - Production inference validation
 - Verify versions and compatibility against the actual Proxmox release,
   running kernel, RX 6800 XT, and pinned component versions
+- Image-generation deployment: evaluate the planned ComfyUI/ROCm deployment
+  on the Proxmox host. Validate model load, GPU offload, VRAM/RAM headroom,
+  generation latency, output quality, and recovery under representative
+  workloads. Proxmox ROCm remains experimental pending verification of the
+  exact host/kernel/GPU/software combination.
 
 The planned Proxmox/RX 6800 XT combination is not listed as officially
 supported in AMD's published compatibility matrix. Do not proceed with
 GPU-dependent installation until the exact host and component compatibility
 has been checked. The host-preparation script does not install this GPU stack.
+
+### Provisional server hardware and storage plan
+
+These are planning targets, not purchased or validated specifications. Confirm
+the exact CPU, memory, storage devices, topology, and workload allocations
+before building the host.
+
+- **CPU:** AMD processor with enough cores and threads for Proxmox, planned
+  VMs, and host services. Select the exact model based on VM count, workload
+  concurrency, platform support, power/thermal limits, and budget; no CPU
+  model or core count has been selected.
+- **System RAM:** start with 32 GB, with a possible upgrade to 64 GB. Final
+  sizing depends on the Proxmox host, VM allocations, inference context/cache,
+  and services running concurrently. System RAM is separate from the RX 6800
+  XT's 16 GB VRAM.
+- **NVMe:** start with a 2 TB NVMe drive for Proxmox/application storage,
+  active or write-intensive VM disks, databases, and a fast cache for
+  frequently used models. Additional NVMe drives may be added as capacity or
+  performance needs grow.
+- **Model tiering:** keep the full model library on capacity storage as
+  appropriate, promote frequently used or pinned models to NVMe, and retain
+  less-used models on HDD. Promotion/eviction must preserve stable model IDs,
+  verify copies before use/removal, and never move a model while it is loaded
+  or in use. NVMe mainly improves model-file access and load/switch time, not
+  inference speed after the model is loaded.
+- **HDDs:** use larger-capacity HDDs for bulk file data, archives, backups as
+  one copy, and lower-I/O VMs such as DHCP, DNS, and other network services.
+  A file-hosting VM may keep its OS and applications on NVMe while its bulk
+  data resides on the HDD pool. Expect slower boots and disk-heavy operations
+  for HDD-backed VMs.
+- **Redundancy and recovery:** an HDD RAID or other redundant pool is under
+  consideration; drive count, RAID/ZFS layout, controller mode, usable
+  capacity, and expansion strategy are undecided. Redundancy is not a backup:
+  maintain a separate backup and test restores. Choose a layout that allows
+  the intended future NVMe/HDD expansion without relying on unverified
+  in-place conversion.
 
 ## Phase 4 — Advanced Features
 
@@ -159,18 +229,26 @@ has been checked. The host-preparation script does not install this GPU stack.
 - Additional agent workflows
 - Diagnostics Phase 2: safe auto-remediation and approval workflow, after
   observe mode and independent executor validation are established. Real
-  service-restart actions require the production service setup.
+  service-restart actions require the production service setup. Longer-term
+  bounded autonomy may learn from user approval/denial reasons and verified
+  outcomes, but feedback cannot silently alter permissions; Tier 3 actions
+  remain approval-only. See the staged-autonomy design in
+  [AI diagnostics & self-healing](./ai-diagnostics-self-healing.md).
 - Complete the scheduled maintenance implementation after the mocked
   lifecycle is proven. It must suspend normal workloads but keep the
   coordinator, executor, monitoring, local RAG, and recovery/notification path
-  available; select an eligible dedicated diagnostic model; perform integrity
-  checks and allowlisted safe updates; and restore normal operation only after
-  verification. Do not force unsafe interruption at 04:00; remain paused and
-  alert on failed health checks. Proxmox, kernel, GPU driver/ROCm, and firmware
-  updates remain approval-only.
+  available; follow the phase-gated maintenance runbook; select an eligible
+  dedicated diagnostic model; perform integrity checks and allowlisted safe
+  updates; and restore normal operation only after verification. Fault-inject
+  preflight, drain, model-load, action, verification, rollback, restore, audit,
+  and notification failures. Do not force unsafe interruption at 04:00; remain
+  paused and alert on failed health checks. Proxmox, kernel, GPU driver/ROCm,
+  and firmware updates remain approval-only.
 - Diagnostics Phase 3/4: ML-based detection, predictive alerts, and
   self-learning knowledge-base updates; these depend on collected and reviewed
-  incident history.
+  incident history. Evaluate any autonomous repair authorization per action
+  against independently verified outcomes, explicit opt-in, and recovery
+  safeguards before enabling it.
 
 ### Waiting for server or deployment architecture
 
@@ -214,7 +292,8 @@ the current model options when starting each task.
    **Models:** GPT Luna for implementation and tests; Claude Sonnet for
    reviewing thresholds, failure handling, and observe-only boundaries.
 2. Create reviewed diagnostic runbooks and local RAG/retrieval tests. Keep
-   incident-derived knowledge as untrusted drafts until reviewed.
+   incident-derived runbooks and curated knowledge as untrusted drafts until
+   reviewed; retain incident records separately for evidence-based retrieval.
    **Models:** Claude Sonnet for runbook structure and retrieval/evaluation
    design; GPT Luna for ingestion code, tests, and integration.
 3. Define structured remediation proposals and independently validate them in

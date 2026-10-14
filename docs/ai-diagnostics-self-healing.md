@@ -11,10 +11,13 @@ This document specifies the AI Maintenance Agent: a reactive self-healing
 subsystem that monitors system telemetry and service health, retrieves relevant
 local diagnostic knowledge through retrieval-augmented generation (RAG), and
 produces structured repair proposals for a separate backend executor. The
-model analyzes logs, error codes, and hardware/VM health data; it never runs
-commands or performs repairs directly. All diagnostic data, maintenance
-procedures, and known-issue references are stored locally to support private,
-domain-specific troubleshooting and recovery.
+model analyzes logs, error codes, and hardware health data; it never runs
+commands or grants itself authority. The intended long-term goal is bounded
+autonomy: a separate deterministic policy may authorize eligible registered
+repairs without per-action approval, based on explicit user settings, action
+risk, verified outcomes, and reviewed feedback. All diagnostic data,
+maintenance procedures, and known-issue references are stored locally to
+support private, domain-specific troubleshooting and recovery.
 
 Existing building blocks it relies on: the FastAPI backend (`ai-backend/main.py`),
 `system_stats.py` (CPU/RAM/GPU telemetry), `model_manager.py` (model discovery
@@ -51,7 +54,7 @@ command execution tools and cannot bypass the executor.
 |---|---|
 | **Monitor** | Reacts to telemetry thresholds, health-check failures, service events, and scheduled/user-triggered checks; emits `Signal` objects. |
 | **Analyzer** | Correlates signals into `Incident`s and collects evidence. |
-| **Local RAG Retriever** | Searches the local vector index and source files for relevant, versioned runbooks, known issues, platform facts, and prior reviewed repairs. |
+| **Local Retriever** | Searches reviewed runbooks and platform facts plus similar historical incidents, clearly separating approved procedures from empirical case evidence. |
 | **Diagnostic Model** | Analyzes retrieved evidence and produces ranked hypotheses and a schema-constrained repair proposal; has no direct execution capability. |
 | **Backend Executor** | Validates proposals against the fixed action registry, preconditions, risk policy, approvals, and rollback requirements; executes, verifies, or rejects them. |
 | **Maintenance Coordinator** | Owns scheduled maintenance windows, gates normal AI traffic, selects the diagnostic model, and restores service afterward. |
@@ -68,25 +71,34 @@ command execution tools and cannot bypass the executor.
    incident per root cause, not per symptom).
 3. Analyzer collects evidence (log excerpts, metrics, process state) and
    walks the dependency graph to find the *deepest* failing dependency.
-4. Local RAG retrieves bounded, relevant knowledge using the incident signals,
-   platform/version, and evidence. Source references and package version are
-   retained with the incident.
+4. Local retrieval finds bounded, relevant reviewed knowledge and similar
+   historical incidents using the incident signals, platform/version, and
+   evidence. Prior cases include what was attempted and the independently
+   verified outcome; they are evidence, not approved procedures. Sources,
+   case IDs, and package versions are retained with the incident.
 5. Deterministic rules and the diagnostic model rank hypotheses. When used,
    the model returns a structured proposal that references retrieved evidence
    and registered action IDs; unknown causes or low confidence go to escalation.
 6. Backend Executor validates every proposed action. Tier 0/1 actions may run
-   automatically only if all guardrails pass; Tier 2/3 require the specified
-   approval. Model output itself never authorizes an action.
+   automatically only if all guardrails pass. Higher-risk actions require
+   approval unless a separately configured autonomy policy explicitly
+   authorizes that registered action after its evidence-based eligibility
+   requirements are met. Model output and feedback history alone never
+   authorize an action.
 7. After each action the executor verifies recovery. On failure it rolls back,
    tries the next runbook step (bounded), then escalates.
 8. Reporter publishes the outcome. Resolved incidents feed the learning loop.
 
 ### 1.4 Decision Making
 
-An action is auto-executed only if **all** are true:
+An action is automatically authorized only if **all** applicable conditions
+are true:
 
 - Diagnosis confidence >= `AUTO_FIX_MIN_CONFIDENCE` (default 0.8).
-- The runbook action is Tier 0 or Tier 1 (see 5.1).
+- The action is registered and permitted for automatic execution by the
+  current operating mode and explicit autonomy policy. Initially, this is
+  limited to Tier 0/1; expanding eligibility requires the staged gates in
+  section 8 and never includes Tier 3.
 - Rate limits and circuit breakers permit it (section 9.5).
 - The diagnostic agent is not in `observe-only` mode.
 - No unexpected maintenance window or manual lock is active. During a
@@ -94,7 +106,8 @@ An action is auto-executed only if **all** are true:
   the window does not bypass operating mode, risk-tier, approval, or rollback
   requirements.
 
-Otherwise: request approval (risky but understood) or escalate (not understood).
+Otherwise: request approval (understood but not authorized) or escalate
+(not understood or unsafe). Confidence is a diagnostic signal, not permission.
 
 ### 1.5 Safety Guardrails and Approval Workflow (summary)
 
@@ -179,6 +192,35 @@ firmware, and other host-level or irreversible updates are excluded from
 unattended updates and require explicit human approval. Update checks can
 report available host updates without applying them.
 
+### 1.8 Scheduled Maintenance Runbook
+
+This is the required execution order for a maintenance window. Each phase has
+a deterministic gate; the coordinator records the phase, inputs, result, and
+timestamp in the audit history. A failed gate skips dependent work and follows
+the recovery column rather than allowing the model to improvise a recovery.
+The deployment-specific service order, checks, and rollback actions must be
+filled in and tested before enabling a real schedule.
+
+| Phase | Procedure and expected result | If the gate fails |
+|---|---|---|
+| 0. Preflight | Confirm the schedule/timezone, maintenance policy, action allowlist, disk space, service dependency map, installed diagnostic model and matching knowledge package, update sources, and required backups/rollback artifacts. Record current component versions, service states, selected model, and non-secret configuration fingerprints. Verify control plane, audit storage, health probes, and notification path are available. | Do not enter maintenance. Record a skipped window with the failed checks and notify the user. Never fetch an unapproved model or update artifact to make preflight pass. |
+| 1. Enter and drain | Persist `entering`; announce maintenance; reject new conflicting work with retry guidance; drain active requests until the configured deadline. Expected: no in-flight work that conflicts with maintenance. | If the deadline expires, cancel the window, reopen the unchanged services, verify normal health, and report the skipped work. Do not kill requests to meet the clock. |
+| 2. Quiesce workloads | Persist the exact service/model state. Stop or pause only configured user-facing workloads in dependency order. Keep coordinator, executor, monitor, local retrieval, audit, and recovery/notification paths running. Expected: workloads are quiescent and the maintenance control plane is healthy. | Restart/resume only what this runbook stopped, in reverse dependency order; verify baseline health. If restoration cannot be verified, remain gated and alert for intervention. |
+| 3. Load diagnostic context | Load an already installed, eligible diagnostic model and the versioned task package. Run a bounded self-check and verify memory/resource headroom. Expected: model responds to a non-mutating diagnostic check and the correct package/version is recorded. | Unload the diagnostic model if safe; skip model-dependent work. Continue only explicitly permitted deterministic read-only checks, then restore the normal model and services. |
+| 4. Diagnose and plan | Collect bounded/redacted evidence; retrieve applicable reviewed procedures and similar historical cases; label case history as evidence, not instructions. Produce a structured plan listing action IDs, risk tiers, preconditions, verification, rollback, and expected impact. The executor independently validates authorization. | If evidence conflicts, applicability is unknown, confidence is insufficient, or a step lacks a tested rollback where required, do not execute that step. Escalate with evidence and request approval where appropriate. |
+| 5. Apply one change at a time | Run only registered, allowlisted actions with satisfied preconditions. For updates, verify source/integrity and required backup first. Record a before-state snapshot; apply one bounded change; capture its result before considering the next change. | Stop the sequence on any unexpected result. Do not continue to dependent updates. Use the action's registered rollback, then verify the prior state. |
+| 6. Verify and decide | Independently rerun the affected health checks, dependency checks, integrity/version checks, and configured stability window. Expected: target checks pass and no related regression appears. Record success only after verification, not from command exit status or model assertion. | Roll back the failed change if defined and safe, then verify the restored state. If rollback is absent, fails, or leaves state uncertain, keep conflicting workloads paused and escalate; do not claim recovery. |
+| 7. Restore normal operation | Stop starting maintenance work before the deadline. Restore the prior normal model and resume stopped services in dependency order. Verify backend, inference, required integrations, telemetry, and dashboard/control-plane health; then reopen user traffic. | If any required check fails, re-gate traffic, retry only the registered restoration action within its retry limit, and roll back the maintenance change when applicable. If still unhealthy, remain in `needs_attention`, preserve the control plane, notify the user, and provide manual recovery guidance. |
+| 8. Close and learn | Persist final versions/states, actions, approvals, evidence references, verification, rollback, and incident links. Mark `complete` only after successful restoration; otherwise retain `failed/needs_attention`. Update case history with independently verified outcomes and user feedback. | If audit persistence or notification fails, do not mark complete; retain local recovery state and retry through the independent recovery path. Never treat an unverified attempt as a successful repair example. |
+
+The deadline is not an instruction to force a transition. At 04:00, stop
+starting new work and proceed only to a safe boundary. If restoration or health
+verification is incomplete, remain in maintenance/`needs_attention`, keep
+conflicting user traffic gated, and alert; do not report success simply to end
+the window. The global kill switch disables new repair actions but must not
+interrupt an unsafe-to-stop operation; recovery follows the action-specific
+rollback contract and preserves the audit trail.
+
 The real model-selection policy, maintenance scheduler, service gating,
 model restoration, and update rollback behavior require validation on the
 target Proxmox host and hardware. Development can test the coordinator with
@@ -189,13 +231,26 @@ production recovery.
 
 ## 2. Knowledge Base Structure
 
-Diagnostic data, source documents, embeddings, and the vector index are stored
-on local server storage. Retrieval and inference must not send diagnostic
-content to an external service. The local RAG database indexes reviewed,
-versioned knowledge sources, while source files remain authoritative and
-human-reviewable. Runtime additions are kept as isolated drafts in local
-storage until reviewed. Backups, access controls, retention, and recovery of
-the index and its source documents are part of deployment.
+Diagnostic data, source documents, embeddings, and indexes are stored on local
+server storage. Retrieval and inference must not send diagnostic content to an
+external service. Keep two distinct sources of operational context:
+
+- A durable incident and action history records observations, evidence,
+  hypotheses, user approvals/denials and reasons, actions attempted, and
+  independently verified results, including failures, rollbacks, and
+  recurrence. The system starts with no assumed repair history; this local
+  history grows as real incidents are investigated and resolved.
+- The curated knowledge base contains reviewed, versioned runbooks, platform
+  facts, and known issues. Source files remain authoritative and
+  human-reviewable. New procedures drafted from case history stay isolated as
+  drafts until reviewed and tested.
+
+Similar historical cases can be retrieved to inform later diagnoses even
+before a formal runbook exists. They must be labeled as past observations,
+filtered for platform/version applicability, and presented with their actual
+outcomes; a prior action is not automatically a safe or correct fix. Backups,
+access controls, retention, and recovery of both the case history and
+knowledge sources are part of deployment.
 
 The target vector-store implementation is to be selected and validated for the
 deployment. Qdrant is already planned as a local service in the host stack and
@@ -214,18 +269,23 @@ kb/
   thresholds.yaml      # metric thresholds and durations
 ```
 
-The local index contains chunked source text plus metadata such as document
+The knowledge index contains chunked source text plus metadata such as document
 ID/version, platform, component/version applicability, review state, source
-path, and content hash. Search results must exclude drafts and incompatible
-platform/version entries by default. Retrieval should favor exact signal/error
-matches and applicable approved runbooks, with semantic search as a supplement.
-Every model response records the retrieved document IDs and versions used.
+path, and content hash. The incident history is structured durable storage;
+it may also have a local search index for finding similar cases. Search
+results must exclude drafts and incompatible platform/version knowledge by
+default. Retrieval should favor exact signal/error matches and applicable
+approved runbooks, with semantic search as a supplement. Similar incident
+records must remain distinguishable from approved knowledge and include
+whether the attempted action succeeded under independent verification.
+Every model response records the retrieved document IDs, case IDs, and
+versions used.
 
 ```text
-Local sources -> validate/version -> chunk + embed locally -> local vector index
-Incident evidence -> filter by platform/version -> retrieve approved sources
-                   -> local diagnostic model -> structured repair proposal
-                   -> executor validation -> registered backend action
+Reviewed sources -> validate/version -> chunk + embed locally -> knowledge index
+Incident -> filter by platform/version -> retrieve approved sources + similar cases
+         -> local diagnostic model -> structured repair proposal
+         -> executor validation -> registered backend action -> verify and record
 ```
 
 ### Diagnostic Model Knowledge Package
@@ -233,8 +293,9 @@ Incident evidence -> filter by platform/version -> retrieve approved sources
 The diagnostic model must receive a task-specific, maintained set of learning
 files whenever it is selected. These files provide operational context without
 requiring model fine-tuning and without mixing diagnostics instructions into
-ordinary chat. A local RAG database retrieves only the applicable, approved
-files for the current incident. The model profile identifies compatible model capabilities,
+ordinary chat. Retrieval combines applicable, approved files with relevant
+historical cases clearly labeled as empirical evidence. The model profile
+identifies compatible model capabilities,
 minimum context size, resource requirements, and the evaluation results used
 to select it. At inference time the system assembles a bounded context from:
 
@@ -243,6 +304,10 @@ to select it. At inference time the system assembles a bounded context from:
   issuing commands or bypassing registered actions.
 - Relevant, versioned runbooks, symptom patterns, dependency/config facts,
   recovery procedures, and safety/update policies.
+- Similar past incidents, including the evidence available at the time,
+  actions attempted, user feedback, and verified outcome. Clearly mark these
+  as empirical case history rather than approved instructions; an unsuccessful
+  or unverified attempt must not be presented as a successful fix.
 - Platform-specific files selected for the actual host (for example Windows
   test setup versus Proxmox/Linux), including tested service names, paths,
   ports, commands/probes, and supported component versions.
@@ -511,14 +576,16 @@ size-capped and stored as an immutable bundle referenced by the incident ID.
 
 ### 5.1 Risk Tiers
 
-| Tier | Description | Handling | Examples |
-|---|---|---|---|
-| 0 | Read-only | Always allowed | Re-probe, collect extra logs |
-| 1 | Safe, reversible, low impact | Automatic | Restart llama server/bot/SearXNG, clear caches, reload config, rotate logs |
-| 2 | Impactful but recoverable | Approval (or auto after trust period, opt-in) | Switch model, reduce context size, restart backend, kill a stuck process |
-| 3 | Dangerous / irreversible | Always approval, with confirmation | Delete files/models/data, migrations, change credentials, modify firewall, driver actions |
+| Tier | Description | Initial handling | Possible future handling | Examples |
+|---|---|---|---|---|
+| 0 | Read-only | Always allowed | Always allowed | Re-probe, collect extra logs |
+| 1 | Safe, reversible, low impact | Automatic when guardrails pass | Automatic when guardrails pass | Restart llama server/bot/SearXNG, clear caches, reload config, rotate logs |
+| 2 | Impactful but recoverable | Approval required | May become automatic only for specifically allowlisted actions after explicit opt-in and staged evidence/review gates | Switch model, reduce context size, restart backend, kill a stuck process |
+| 3 | Dangerous / irreversible | Always approval, with confirmation | Always approval; never eligible for autonomous execution | Delete files/models/data, migrations, change credentials, modify firewall, driver actions |
 
 Anything not in the registry is Tier 3 by default and cannot be automated.
+Approval history or model confidence cannot lower an action's tier or override
+an approval requirement.
 
 ### 5.2 Safe Automatic Fixes
 
@@ -638,7 +705,12 @@ Incident -> action proposed (Tier 2/3) -> approval request created
 ```
 
 Approvals expire (default 1 h), are single-use, bound to the exact action and
-parameters, and Tier 3 requires typing a confirmation phrase.
+parameters, and Tier 3 requires typing a confirmation phrase. The long-term
+autonomy goal does not remove user control: automatic authorization is limited
+to individually eligible registered actions under an explicitly enabled
+policy, with per-action pause/disable controls and a global kill switch.
+Feedback can inform later policy review, but repeated approvals or denials do
+not silently change permissions.
 
 ### 7.3 Manual Remediation Guidance
 
@@ -646,14 +718,52 @@ Reports include step-by-step instructions from the runbook's
 `manual_guidance`, with the expected output of each step and a "Re-run checks"
 button that triggers diagnostics and marks the incident resolved when healthy.
 
-### 7.4 Knowledge Base Updates from Fixes
+### 7.4 Learning from Repair Feedback and Outcomes
 
-When a user resolves an incident manually, the dashboard asks "What fixed it?".
-The agent drafts a runbook/pattern or diagnostic example from the incident
-timeline and the user's note, which is stored as `draft` and promoted only
-after review, platform-specific testing, and approval. Approved knowledge
-files are versioned and tracked for effectiveness; model-generated changes
-never update the active package directly.
+For each repair proposal, record the incident evidence, retrieved knowledge
+versions, proposed action and risk tier, whether the user approved or denied
+it, any user-provided reason, the executor's result, independent verification,
+and any rollback or recurrence. Distinguish approval from success: an approved
+repair may fail, and a denied repair is not evidence that the diagnosis was
+wrong. Keep this feedback local, access-controlled, redacted, and attributable
+to the relevant policy, action, runbook, and model versions.
+
+Use incident history and verified outcomes to find comparable cases and
+inform later diagnoses from the beginning; the system need not already know a
+repair to start accumulating useful experience. Case retrieval does not
+require promoting each incident into a runbook. Use reviewed feedback for
+reporting and offline evaluation. The agent may draft a runbook/pattern or
+diagnostic example from incidents and user notes, but it is stored as `draft`
+and promoted only after review, platform-specific testing, and approval.
+Feedback history must not directly modify model weights, action permissions,
+risk tiers, or trusted knowledge. Any future policy or knowledge change is
+versioned, evaluated against held-out and failure cases, explicitly approved,
+and reversible; monitor for biased, sparse, stale, or poisoned feedback.
+Approved knowledge files are tracked for effectiveness, and model-generated
+changes never update the active package directly.
+
+### 7.5 Staged Autonomy
+
+Progress from observe-only to autonomous repair in explicit, reversible stages:
+
+1. Persist observations and repair decisions; collect approval/denial reasons
+   and independently verified outcomes without taking repair actions.
+2. Enable assisted proposals and human approval, then measure success,
+   recurrence, false positives, rollback, and escalation by action and
+   platform/version.
+3. Enable automatic Tier 0/1 actions only after deterministic preconditions,
+   verification, rollback, rate limits, audit, and fault-injection tests pass.
+4. Consider Tier 2 actions individually only after an explicit opt-in, a
+   documented evaluation threshold over sufficient representative outcomes,
+   staged/canary operation, and a tested disable/rollback path. A policy
+   engine—not the diagnostic model—grants authorization, and the user can
+   revoke it at any time.
+
+If evidence is insufficient, outcomes regress, the environment differs from
+the tested platform/version, or a guardrail fails, fall back to approval or
+observe mode. Tier 3 actions remain approval-only. No stage is enabled merely
+because the model reports high confidence or the user approved similar
+actions before.
 
 ---
 
@@ -686,7 +796,8 @@ never update the active package directly.
 ### Phase 2: Auto-Remediation for Safe Operations
 - Action registry, Tier 0/1 actions, verification, rollback, rate limiting.
 - Schema-constrained repair proposals from the local model; backend executor
-  validation; runbook execution; approval workflow for Tier 2/3.
+  validation; runbook execution; approval workflow for Tier 2/3. The model
+  cannot authorize its own output.
 - Scheduled maintenance coordinator: drain and gate normal AI traffic, load
   an eligible installed diagnostic model with its versioned knowledge
   package, run permitted tasks, then restore the previous model and reopen
@@ -707,10 +818,19 @@ never update the active package directly.
 - **Exit criteria**: anomaly detection precision/recall targets met on recorded incidents.
 
 ### Phase 4: Self-Learning and Knowledge Base Updates
-- Draft runbook generation from resolved incidents; review UI.
-- Runbook success-rate tracking and confidence calibration.
-- Optional trust-based promotion of Tier 2 actions to automatic.
-- **Exit criteria**: reviewed KB additions measurably reduce escalations.
+- Record user approval/denial reasons and independently verified repair
+  outcomes; distinguish user approval from repair success.
+- Draft runbook generation from resolved incidents; review UI; versioned
+  retrieval/evaluation sets and runbook success-rate tracking.
+- Evaluate bounded autonomous authorization for individually allowlisted
+  Tier 2 actions only after explicit opt-in and staged evidence, safety tests,
+  canary operation, and tested revocation/rollback. The deterministic policy
+  engine authorizes; model confidence and feedback alone do not.
+- Keep Tier 3 actions approval-only; feedback never silently changes action
+  permissions, risk tiers, model weights, or trusted KB content.
+- **Exit criteria**: reviewed KB additions measurably reduce escalations, and
+  any enabled autonomous action meets documented reliability and recovery
+  targets on the applicable platform/version.
 
 ---
 
