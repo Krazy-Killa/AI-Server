@@ -988,6 +988,7 @@ header {
     font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 0.13em;
+    text-transform: uppercase;
 }
 
 .infra-stat strong {
@@ -1046,6 +1047,7 @@ header {
     font-size: 8px;
     font-weight: 400;
     letter-spacing: 0.08em;
+    text-transform: uppercase;
     white-space: nowrap;
 }
 
@@ -1062,42 +1064,6 @@ header {
     color: var(--text-muted);
     font-size: 11px;
     line-height: 1.7;
-}
-
-.vm-console {
-    overflow: hidden;
-    border: 1px solid var(--border-soft);
-    background: #070b10;
-}
-
-.vm-console-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 10px;
-    border-bottom: 1px solid var(--border-soft);
-    color: #8fa3ad;
-    font-family: var(--font-mono);
-    font-size: 8px;
-    letter-spacing: 0.08em;
-}
-
-.vm-console-screen {
-    display: flex;
-    min-height: 130px;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 14px;
-    color: #718795;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    line-height: 1.7;
-}
-
-.vm-console-prompt {
-    flex: 0 0 auto;
-    color: var(--accent);
 }
 
 .infra-card {
@@ -1344,6 +1310,7 @@ header {
 }
 
 .diagnostics-state-healthy,
+.diagnostics-state-normal,
 .diagnostics-state-resolved,
 .diagnostics-pill-healthy {
     border-color: rgba(var(--accent-rgb), 0.35);
@@ -1351,10 +1318,17 @@ header {
 }
 
 .diagnostics-state-degraded,
+.diagnostics-state-triggered,
+.diagnostics-state-recovering,
 .diagnostics-state-open,
 .diagnostics-pill-degraded {
     border-color: rgba(255, 170, 80, 0.5);
     color: #ffb36b;
+}
+
+.diagnostics-state-pending {
+    border-color: rgba(var(--accent-rgb), 0.3);
+    color: var(--text-muted);
 }
 
 .diagnostics-pill-not_run,

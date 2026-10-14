@@ -22,12 +22,17 @@ discovered and can be selected for model switching; the backend confirms
 which model is active and attempts recovery if a switch fails.
 Discord heartbeat/status, operational logs, restart, command listing, and
 model selection are connected to the optional bot service. Vision and image
-generation still use placeholders. VM, game-server, and network-service
-panels are planning views rather than live controls. Linux/Proxmox telemetry
-and runtime support remain to be implemented.
-Windows is the active build environment for shared application behavior;
-Proxmox-specific GPU, service, networking, and production deployment behavior
-still requires target-host integration and validation.
+generation still use placeholders. The VM panel has a backend-provided,
+read-only Proxmox VM/container inventory when configured; VM management,
+game-server, and network-service integrations remain unimplemented. Linux
+GPU telemetry and runtime support remain to be implemented.
+Windows remains the active build environment for shared application behavior.
+An additional Proxmox VE 9.1-1 deployment/integration lab is running inside a
+nested Hyper-V virtual machine on the Windows PC; the dashboard and backend
+have been deployed there for manual loopback-only testing through an SSH
+tunnel. This lab can support Linux/Proxmox implementation work, but GPU/ROCm,
+physical hardware, production networking, and recovery behavior still require
+validation on the eventual physical host.
 The AI Interface has a single admin-shared, attributed transcript; private
 AI Chat conversations remain scoped to each account.
 

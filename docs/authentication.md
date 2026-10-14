@@ -55,6 +55,8 @@ deployment security checks below pass.
   translation.
 - Use dedicated, non-root Proxmox users for routine access. API tokens are
   separate machine credentials and are not interactive login credentials.
+- The VM inventory integration uses its own backend-only, read-only API token.
+  It is separate from dashboard login; never send its secret to browser code.
 
 ### Dashboard roles
 

@@ -45,8 +45,11 @@ ai-dashboard/
   navigation grids: landscape uses six columns (two rows for the current
   workspace links) and portrait uses four columns. The header toggle hides or
   restores this navigation row.
-- VM planning interface with a truthful empty inventory state, guest-detail
-  layout, and an unavailable recovery-console placeholder
+- Read-only VM/container inventory loaded from the backend Proxmox provider on
+  panel open or explicit refresh; unavailable/configuration failures are shown
+  as status, and guest data is rendered as text with human-readable power states
+- Inventory scope is explicit; VM management and guest-console controls are not
+  exposed
 - Network-service planning views for DHCPv4, DHCPv6, DNS, web hosting, and
   routing/firewall, including undecided configuration and safety boundaries
 - Backend online/offline indicator
@@ -80,9 +83,10 @@ ai-dashboard/
 - Refresh conversation titles/message counts after each completed or failed
   turn; never put chat content in browser storage
 - Update UI panels
-- VM and network-service panels are UI groundwork only: do not display sample
-  inventory as live state or send management requests until backend providers,
-  role checks, and deployment configuration exist
+- Send only authenticated, read-only VM inventory requests to the backend;
+  Proxmox API credentials remain server-side. No create, power, snapshot,
+  configuration, or console requests are implemented. Network-service panels
+  remain planning UI.
 - Show the active model and list installed models; unloaded entries cannot be selected
 - Display logs
 - Manage theme/accent colors

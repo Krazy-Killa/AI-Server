@@ -124,6 +124,55 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertEqual(invalid_limit.status_code, 422)
         self.assertEqual(invalid_status.status_code, 422)
 
+    def test_saved_report_is_viewer_readable_and_does_not_start_observation(self):
+        from fastapi.testclient import TestClient
+
+        observation_response = self.client.post("/api/diagnostics/observe")
+        observation = observation_response.json()
+        with patch.object(
+            self.main.diagnostics_monitor,
+            "run_observation",
+            wraps=self.main.diagnostics_monitor.run_observation,
+        ) as run_observation:
+            report_response = self.client.get(
+                "/api/diagnostics/report",
+                params={"observation_id": observation["id"]},
+            )
+            missing_response = self.client.get(
+                "/api/diagnostics/report",
+                params={"observation_id": "obs_missing"},
+            )
+
+        self.assertEqual(report_response.status_code, 200)
+        self.assertEqual(report_response.json()["observation_id"], observation["id"])
+        self.assertEqual(report_response.json()["mode"], "observe_only")
+        self.assertEqual(missing_response.status_code, 404)
+        run_observation.assert_not_called()
+
+        self.auth_store.create_local_user("viewer", "ViewerPassphrase42!", "viewer")
+        viewer_client = TestClient(self.main.app)
+        login_response = viewer_client.post(
+            "/api/auth/login",
+            json={
+                "provider": "local",
+                "username": "viewer",
+                "password": "ViewerPassphrase42!",
+            },
+            headers={"origin": "http://127.0.0.1:8001"},
+        )
+        self.assertEqual(login_response.status_code, 200)
+        viewer_client.headers.update(
+            {
+                "origin": "http://127.0.0.1:8001",
+                "x-csrf-token": login_response.json()["csrf_token"],
+            }
+        )
+        viewer_report = viewer_client.get(
+            "/api/diagnostics/report",
+            params={"observation_id": observation["id"]},
+        )
+        self.assertEqual(viewer_report.status_code, 200)
+
     def test_observation_reports_persistence_failure(self):
         with patch.object(
             self.main.diagnostics_monitor,

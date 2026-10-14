@@ -1,4 +1,5 @@
 import json
+import ssl
 import unittest
 from email.message import Message
 from io import BytesIO
@@ -21,6 +22,15 @@ def response(payload):
 
 
 class ProxmoxTicketClientTests(unittest.TestCase):
+    def test_default_tls_context_keeps_strict_x509_verification(self):
+        strict_flag = ssl.VERIFY_X509_STRICT
+        other_flags = ssl.VERIFY_X509_TRUSTED_FIRST
+        context = ssl.create_default_context()
+        context.verify_flags = strict_flag | other_flags
+        with patch("proxmox_auth.ssl.create_default_context", return_value=context):
+            ProxmoxTicketClient("https://pve.example:8006", ca_bundle="root-ca.pem")
+        self.assertEqual(context.verify_flags, strict_flag | other_flags)
+
     def test_posts_credentials_to_ticket_endpoint_and_returns_server_identity(self):
         opener = MagicMock()
         opener.open.return_value = response(

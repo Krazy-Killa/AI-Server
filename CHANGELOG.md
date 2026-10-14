@@ -6,6 +6,28 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a read-only Proxmox VM/container inventory endpoint and dashboard view,
+  with backend-only API-token credentials, authenticated viewer access, explicit
+  unavailable states, and no infrastructure-changing operations. The nested
+  lab connection and populated guest-list rendering are verified; physical-host
+  acceptance remains outstanding.
+- Added an opt-in, lab-only Proxmox CA compatibility setting that retains
+  certificate-chain and hostname verification.
+- Expanded manually triggered, observe-only diagnostics with backend-process
+  and read-only SQLite integrity probes, persisted CPU/RAM/disk threshold
+  evidence with duration confirmation and recovery hysteresis, and a
+  viewer-readable JSON evidence-report endpoint with dashboard download.
+- Added fault-injection coverage for threshold confirmation, oscillation,
+  observation gaps, restart persistence, probe failures, read-only integrity
+  checks, saved-report behavior, and report-route authorization.
+- Historical evidence reports now reconstruct incident state from the selected
+  observation instead of exposing later incident updates.
+- Documented the nested Proxmox VE 9.1-1 guest as an active, additional
+  deployment/integration lab, including its loopback/SSH-tunnel deployment
+  boundaries and distinction from physical-server acceptance.
+
 ### In Development
 
 - Reviewed retrieval of similar incidents and diagnostic procedures.

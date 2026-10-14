@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -24,6 +25,10 @@ CONFIG_VARIABLES = (
     "AI_SERVER_MEMORY_DB_PATH",
     "AI_SERVER_AUTH_COOKIE_SECURE",
     "PROXMOX_API_URL",
+    "PROXMOX_INVENTORY_TOKEN_ID",
+    "PROXMOX_INVENTORY_TOKEN_SECRET",
+    "PROXMOX_API_CA_BUNDLE",
+    "PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE",
     "AI_SERVER_BOT_API_TOKEN",
 )
 
@@ -42,6 +47,10 @@ class LoadSettingsTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8001", settings.cors_origins)
         self.assertTrue(settings.auth_cookie_secure)
         self.assertEqual(settings.proxmox_api_url, "")
+        self.assertEqual(settings.proxmox_inventory_token_id, "")
+        self.assertEqual(settings.proxmox_inventory_token_secret, "")
+        self.assertIsNone(settings.proxmox_api_ca_bundle)
+        self.assertFalse(settings.proxmox_api_allow_missing_ca_key_usage)
         self.assertEqual(settings.bot_api_token, "")
         self.assertEqual(
             settings.memory_database_path,
@@ -84,17 +93,50 @@ class LoadSettingsTests(unittest.TestCase):
             AI_SERVER_MEMORY_DB_PATH="memory-test.sqlite3",
             AI_SERVER_AUTH_COOKIE_SECURE="false",
             PROXMOX_API_URL="https://pve.example:8006/",
+            PROXMOX_INVENTORY_TOKEN_ID="ai-inventory@pve!dashboard",
+            PROXMOX_INVENTORY_TOKEN_SECRET="secret-value",
             AI_SERVER_BOT_API_TOKEN="x" * 40,
         )
         self.assertEqual(settings.auth_database_path, Path("auth-test.sqlite3"))
         self.assertEqual(settings.memory_database_path, Path("memory-test.sqlite3"))
         self.assertFalse(settings.auth_cookie_secure)
         self.assertEqual(settings.proxmox_api_url, "https://pve.example:8006")
+        self.assertEqual(
+            settings.proxmox_inventory_token_id, "ai-inventory@pve!dashboard"
+        )
+        self.assertEqual(settings.proxmox_inventory_token_secret, "secret-value")
         self.assertEqual(settings.bot_api_token, "x" * 40)
+
+    def test_loads_opt_in_proxmox_ca_compatibility_with_explicit_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ca_bundle = Path(directory) / "proxmox-ca.pem"
+            ca_bundle.write_text("test certificate bundle", encoding="utf-8")
+            settings = self.load(
+                PROXMOX_API_URL="https://pve.example:8006",
+                PROXMOX_API_CA_BUNDLE=str(ca_bundle),
+                PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE="true",
+            )
+        self.assertEqual(settings.proxmox_api_ca_bundle, ca_bundle)
+        self.assertTrue(settings.proxmox_api_allow_missing_ca_key_usage)
 
     def test_rejects_unsafe_proxmox_urls_and_short_bot_tokens(self):
         with self.assertRaisesRegex(ConfigError, "PROXMOX_API_URL"):
             self.load(PROXMOX_API_URL="http://pve.example:8006")
+        with self.assertRaisesRegex(ConfigError, "must be configured together"):
+            self.load(PROXMOX_INVENTORY_TOKEN_ID="ai-inventory@pve!dashboard")
+        with self.assertRaisesRegex(ConfigError, "PROXMOX_API_URL is required"):
+            self.load(
+                PROXMOX_INVENTORY_TOKEN_ID="ai-inventory@pve!dashboard",
+                PROXMOX_INVENTORY_TOKEN_SECRET="secret-value",
+            )
+        with self.assertRaisesRegex(ConfigError, "invalid characters"):
+            self.load(
+                PROXMOX_API_URL="https://pve.example:8006",
+                PROXMOX_INVENTORY_TOKEN_ID="ai-inventory@pve!dashboard",
+                PROXMOX_INVENTORY_TOKEN_SECRET="secret\nvalue",
+            )
+        with self.assertRaisesRegex(ConfigError, "PROXMOX_API_CA_BUNDLE is required"):
+            self.load(PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE="true")
         with self.assertRaisesRegex(ConfigError, "AI_SERVER_BOT_API_TOKEN"):
             self.load(AI_SERVER_BOT_API_TOKEN="too-short")
         with self.assertRaisesRegex(ConfigError, "AI_SERVER_AUTH_COOKIE_SECURE"):

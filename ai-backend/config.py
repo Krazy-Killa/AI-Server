@@ -87,6 +87,10 @@ class Settings:
     memory_database_path: Path
     auth_cookie_secure: bool
     proxmox_api_url: str
+    proxmox_inventory_token_id: str
+    proxmox_inventory_token_secret: str
+    proxmox_api_ca_bundle: Path | None
+    proxmox_api_allow_missing_ca_key_usage: bool
     bot_api_token: str
 
 
@@ -130,6 +134,46 @@ def load_settings() -> Settings:
         ):
             raise ConfigError("PROXMOX_API_URL must be an HTTPS origin.")
 
+    proxmox_inventory_token_id = os.environ.get(
+        "PROXMOX_INVENTORY_TOKEN_ID", ""
+    ).strip()
+    proxmox_inventory_token_secret = os.environ.get(
+        "PROXMOX_INVENTORY_TOKEN_SECRET", ""
+    ).strip()
+    if bool(proxmox_inventory_token_id) != bool(proxmox_inventory_token_secret):
+        raise ConfigError(
+            "PROXMOX_INVENTORY_TOKEN_ID and PROXMOX_INVENTORY_TOKEN_SECRET "
+            "must be configured together."
+        )
+    if proxmox_inventory_token_id and not proxmox_api_url:
+        raise ConfigError(
+            "PROXMOX_API_URL is required when the inventory token is configured."
+        )
+    if (
+        any(char in proxmox_inventory_token_id for char in "\r\n=")
+        or any(char in proxmox_inventory_token_secret for char in "\r\n")
+    ):
+        raise ConfigError("Proxmox inventory token settings contain invalid characters.")
+
+    configured_proxmox_ca_bundle = os.environ.get(
+        "PROXMOX_API_CA_BUNDLE", ""
+    ).strip()
+    proxmox_api_ca_bundle = (
+        Path(configured_proxmox_ca_bundle).expanduser()
+        if configured_proxmox_ca_bundle
+        else None
+    )
+    if proxmox_api_ca_bundle is not None and not proxmox_api_ca_bundle.is_file():
+        raise ConfigError("PROXMOX_API_CA_BUNDLE must point to a readable CA file.")
+    proxmox_api_allow_missing_ca_key_usage = _boolean(
+        "PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE", False
+    )
+    if proxmox_api_allow_missing_ca_key_usage and proxmox_api_ca_bundle is None:
+        raise ConfigError(
+            "PROXMOX_API_CA_BUNDLE is required when "
+            "PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE is true."
+        )
+
     bot_api_token = os.environ.get("AI_SERVER_BOT_API_TOKEN", "").strip()
     if bot_api_token and len(bot_api_token) < 32:
         raise ConfigError("AI_SERVER_BOT_API_TOKEN must contain at least 32 characters.")
@@ -152,6 +196,10 @@ def load_settings() -> Settings:
         memory_database_path=memory_database_path,
         auth_cookie_secure=_boolean("AI_SERVER_AUTH_COOKIE_SECURE", True),
         proxmox_api_url=proxmox_api_url,
+        proxmox_inventory_token_id=proxmox_inventory_token_id,
+        proxmox_inventory_token_secret=proxmox_inventory_token_secret,
+        proxmox_api_ca_bundle=proxmox_api_ca_bundle,
+        proxmox_api_allow_missing_ca_key_usage=proxmox_api_allow_missing_ca_key_usage,
         bot_api_token=bot_api_token,
     )
 

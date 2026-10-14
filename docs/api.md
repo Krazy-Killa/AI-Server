@@ -83,6 +83,13 @@ audit events are stored in the local SQLite database configured by
 the latest 200 observations, the latest 1,000 audit events, and all open
 incidents plus up to 500 resolved incidents. These endpoints are available to
 the viewer role. Running an observation requires the operator role.
+Resource threshold state is evaluated only when an observation is explicitly
+run. CPU >=90% and RAM >=90% must persist across observations for 120 seconds;
+log-volume free space <=10% must persist for 60 seconds. Recovery requires
+CPU <=80%, RAM <=85%, or free space >=15%, respectively, for 60 seconds.
+Observations more than 300 seconds apart reset pending/recovery duration
+confirmation. These sampled intervals are evidence only and do not establish
+continuous conditions between observations.
 
 GET /api/diagnostics/status
 Returns `mode` (`observe_only`), `storage` (`sqlite`), the latest
@@ -95,6 +102,18 @@ Returns recent observations, limited to 1–100 items.
 GET /api/diagnostics/incidents?status=all&limit=100
 Returns recent incidents filtered by `all`, `open`, or `resolved`, limited to
 1–500 items.
+
+GET /api/diagnostics/report?observation_id=obs_...
+Requires the viewer role. Returns a JSON evidence report for a retained
+observation, including its health checks, resource snapshot, threshold
+evidence, and related incidents as they existed at that observation. Historical
+incident fields are reconstructed from the selected observation's degraded
+checks and active threshold evidence, with incident metadata used only when its
+recorded interval contains the observation. Unknown or expired observation IDs
+return 404. Report generation reads recorded in-memory history only: it does
+not run probes, trigger a new observation, or write persistent state. The
+dashboard's **Download report** action downloads the latest recorded
+observation.
 
 POST /api/diagnostics/observe
 Runs the configured health checks and resource sampling once, records the
@@ -303,13 +322,40 @@ recovery outcome in the error detail.
 
 ## Virtual Machines and Network Services
 
-The dashboard currently provides planning-only UI for VM inventory and guest
-recovery-console access, plus DHCPv4, DHCPv6, DNS, web-hosting, and
-routing/firewall service areas. No VM or network-service management API or
-provider is implemented; these panels do not display live inventory or issue
-infrastructure changes. Live integration requires an approved Proxmox/API
-provider, explicit role enforcement, auditability, confirmation for
-destructive or connectivity-impacting actions, and tested recovery paths.
+`GET /api/proxmox/vms`
+Requires an authenticated dashboard session with the viewer role or higher.
+Reads a filtered VM/container inventory from the configured Proxmox API with
+the backend-only `PROXMOX_INVENTORY_TOKEN_ID` and
+`PROXMOX_INVENTORY_TOKEN_SECRET`. Proxmox credentials are never sent to the
+browser.
+
+When the provider is not configured, returns HTTP 200 with explicit state:
+
+```json
+{
+  "configured": false,
+  "status": "not_configured",
+  "guests": [],
+  "count": 0,
+  "observed_at": null
+}
+```
+
+When connected, returns `configured: true`, `status: "connected"`, a `guests`
+array containing only `name`, `vmid`, `node`, `type`, and `status`, the guest
+`count`, and a UTC `observed_at` timestamp. Upstream failures return HTTP 503;
+the endpoint does not substitute cached or sample inventory. The provider rejects redirects, verifies TLS certificates, and makes only a
+read-only cluster-resource request. For the nested Proxmox lab only, Python
+may reject the Proxmox-generated CA because it lacks the X.509 `keyUsage`
+extension. The explicit `PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE` compatibility
+setting relaxes OpenSSL's strict X.509 extension-policy checks but does not
+disable configured CA-chain, certificate-validity, or hostname verification.
+Do not use it for physical/production deployment.
+
+The VM dashboard refreshes the inventory when opened and on explicit refresh.
+It has no create, power, snapshot, configuration, or console operations.
+DHCPv4, DHCPv6, DNS, web-hosting, and routing/firewall remain planning-only;
+no network-service management API is implemented.
 
 ---
 

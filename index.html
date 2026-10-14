@@ -247,41 +247,41 @@
             <div class="panel-header">
                 <div class="panel-title">Virtual Machines</div>
                 <div class="panel-controls">
-                    <div class="pill">Hypervisor / Not Configured</div>
-                    <div class="pill">Planned</div>
+                    <div class="pill" id="vm-connection-status" role="status" aria-live="polite">Not configured</div>
+                    <button class="btn-secondary" id="vm-inventory-refresh" type="button">Refresh inventory</button>
                 </div>
             </div>
             <div class="panel-body">
                 <div class="infra-summary">
-                    <div class="infra-stat"><span class="infra-label">HYPERVISOR</span><strong>Proxmox VE / planned</strong></div>
-                    <div class="infra-stat"><span class="infra-label">INVENTORY</span><strong>Not connected</strong></div>
-                    <div class="infra-stat"><span class="infra-label">GUEST CONSOLE</span><strong>Recovery workflow planned</strong></div>
+                    <div class="infra-stat"><span class="infra-label">Hypervisor</span><strong>Proxmox VE</strong></div>
+                    <div class="infra-stat"><span class="infra-label">Visible guests</span><strong id="vm-inventory-count">Not connected</strong></div>
+                    <div class="infra-stat"><span class="infra-label">Last refresh</span><strong id="vm-inventory-updated">Not yet queried</strong></div>
                 </div>
                 <div class="vm-workspace">
                     <section class="infra-section" aria-labelledby="vm-inventory-heading">
                         <div class="diagnostics-section-header">
                             <div>
-                                <div class="section-kicker">GUEST INVENTORY</div>
-                                <h2 id="vm-inventory-heading">Virtual machines</h2>
+                                <div class="section-kicker">Read-only inventory</div>
+                                <h2 id="vm-inventory-heading">Guest list</h2>
                             </div>
-                            <span class="pill">NO LIVE DATA</span>
+                            <span class="pill" id="vm-inventory-status">Not queried</span>
                         </div>
                         <div class="infra-table-scroll">
                             <table class="infra-table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">NAME</th>
+                                        <th scope="col">Name</th>
                                         <th scope="col">VMID</th>
-                                        <th scope="col">GUEST / ROLE</th>
-                                        <th scope="col">POWER STATE</th>
-                                        <th scope="col">STORAGE TIER</th>
+                                        <th scope="col">Guest type</th>
+                                        <th scope="col">Node</th>
+                                        <th scope="col">Power state</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="vm-inventory-rows">
                                     <tr>
                                         <td colspan="5" class="infra-table-empty">
-                                            No VM inventory is available. Connect a Proxmox provider after the host and
-                                            least-privilege API account are configured.
+                                            Inventory has not been queried yet. Configure a read-only Proxmox API
+                                            token on the backend, then refresh.
                                         </td>
                                     </tr>
                                 </tbody>
@@ -289,29 +289,17 @@
                         </div>
                     </section>
                     <section class="infra-section vm-detail" aria-labelledby="vm-detail-heading">
-                        <div class="section-kicker">GUEST DETAILS / RECOVERY</div>
-                        <h2 id="vm-detail-heading">Select a virtual machine</h2>
+                        <div class="section-kicker">Inventory scope</div>
+                        <h2 id="vm-detail-heading">Read-only data</h2>
                         <p class="infra-description">
-                            Guest configuration, assigned resources, disks, network interfaces, snapshots, and task
-                            history will appear here when live inventory is connected.
+                            The table lists each guest's name, ID, type, node, and power state. It does not include
+                            guest configuration or console output.
                         </p>
-                        <div class="vm-console" aria-label="Guest console connection status">
-                            <div class="vm-console-header">
-                                <span>RECOVERY CONSOLE</span>
-                                <span class="pill">UNAVAILABLE / NOT CONNECTED</span>
-                            </div>
-                            <div class="vm-console-screen" role="status">
-                                <span class="vm-console-prompt" aria-hidden="true">&gt;</span>
-                                <span>No guest selected. Console access will require an authenticated,
-                                    short-lived Proxmox console session.</span>
-                            </div>
-                        </div>
                     </section>
                 </div>
                 <div class="infra-notice">
-                    Planning interface only. No VM data is live and there are no create, power, snapshot, or console
-                    controls yet. Future destructive actions require authorization, confirmation, audit history, and a
-                    tested recovery path.
+                    Read-only access: this integration does not create, modify, power, snapshot, or open consoles
+                    for guests.
                 </div>
             </div>
         </section>
@@ -455,6 +443,7 @@
                 <div class="panel-controls">
                     <div class="pill" id="diagnostics-status" role="status">Not run</div>
                     <button class="btn-secondary" id="diagnostics-refresh" type="button">Refresh</button>
+                    <button class="btn-secondary" id="diagnostics-report" type="button" disabled>Download report</button>
                     <button class="btn" id="diagnostics-run" type="button">Run observation</button>
                 </div>
             </div>
@@ -470,7 +459,7 @@
                 </div>
                 <div class="diagnostics-section">
                     <div class="diagnostics-section-header">
-                        <h2>Latest health checks</h2>
+                        <h2>Latest checks and resource thresholds</h2>
                         <span class="pill" id="diagnostics-observed-at">No observations</span>
                     </div>
                     <div class="diagnostics-checks" id="diagnostics-checks" aria-live="polite">

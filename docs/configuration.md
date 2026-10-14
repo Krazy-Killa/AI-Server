@@ -36,7 +36,11 @@ sync with `LLAMA_CPP_DEVICE`, `LLAMA_CPP_GPU_LAYERS`, and
 | `AI_SERVER_AUTH_DB_PATH` | SQLite authentication database; defaults to `%LOCALAPPDATA%\AI-Server\data\auth.sqlite3` on Windows or `~/AI-Server/data/auth.sqlite3` elsewhere. Protect this file and its directory. |
 | `AI_SERVER_MEMORY_DB_PATH` | SQLite dashboard memory; defaults to `memory.sqlite3` beside the authentication database. Protect it and its directory; it contains private saved conversations/research citations, explicitly published admin-shared operational notes, and bounded observe-only diagnostic history. |
 | `AI_SERVER_AUTH_COOKIE_SECURE` | `true` by default; use Secure session cookies for HTTPS. Set `false` only for isolated loopback HTTP development; never expose that setup to a network. |
-| `PROXMOX_API_URL` | Optional Proxmox API origin, such as `https://proxmox.example:8006`; required only for Proxmox-provider login. TLS verification is always enabled. |
+| `PROXMOX_API_URL` | Optional Proxmox API HTTPS origin, such as `https://pve.example:8006`; used for Proxmox-provider login and VM inventory. Certificate-chain and hostname verification are always enabled. |
+| `PROXMOX_INVENTORY_TOKEN_ID` | Optional dedicated Proxmox API token ID in `user@realm!token-name` form. Required with `PROXMOX_INVENTORY_TOKEN_SECRET` to enable read-only VM/container inventory. |
+| `PROXMOX_INVENTORY_TOKEN_SECRET` | Secret for the dedicated read-only inventory token. Store only in the private backend environment file; never expose it to browser code or logs. |
+| `PROXMOX_API_CA_BUNDLE` | Optional PEM CA bundle used to verify the Proxmox HTTPS certificate when it is not already trusted by the OS. Certificate and hostname verification remain enabled. |
+| `PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE` | Defaults to `false`. Lab-only compatibility setting for a Proxmox CA missing the X.509 `keyUsage` extension; requires an explicit CA bundle. It clears OpenSSL's strict X.509 extension-policy flag but retains CA-chain, certificate-validity, and hostname verification. Use a properly issued certificate for physical/production deployment. |
 | `AI_SERVER_BOT_API_TOKEN` | Separate shared high-entropy bearer credential (at least 32 characters) for bot-to-backend API requests. Set the same random value for backend and bot; do not reuse `DISCORD_TOKEN` or commit it. |
 | `AI_SERVER_LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; defaults to `INFO`. |
 | `AI_SERVER_LOG_DIR` | Backend log directory; defaults to `%LOCALAPPDATA%\AI-Server\logs` on Windows or `~/AI-Server/logs` elsewhere. |
@@ -45,7 +49,9 @@ sync with `LLAMA_CPP_DEVICE`, `LLAMA_CPP_GPU_LAYERS`, and
 Backend settings are validated once at startup by `ai-backend/config.py`.
 A non-numeric or non-positive number, an unknown log level, or a wildcard CORS
 origin stops startup with an error naming the variable. Blank values use the
-default. Logs go to the console and a rotating `backend.log`; chat message
+default. Proxmox inventory token ID and secret must be set together, and a
+token requires `PROXMOX_API_URL`. Logs go to the console and a rotating
+`backend.log`; chat message
 text is not logged, but dashboard conversations are persisted in the
 memory database until the account owner deletes them. Admin-published shared
 notes are stored separately in the same database. Discord bot requests are

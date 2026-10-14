@@ -32,8 +32,10 @@ GPU / LLM / Bot / System Stats
   - gpu/gpu_stub.py
   - gpu/gpu_llm.py
   - gpu/gpu_rocm.py
-- Provides REST endpoints for the implemented dashboard features. VM and
-  network-service panels are planning-only UI and have no management API.
+- Provides REST endpoints for the implemented dashboard features. The VM
+  panel has a read-only Proxmox inventory endpoint using a backend-only,
+  least-privilege API token; there are no VM management operations. Network
+  service panels remain planning-only UI.
 - Streams local chat replies over WebSocket (`/ws/chat`)
 - Enforces dashboard account roles for REST/WebSocket routes and uses a
   separate scoped bearer credential for designated Discord-bot routes
@@ -122,16 +124,15 @@ GPU / LLM / Bot / System Stats
 
 ## Planned Infrastructure Management
 
-The Virtual Machines and Network Services panels have UI planning groundwork,
-but are not connected to backend APIs or live infrastructure. The VM panel
-shows an empty inventory, guest-detail layout, and unavailable recovery-console
-state; it must not imply sample data or controls are live. The intended VM
-panel is a full dashboard-driven Proxmox guest lifecycle interface, including
-provisioning, configuration, power controls, task status, and a browser console
-for guest recovery. Integrate through a backend provider using narrowly scoped
-Proxmox API permissions; never expose Proxmox credentials or unrestricted API
-access to browser code. Destructive or connectivity-affecting operations need
-authorization, explicit confirmation, audit records, and tested recovery.
+The VM panel can display a live read-only Proxmox VM/container inventory when a
+dedicated API token is configured on the backend. This integration reads only
+the cluster resource inventory; it does not expose credentials to browser code
+or offer management actions. Its deployment against the nested Proxmox lab
+remains to be verified. Network Services remains planning-only. The intended
+future VM panel may add provisioning, configuration, power controls, task
+status, and a browser console for guest recovery. Any such operations require
+narrowly scoped Proxmox API permissions, explicit authorization and
+confirmation, audit records, and tested recovery.
 
 The primary console requirement is recovering and administering guests when
 their normal remote access is unavailable. Design the guest console flow

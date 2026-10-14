@@ -253,12 +253,23 @@ const diagnosticsPanel = document.getElementById('diagnostics-panel');
 const diagnosticsStatus = document.getElementById('diagnostics-status');
 const diagnosticsNotice = document.getElementById('diagnostics-notice');
 const diagnosticsRefreshButton = document.getElementById('diagnostics-refresh');
+const diagnosticsReportButton = document.getElementById('diagnostics-report');
 const diagnosticsRunButton = document.getElementById('diagnostics-run');
 const diagnosticsChecks = document.getElementById('diagnostics-checks');
 const diagnosticsIncidents = document.getElementById('diagnostics-incidents');
 const diagnosticsIncidentCount = document.getElementById('diagnostics-incident-count');
 const diagnosticsObservedAt = document.getElementById('diagnostics-observed-at');
 let diagnosticsRequestInProgress = false;
+let diagnosticsLatestObservationId = null;
+
+// Read-only Proxmox inventory elements
+const vmConnectionStatus = document.getElementById('vm-connection-status');
+const vmInventoryStatus = document.getElementById('vm-inventory-status');
+const vmInventoryCount = document.getElementById('vm-inventory-count');
+const vmInventoryUpdated = document.getElementById('vm-inventory-updated');
+const vmInventoryRows = document.getElementById('vm-inventory-rows');
+const vmInventoryRefreshButton = document.getElementById('vm-inventory-refresh');
+let vmInventoryRequestInProgress = false;
 
 // Model panel elements
 const modelList = document.getElementById('model-list');
@@ -310,6 +321,7 @@ navItems.forEach(item => {
         });
         if (item.dataset.panel === 'backend-logs-panel') refreshBackendLogs();
         if (item.dataset.panel === 'diagnostics-panel') refreshDiagnostics();
+        if (item.dataset.panel === 'vms-panel') refreshVmInventory();
         if (item.dataset.panel === 'interface-panel') loadAdminInterface();
         if (item.dataset.panel === 'chat-panel' && currentRole !== 'viewer' && !chatHistoryLoaded) {
             chatHistoryLoaded = true;
@@ -1263,6 +1275,8 @@ function formatTimestamp(timestamp) {
 
 function renderDiagnosticsObservation(observation) {
     if (!observation) {
+        diagnosticsLatestObservationId = null;
+        diagnosticsReportButton.disabled = true;
         diagnosticsChecks.replaceChildren();
         const empty = document.createElement('div');
         empty.className = 'diagnostics-empty';
@@ -1275,6 +1289,8 @@ function renderDiagnosticsObservation(observation) {
         return;
     }
 
+    diagnosticsLatestObservationId = observation.id;
+    diagnosticsReportButton.disabled = !diagnosticsLatestObservationId;
     diagnosticsObservedAt.textContent = `Observed ${formatTimestamp(observation.observed_at)}`;
     const resources = observation.resources || {};
     document.getElementById('diagnostics-cpu').textContent =
@@ -1312,6 +1328,22 @@ function renderDiagnosticsObservation(observation) {
         empty.textContent = 'No checks were configured.';
         diagnosticsChecks.appendChild(empty);
     }
+    (Array.isArray(observation.thresholds) ? observation.thresholds : []).forEach(threshold => {
+        const item = document.createElement('article');
+        item.className = 'diagnostics-check';
+        const heading = document.createElement('div');
+        heading.className = 'diagnostics-check-heading';
+        const name = document.createElement('strong');
+        name.textContent = threshold.name;
+        const state = document.createElement('span');
+        state.className = `diagnostics-state diagnostics-state-${threshold.status}`;
+        state.textContent = threshold.status;
+        heading.append(name, state);
+        const detail = document.createElement('p');
+        detail.textContent = threshold.detail;
+        item.append(heading, detail);
+        diagnosticsChecks.appendChild(item);
+    });
 }
 
 function renderDiagnosticsIncidents(incidents, openCount = null) {
@@ -1347,6 +1379,94 @@ function renderDiagnosticsIncidents(incidents, openCount = null) {
         diagnosticsIncidents.appendChild(item);
     });
 }
+
+function renderVmInventory(guests) {
+    vmInventoryRows.replaceChildren();
+    if (!guests.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.className = 'infra-table-empty';
+        cell.textContent = 'Connected, but no guests are visible to the configured inventory token.';
+        row.appendChild(cell);
+        vmInventoryRows.appendChild(row);
+        return;
+    }
+
+    for (const guest of guests) {
+        const row = document.createElement('tr');
+        const values = [guest.name, guest.vmid, guest.type, guest.node, guest.status];
+        for (const [index, value] of values.entries()) {
+            const cell = document.createElement('td');
+            const text = String(value);
+            cell.textContent = index === 4
+                ? `${text.charAt(0).toUpperCase()}${text.slice(1)}`
+                : text;
+            row.appendChild(cell);
+        }
+        vmInventoryRows.appendChild(row);
+    }
+}
+
+async function refreshVmInventory() {
+    if (vmInventoryRequestInProgress) return;
+    vmInventoryRequestInProgress = true;
+    vmInventoryRefreshButton.disabled = true;
+    vmConnectionStatus.textContent = 'Loading inventory…';
+    vmInventoryStatus.textContent = 'Loading';
+    try {
+        const response = await apiFetch(`${API_BASE}/api/proxmox/vms`);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || `Inventory request failed (${response.status}).`);
+        }
+        if (!data.configured) {
+            vmConnectionStatus.textContent = 'Not configured';
+            vmInventoryStatus.textContent = 'Not configured';
+            vmInventoryCount.textContent = 'Not connected';
+            vmInventoryUpdated.textContent = 'Not yet queried';
+            vmInventoryRows.replaceChildren();
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.className = 'infra-table-empty';
+            cell.textContent = 'Configure a read-only Proxmox API token on the backend to enable inventory.';
+            row.appendChild(cell);
+            vmInventoryRows.appendChild(row);
+            return;
+        }
+        if (!Array.isArray(data.guests) || !Number.isInteger(data.count)) {
+            throw new Error('The backend returned an invalid inventory response.');
+        }
+        renderVmInventory(data.guests);
+        vmConnectionStatus.textContent = 'Connected · read-only';
+        vmInventoryStatus.textContent = 'Live inventory';
+        vmInventoryCount.textContent = String(data.count);
+        vmInventoryUpdated.textContent = data.observed_at
+            ? new Date(data.observed_at).toLocaleString()
+            : 'Unknown';
+    } catch (error) {
+        vmConnectionStatus.textContent = 'Unavailable';
+        vmInventoryStatus.textContent = 'Request failed';
+        vmInventoryCount.textContent = 'Unavailable';
+        vmInventoryUpdated.textContent = 'Refresh to retry';
+        vmInventoryRows.replaceChildren();
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.className = 'infra-table-empty';
+        cell.textContent = error instanceof Error
+            ? `Unable to load Proxmox inventory: ${error.message}`
+            : 'Unable to load Proxmox inventory.';
+        row.appendChild(cell);
+        vmInventoryRows.appendChild(row);
+    } finally {
+        vmInventoryRequestInProgress = false;
+        vmInventoryRefreshButton.disabled = false;
+    }
+}
+
+vmInventoryRefreshButton.addEventListener('click', refreshVmInventory);
 
 async function refreshDiagnostics() {
     if (diagnosticsRequestInProgress) return;
@@ -1424,6 +1544,39 @@ async function runDiagnosticsObservation() {
     }
 }
 
+async function downloadDiagnosticsReport() {
+    if (!diagnosticsLatestObservationId || diagnosticsRequestInProgress) return;
+    diagnosticsRequestInProgress = true;
+    diagnosticsReportButton.disabled = true;
+    diagnosticsNotice.textContent = 'Preparing the saved observe-only evidence report…';
+    try {
+        const response = await apiFetch(
+            `${API_BASE}/api/diagnostics/report?observation_id=${encodeURIComponent(diagnosticsLatestObservationId)}`,
+        );
+        const report = await response.json();
+        if (!response.ok) {
+            throw new Error(report.detail || `Evidence report failed (${response.status}).`);
+        }
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `diagnostics-${diagnosticsLatestObservationId}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        diagnosticsNotice.textContent = 'Evidence report downloaded. It contains recorded observations only; no diagnosis or actions were performed.';
+    } catch (error) {
+        diagnosticsNotice.textContent = error instanceof Error
+            ? `Unable to download diagnostics report: ${error.message}`
+            : 'Unable to download diagnostics report.';
+    } finally {
+        diagnosticsRequestInProgress = false;
+        diagnosticsReportButton.disabled = !diagnosticsLatestObservationId;
+    }
+}
+
 async function refreshDiagnosticsAfterObservation() {
     const [statusResponse, incidentsResponse] = await Promise.all([
         apiFetch(`${API_BASE}/api/diagnostics/status`),
@@ -1444,6 +1597,7 @@ async function refreshDiagnosticsAfterObservation() {
 }
 
 diagnosticsRefreshButton.addEventListener('click', refreshDiagnostics);
+diagnosticsReportButton.addEventListener('click', downloadDiagnosticsReport);
 diagnosticsRunButton.addEventListener('click', runDiagnosticsObservation);
 
 function renderBotCommands() {

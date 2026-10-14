@@ -40,6 +40,7 @@ from proxmox_auth import (
     ProxmoxServiceError,
     ProxmoxTicketClient,
 )
+from proxmox_vm_inventory import ProxmoxInventoryError, ProxmoxVMInventoryClient
 from logging_config import MAX_LOG_LINES, read_recent_log_lines, setup_logging
 from diagnostics import (
     DiagnosticsMonitor,
@@ -81,7 +82,28 @@ conversation_store: ConversationStore | None = None
 conversation_store_lock = Lock()
 admin_interface_lock = asyncio.Lock()
 proxmox_authenticator = (
-    ProxmoxTicketClient(settings.proxmox_api_url) if settings.proxmox_api_url else None
+    ProxmoxTicketClient(
+        settings.proxmox_api_url,
+        ca_bundle=str(settings.proxmox_api_ca_bundle)
+        if settings.proxmox_api_ca_bundle
+        else None,
+        allow_missing_ca_key_usage=settings.proxmox_api_allow_missing_ca_key_usage,
+    )
+    if settings.proxmox_api_url
+    else None
+)
+proxmox_inventory_client = (
+    ProxmoxVMInventoryClient(
+        settings.proxmox_api_url,
+        settings.proxmox_inventory_token_id,
+        settings.proxmox_inventory_token_secret,
+        str(settings.proxmox_api_ca_bundle)
+        if settings.proxmox_api_ca_bundle
+        else None,
+        allow_missing_ca_key_usage=settings.proxmox_api_allow_missing_ca_key_usage,
+    )
+    if settings.proxmox_inventory_token_id
+    else None
 )
 logger.info("Backend starting (log level %s, logs in %s).", settings.log_level, settings.log_directory)
 
@@ -110,6 +132,7 @@ QUIET_PATHS = {
     "/api/diagnostics/status",
     "/api/diagnostics/observations",
     "/api/diagnostics/incidents",
+    "/api/proxmox/vms",
 }
 
 # Allow dashboard access from configured origins only
@@ -254,9 +277,11 @@ ROUTE_ROLES = {
     ("GET", "/api/diagnostics/status"): "viewer",
     ("GET", "/api/diagnostics/observations"): "viewer",
     ("GET", "/api/diagnostics/incidents"): "viewer",
+    ("GET", "/api/diagnostics/report"): "viewer",
     ("GET", "/api/bot/status"): "viewer",
     ("GET", "/api/bot/logs"): "admin",
     ("GET", "/api/models"): "viewer",
+    ("GET", "/api/proxmox/vms"): "viewer",
     ("GET", "/api/vision"): "viewer",
     ("POST", "/api/chat"): "operator",
     ("POST", "/api/research"): "operator",
@@ -1149,6 +1174,36 @@ async def system_endpoint():
     )
     return stats
 
+
+@app.get("/api/proxmox/vms")
+async def proxmox_vm_inventory():
+    if proxmox_inventory_client is None:
+        return {
+            "configured": False,
+            "status": "not_configured",
+            "guests": [],
+            "count": 0,
+            "observed_at": None,
+        }
+
+    try:
+        guests = await asyncio.to_thread(proxmox_inventory_client.list_guests)
+    except ProxmoxInventoryError as error:
+        logger.warning("Proxmox VM inventory request failed: %s", error)
+        raise HTTPException(
+            status_code=503,
+            detail="Proxmox VM inventory is unavailable.",
+        ) from error
+
+    return {
+        "configured": True,
+        "status": "connected",
+        "guests": guests,
+        "count": len(guests),
+        "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
 # ===============================
 # /api/backend/logs
 # ===============================
@@ -1208,6 +1263,14 @@ async def diagnostics_incidents(
         "incidents": [asdict(incident) for incident in incidents],
         "count": len(incidents),
     }
+
+
+@app.get("/api/diagnostics/report")
+async def diagnostics_report(observation_id: str = Query(min_length=1, max_length=80)):
+    report = diagnostics_monitor.build_report(observation_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Diagnostic observation was not found.")
+    return report
 
 
 @app.post("/api/diagnostics/observe")

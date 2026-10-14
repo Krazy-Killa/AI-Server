@@ -7,11 +7,12 @@ or persist AI Server application sessions.
 from __future__ import annotations
 
 import json
+import ssl
 from dataclasses import dataclass, field
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPSHandler, HTTPRedirectHandler, Request, build_opener
 
 
 class ProxmoxAuthenticationError(Exception):
@@ -49,10 +50,31 @@ class _RejectRedirects(HTTPRedirectHandler):
         return None
 
 
+def create_proxmox_ssl_context(
+    ca_bundle: str | None = None,
+    *,
+    allow_missing_ca_key_usage: bool = False,
+) -> ssl.SSLContext:
+    """Create a verifying context with optional lab compatibility for PVE CA profiles."""
+    try:
+        context = ssl.create_default_context(cafile=ca_bundle)
+    except (OSError, ssl.SSLError) as error:
+        raise ValueError("Proxmox API CA bundle could not be loaded.") from error
+    if allow_missing_ca_key_usage:
+        context.verify_flags &= ~ssl.VERIFY_X509_STRICT
+    return context
+
+
 class ProxmoxTicketClient:
     """Validate a Proxmox user through its HTTPS ticket endpoint."""
 
-    def __init__(self, api_base_url: str, timeout_seconds: float = 5.0) -> None:
+    def __init__(
+        self,
+        api_base_url: str,
+        timeout_seconds: float = 5.0,
+        ca_bundle: str | None = None,
+        allow_missing_ca_key_usage: bool = False,
+    ) -> None:
         parsed = urlsplit(api_base_url.strip())
         if (
             parsed.scheme.lower() != "https"
@@ -69,6 +91,10 @@ class ProxmoxTicketClient:
 
         self._api_base_url = f"https://{parsed.netloc}"
         self._timeout_seconds = timeout_seconds
+        self._ssl_context = create_proxmox_ssl_context(
+            ca_bundle,
+            allow_missing_ca_key_usage=allow_missing_ca_key_usage,
+        )
 
     def authenticate(self, username: str, password: str) -> ProxmoxTicket:
         """Validate credentials and return a server-side-only Proxmox ticket."""
@@ -87,7 +113,10 @@ class ProxmoxTicketClient:
             },
             method="POST",
         )
-        opener = build_opener(_RejectRedirects())
+        opener = build_opener(
+            _RejectRedirects(),
+            HTTPSHandler(context=self._ssl_context),
+        )
         try:
             with opener.open(request, timeout=self._timeout_seconds) as response:
                 raw_body = response.read(1_048_577)

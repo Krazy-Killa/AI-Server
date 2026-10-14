@@ -34,6 +34,7 @@ PROBE_TIMEOUT_SECONDS = 2.0
 
 HealthStatus = Literal["healthy", "degraded", "unknown"]
 IncidentStatus = Literal["open", "resolved"]
+ThresholdStatus = Literal["normal", "pending", "triggered", "recovering"]
 
 
 class DiagnosticsStoreError(RuntimeError):
@@ -57,6 +58,37 @@ class ResourceSnapshot:
     log_disk_free_percent: float
     log_disk_free_bytes: int
     backend_rss_bytes: int
+
+
+@dataclass(frozen=True)
+class ThresholdPolicy:
+    name: str
+    resource: str
+    unit: str
+    comparison: Literal["gte", "lte"]
+    trigger_value: float
+    clear_value: float
+    trigger_duration_seconds: int
+    recovery_duration_seconds: int
+    max_observation_gap_seconds: int = 300
+
+
+@dataclass(frozen=True)
+class ThresholdEvidence:
+    name: str
+    status: ThresholdStatus
+    value: float
+    unit: str
+    trigger_value: float
+    clear_value: float
+    trigger_duration_seconds: int
+    recovery_duration_seconds: int
+    elapsed_seconds: float
+    detail: str
+    pending_since: str | None
+    active_since: str | None
+    recovery_since: str | None
+    last_observed_at: str
 
 
 @dataclass(frozen=True)
@@ -88,6 +120,7 @@ class DiagnosticObservation:
     status: HealthStatus
     checks: tuple[HealthCheckResult, ...]
     resources: ResourceSnapshot
+    thresholds: tuple[ThresholdEvidence, ...] = ()
 
 
 def _timestamp() -> str:
@@ -130,6 +163,31 @@ def _check_llama_server() -> tuple[bool, str]:
     if status == 200:
         return True, "llama.cpp health endpoint returned HTTP 200."
     return False, "llama.cpp health endpoint did not report ready."
+
+
+def _check_backend_process() -> tuple[bool, str]:
+    try:
+        process = psutil.Process()
+        if process.is_running() and process.status() != psutil.STATUS_ZOMBIE:
+            return True, "Backend process is running."
+        return False, "Backend process is not running normally."
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        return False, "Backend process state could not be verified."
+
+
+def _check_memory_database(path: Path) -> tuple[bool, str]:
+    database_uri = f"{path.expanduser().resolve().as_uri()}?mode=ro"
+    try:
+        connection = sqlite3.connect(database_uri, uri=True, timeout=2)
+        try:
+            result = connection.execute("PRAGMA quick_check(1)").fetchone()
+        finally:
+            connection.close()
+    except (OSError, sqlite3.Error):
+        return False, "SQLite memory database integrity check could not complete."
+    if result and result[0] == "ok":
+        return True, "SQLite memory database quick_check passed."
+    return False, "SQLite memory database integrity check reported a problem."
 
 
 def _check_searxng() -> tuple[bool, str]:
@@ -252,6 +310,10 @@ class DiagnosticsStore:
             status=data["status"],
             checks=tuple(HealthCheckResult(**check) for check in data["checks"]),
             resources=ResourceSnapshot(**data["resources"]),
+            thresholds=tuple(
+                ThresholdEvidence(**threshold)
+                for threshold in data.get("thresholds", [])
+            ),
         )
 
     def save_state(
@@ -335,18 +397,59 @@ class DiagnosticsStore:
 class DiagnosticsMonitor:
     """Collect observations and keep bounded, persistent incident history."""
 
+    DEFAULT_THRESHOLDS = (
+        ThresholdPolicy(
+            name="resource.cpu.high",
+            resource="cpu_percent",
+            unit="%",
+            comparison="gte",
+            trigger_value=90,
+            clear_value=80,
+            trigger_duration_seconds=120,
+            recovery_duration_seconds=60,
+        ),
+        ThresholdPolicy(
+            name="resource.ram.high",
+            resource="ram_percent",
+            unit="%",
+            comparison="gte",
+            trigger_value=90,
+            clear_value=85,
+            trigger_duration_seconds=120,
+            recovery_duration_seconds=60,
+        ),
+        ThresholdPolicy(
+            name="resource.log_disk_low",
+            resource="log_disk_free_percent",
+            unit="%",
+            comparison="lte",
+            trigger_value=10,
+            clear_value=15,
+            trigger_duration_seconds=60,
+            recovery_duration_seconds=60,
+        ),
+    )
+
     def __init__(
         self,
         checks: tuple[tuple[str, Callable[[], tuple[bool, str]]], ...] | None = None,
         resource_sampler: Callable[[], ResourceSnapshot] = _sample_resources,
         store: DiagnosticsStore | None = None,
+        thresholds: tuple[ThresholdPolicy, ...] | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._checks = checks if checks is not None else (
-            ("backend.process", lambda: (True, "Backend process is serving this observation.")),
+            ("backend.process", _check_backend_process),
             ("llama_server.health", _check_llama_server),
+            (
+                "memory.sqlite.integrity",
+                lambda: _check_memory_database(settings.memory_database_path),
+            ),
             ("searxng.search", _check_searxng),
             ("discord_bot.heartbeat", _check_discord_bot),
         )
+        self._thresholds = thresholds if thresholds is not None else self.DEFAULT_THRESHOLDS
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._resource_sampler = resource_sampler
         self._store = store
         self._collection_lock = Lock()
@@ -376,7 +479,7 @@ class DiagnosticsMonitor:
 
     def _collect_observation(self) -> DiagnosticObservation:
         observation_id = f"obs_{uuid4().hex}"
-        started_at = _timestamp()
+        started_at = self._clock().astimezone(timezone.utc).isoformat()
         with self._lock:
             self._record_audit(
                 "observation.started",
@@ -408,18 +511,39 @@ class DiagnosticsMonitor:
                 )
                 self._persist_state(None)
             raise
+        thresholds = self._evaluate_thresholds(resources, started_at)
+        threshold_checks = [
+            HealthCheckResult(
+                name=threshold.name,
+                status=(
+                    "degraded"
+                    if threshold.status in ("triggered", "recovering")
+                    else "healthy"
+                ),
+                detail=threshold.detail,
+                duration_ms=0,
+            )
+            for threshold in thresholds
+        ]
         observation = DiagnosticObservation(
             id=observation_id,
             observed_at=started_at,
             status=(
                 "unknown"
                 if not results
-                else "healthy"
-                if all(result.status == "healthy" for result in results)
+                and not any(
+                    result.status == "degraded" for result in threshold_checks
+                )
                 else "degraded"
+                if any(
+                    result.status == "degraded"
+                    for result in (*results, *threshold_checks)
+                )
+                else "healthy"
             ),
             checks=tuple(results),
             resources=resources,
+            thresholds=thresholds,
         )
         with self._lock:
             previous_observations = list(self._observations)
@@ -427,7 +551,12 @@ class DiagnosticsMonitor:
             previous_audit_events = list(self._audit_events)
             previous_active_incidents = self._active_incidents.copy()
             self._observations.append(observation)
-            self._update_incidents(observation)
+            self._update_incidents(
+                observation,
+                results_by_name={
+                    result.name: result for result in (*results, *threshold_checks)
+                },
+            )
             self._record_audit(
                 "observation.completed",
                 observation_id,
@@ -469,9 +598,251 @@ class DiagnosticsMonitor:
         with self._lock:
             return list(self._audit_events)
 
-    def _update_incidents(self, observation: DiagnosticObservation) -> None:
+    def build_report(self, observation_id: str) -> dict[str, object] | None:
+        with self._lock:
+            observation = next(
+                (item for item in self._observations if item.id == observation_id),
+                None,
+            )
+            if observation is None:
+                return None
+            related_incidents = self._incidents_at_observation(observation)
+            check_counts = {
+                status: sum(check.status == status for check in observation.checks)
+                for status in ("healthy", "degraded", "unknown")
+            }
+            triggered = [
+                threshold.name
+                for threshold in observation.thresholds
+                if threshold.status in ("triggered", "recovering")
+            ]
+            summary = (
+                f"{check_counts['degraded']} failed health check(s); "
+                f"{len(triggered)} active resource threshold(s); "
+                f"{sum(incident.status == 'open' for incident in related_incidents)} "
+                "open incident(s)."
+            )
+            return {
+                "report_version": 1,
+                "mode": "observe_only",
+                "generated_at": self._clock().astimezone(timezone.utc).isoformat(),
+                "observation_id": observation.id,
+                "observed_at": observation.observed_at,
+                "status": observation.status,
+                "summary": summary,
+                "scope": (
+                    "This report contains only evidence captured by one explicit "
+                    "read-only observation. It does not diagnose root cause or run "
+                    "commands, repairs, or maintenance."
+                ),
+                "checks": [asdict(check) for check in observation.checks],
+                "resources": asdict(observation.resources),
+                "thresholds": [
+                    asdict(threshold) for threshold in observation.thresholds
+                ],
+                "incidents": [asdict(incident) for incident in related_incidents],
+            }
+
+    def _incidents_at_observation(
+        self, observation: DiagnosticObservation
+    ) -> list[DiagnosticIncident]:
+        """Reconstruct incident evidence as it existed at one observation."""
+        active_evidence: dict[str, HealthCheckResult | ThresholdEvidence] = {
+            check.name: check
+            for check in observation.checks
+            if check.status == "degraded"
+        }
+        active_evidence.update(
+            {
+                threshold.name: threshold
+                for threshold in observation.thresholds
+                if threshold.status in ("triggered", "recovering")
+            }
+        )
+        related: list[DiagnosticIncident] = []
+        for check_name, evidence in active_evidence.items():
+            candidates = [
+                incident
+                for incident in self._incidents
+                if (
+                    incident.check_name == check_name
+                    and incident.first_seen <= observation.observed_at
+                    <= incident.last_seen
+                )
+            ]
+            if not candidates:
+                continue
+            current = max(candidates, key=lambda incident: incident.first_seen)
+            occurrence_count = sum(
+                1
+                for prior in self._observations
+                if (
+                    current.first_seen <= prior.observed_at <= observation.observed_at
+                    and (
+                        any(
+                            prior_check.name == check_name
+                            and prior_check.status == "degraded"
+                            for prior_check in prior.checks
+                        )
+                        or any(
+                            prior_threshold.name == check_name
+                            and prior_threshold.status in ("triggered", "recovering")
+                            for prior_threshold in prior.thresholds
+                        )
+                    )
+                )
+            )
+            related.append(
+                DiagnosticIncident(
+                    id=current.id,
+                    check_name=check_name,
+                    severity=current.severity,
+                    status="open",
+                    detail=evidence.detail,
+                    first_seen=current.first_seen,
+                    last_seen=observation.observed_at,
+                    occurrence_count=occurrence_count,
+                    last_observation_id=observation.id,
+                )
+            )
+        return related
+
+    def _evaluate_thresholds(
+        self, resources: ResourceSnapshot, observed_at: str
+    ) -> tuple[ThresholdEvidence, ...]:
+        previous = {
+            threshold.name: threshold
+            for threshold in self._observations[-1].thresholds
+        } if self._observations else {}
+        now = datetime.fromisoformat(observed_at)
+        evidence: list[ThresholdEvidence] = []
+        for policy in self._thresholds:
+            value = float(getattr(resources, policy.resource))
+            prior = previous.get(policy.name)
+            gap_is_valid = False
+            if prior is not None:
+                previous_at = datetime.fromisoformat(prior.last_observed_at)
+                gap_seconds = (now - previous_at).total_seconds()
+                gap_is_valid = 0 <= gap_seconds <= policy.max_observation_gap_seconds
+
+            breached = (
+                value >= policy.trigger_value
+                if policy.comparison == "gte"
+                else value <= policy.trigger_value
+            )
+            cleared = (
+                value <= policy.clear_value
+                if policy.comparison == "gte"
+                else value >= policy.clear_value
+            )
+            pending_since: str | None = None
+            active_since: str | None = None
+            recovery_since: str | None = None
+            elapsed_seconds = 0.0
+
+            if breached:
+                if prior and prior.status in ("triggered", "recovering") and prior.active_since:
+                    status: ThresholdStatus = "triggered"
+                    active_since = prior.active_since
+                elif prior and prior.status == "pending" and prior.pending_since and gap_is_valid:
+                    pending_since = prior.pending_since
+                    elapsed_seconds = max(
+                        0.0, (now - datetime.fromisoformat(pending_since)).total_seconds()
+                    )
+                    if elapsed_seconds >= policy.trigger_duration_seconds:
+                        status = "triggered"
+                        active_since = pending_since
+                        pending_since = None
+                    else:
+                        status = "pending"
+                else:
+                    status = "pending"
+                    pending_since = observed_at
+                if status == "triggered":
+                    assert active_since is not None
+                    elapsed_seconds = max(
+                        0.0, (now - datetime.fromisoformat(active_since)).total_seconds()
+                    )
+            elif prior and prior.status in ("triggered", "recovering") and prior.active_since:
+                active_since = prior.active_since
+                if cleared:
+                    recovery_since = (
+                        prior.recovery_since
+                        if prior.status == "recovering"
+                        and prior.recovery_since
+                        and gap_is_valid
+                        else observed_at
+                    )
+                    elapsed_seconds = max(
+                        0.0,
+                        (now - datetime.fromisoformat(recovery_since)).total_seconds(),
+                    )
+                    if elapsed_seconds >= policy.recovery_duration_seconds:
+                        status = "normal"
+                        active_since = None
+                        recovery_since = None
+                    else:
+                        status = "recovering"
+                else:
+                    status = "triggered"
+            else:
+                status = "normal"
+
+            if status == "pending":
+                detail = (
+                    f"{value:g}{policy.unit} crossed the {policy.trigger_value:g}"
+                    f"{policy.unit} trigger; confirmation requires "
+                    f"{policy.trigger_duration_seconds} seconds of observations "
+                    f"with gaps no greater than {policy.max_observation_gap_seconds} seconds."
+                )
+            elif status == "triggered":
+                detail = (
+                    f"{value:g}{policy.unit} remains beyond the "
+                    f"{policy.trigger_value:g}{policy.unit} trigger; recovery "
+                    f"requires at least {policy.recovery_duration_seconds} seconds "
+                    f"at or beyond the {policy.clear_value:g}{policy.unit} clear threshold."
+                )
+            elif status == "recovering":
+                detail = (
+                    f"{value:g}{policy.unit} crossed the "
+                    f"{policy.clear_value:g}{policy.unit} clear threshold; "
+                    f"recovery confirmation is {elapsed_seconds:g}/"
+                    f"{policy.recovery_duration_seconds} seconds."
+                )
+            else:
+                detail = (
+                    f"{value:g}{policy.unit} is within the configured "
+                    "observe-only threshold policy."
+                )
+
+            evidence.append(
+                ThresholdEvidence(
+                    name=policy.name,
+                    status=status,
+                    value=value,
+                    unit=policy.unit,
+                    trigger_value=policy.trigger_value,
+                    clear_value=policy.clear_value,
+                    trigger_duration_seconds=policy.trigger_duration_seconds,
+                    recovery_duration_seconds=policy.recovery_duration_seconds,
+                    elapsed_seconds=elapsed_seconds,
+                    detail=detail,
+                    pending_since=pending_since,
+                    active_since=active_since,
+                    recovery_since=recovery_since,
+                    last_observed_at=observed_at,
+                )
+            )
+        return tuple(evidence)
+
+    def _update_incidents(
+        self,
+        observation: DiagnosticObservation,
+        results_by_name: dict[str, HealthCheckResult] | None = None,
+    ) -> None:
         checked_at = observation.observed_at
-        results_by_name = {result.name: result for result in observation.checks}
+        if results_by_name is None:
+            results_by_name = {result.name: result for result in observation.checks}
         for name, result in results_by_name.items():
             active = self._active_incidents.get(name)
             if result.status == "degraded":
@@ -535,7 +906,7 @@ class DiagnosticsMonitor:
         self._audit_events.append(
             AuditEvent(
                 id=f"audit_{uuid4().hex}",
-                timestamp=_timestamp(),
+                timestamp=self._clock().astimezone(timezone.utc).isoformat(),
                 event=event,
                 observation_id=observation_id,
                 detail=detail,

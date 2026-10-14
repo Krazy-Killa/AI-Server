@@ -2,12 +2,55 @@
 
 ## Purpose and status
 
-Windows is the active build and prototype environment for the server project:
-shared application and API behavior is implemented and exercised there before
-deployment. This runbook identifies the platform-specific changes, decisions,
-and target-host checks needed to carry that implementation to Linux/Proxmox.
-It is a transition and acceptance guide, not evidence that target deployment
-has already been tested.
+Windows remains the active build and prototype environment for shared
+application and API behavior. An additional deployment/integration lab is
+running Proxmox VE 9.1-1 as a nested Hyper-V guest on the Windows PC. The
+dashboard and backend are deployed in that guest for manual, loopback-only
+testing through an SSH tunnel. This runbook identifies the platform-specific
+changes, decisions, and target-host checks needed to carry the implementation
+to Linux/Proxmox. Nested-lab results do not constitute physical-host acceptance.
+
+The current guest deployment is a lab setup, not a persistent service
+installation: the processes are started manually, and systemd/Quadlet,
+NGINX/TLS, LAN exposure, and inference runtime are not configured. A dedicated
+non-root `ai-deploy` SSH account is available for deployment work; it has no
+sudo access. Keep the guest services bound to loopback unless a separately
+reviewed secure deployment is requested.
+
+## Read-only VM inventory lab integration
+
+The dashboard can query Proxmox VM and container inventory through
+`GET /api/proxmox/vms`. Configure this integration only on the backend:
+
+- Set `PROXMOX_API_URL` to the Proxmox HTTPS origin using a hostname covered
+  by the API certificate, for example `https://<pve-hostname>:8006`.
+- Create a dedicated Proxmox user and API token for inventory. Use a
+  privilege-separated token and grant only the audit/read privileges required
+  for cluster resource inventory (normally `Sys.Audit` and `VM.Audit`) at the
+  narrowest path that returns the intended guests. Do not grant VM modify,
+  power, allocation, console, or storage privileges for this feature.
+- Set `PROXMOX_INVENTORY_TOKEN_ID` to `user@realm!token-name` and
+  `PROXMOX_INVENTORY_TOKEN_SECRET` to the token secret. Store the secret only
+  in `/opt/ai-server/.env`, owned by `ai-server` and mode `0640`.
+- If the Proxmox certificate is not trusted by the system, set
+  `PROXMOX_API_CA_BUNDLE` to a readable PEM CA certificate. Keep hostname and
+  certificate verification enabled; do not use an insecure TLS bypass.
+- The nested guest's Proxmox CA lacks the X.509 `keyUsage` extension and
+  Python OpenSSL strict verification rejects it. For this isolated lab only,
+  `PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE=true` may be set alongside the
+  explicit CA bundle. It disables OpenSSL's strict X.509 extension-policy
+  checks for Proxmox connections while retaining trust-chain, validity, and
+  hostname verification. Do not carry this compatibility setting into
+  physical/production deployment; use a properly issued CA/certificate there.
+
+Restart the backend after configuring settings, then open Virtual Machines and
+refresh. A successful response verifies this token can read the intended
+inventory; an HTTP 403 indicates that the token's ACL scope or audit privileges
+need review. The route makes only a read-only cluster resource request and
+returns only guest name, ID, node, type, and status. It does not expose token
+credentials, cached/sample inventory, or VM controls. The nested-lab connection
+and rendering of a live guest record have been verified. Physical-host
+acceptance remains separate.
 
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the

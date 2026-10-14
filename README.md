@@ -1,11 +1,12 @@
 # AI Command Interface
 
 A local AI and homelab dashboard with a browser-based interface, FastAPI
-backend, and optional Discord bot. Windows is the active build and prototype
-environment for the server project. Shared application behavior is developed
-and exercised here before deployment to the planned Linux/Proxmox host; only
-OS-, hardware-, and deployment-specific parts are expected to need target
-adjustments, with portability checked as the application is built.
+backend, and optional Discord bot. Windows remains the active build and
+prototype environment for shared application behavior. A second deployment and
+integration environment is now running on Proxmox VE 9.1-1 inside a nested
+Hyper-V virtual machine on the Windows PC. Use that guest to prepare and test
+Linux/Proxmox deployments; it does not replace the Windows development setup
+or validate the eventual physical server.
 
 ## Project status
 
@@ -41,10 +42,13 @@ adjustments, with portability checked as the application is built.
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
-- VM and network-service panels have planning-only UI groundwork (empty VM
-  inventory/recovery-console state and DHCPv4/DHCPv6/DNS/web/routing/firewall
-  views); they are not connected to live services. Game-server management
-  remains a planning view. The Discord page reports live bot heartbeats and
+- The VM panel supports read-only Proxmox VM/container inventory through a
+  backend-configured API token; no VM management or console actions are
+  exposed. The live connection and populated guest-list display are verified
+  in the nested lab; physical-host acceptance remains outstanding.
+  Network-service panels (DHCPv4/DHCPv6/DNS/web/routing/firewall) are planning
+  views, as is game-server management. The
+  Discord page reports live bot heartbeats and
   operational logs and supports restart,
   command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
@@ -59,10 +63,12 @@ adjustments, with portability checked as the application is built.
   may contain operational details and are available only to authenticated
   administrators.
 - AI diagnostics currently provide manually triggered, observe-only health
-  checks with bounded SQLite-persisted observations, incidents, and audit
-  events. The sidebar shows DIAG while an observation is running. The MAINT
-  indicator awaits an implemented maintenance lifecycle; scheduling, semantic
-  retrieval, and remediation are not implemented.
+  checks with bounded SQLite-persisted observations, incidents, audit events,
+  duration-confirmed resource thresholds with recovery hysteresis, and
+  downloadable evidence reports. Reports read recorded observations only;
+  probes are never run automatically. The sidebar shows DIAG while an
+  observation is running. Scheduling, semantic retrieval, and remediation are
+  not implemented.
 
 ## Windows quick start
 
@@ -133,11 +139,23 @@ packages. `--install-searxng` is also limited to that host.
 It installs SearXNG for dashboard web research as an unprivileged `searxng`
 user with a systemd service on `127.0.0.1:8888`, then verifies a JSON search.
 It does not depend on the GPU, so the ROCm gate does not block it. Review the
-plans before confirming them, and use the script only on the eventual server.
+plans before confirming them; run it only in the isolated nested Proxmox lab
+or on the eventual server.
 It does not install ROCm/HIP or configure the inference services. Linux GPU
 runtimes and telemetry still need
 to be selected and validated; Windows DirectML is for development tests, not
 the Linux deployment backend.
+
+Proxmox VE 9.1-1 is running as a nested Hyper-V guest on the Windows PC. The
+dashboard and backend have been copied to the guest and started manually as
+the unprivileged `ai-server` account, bound to loopback and accessed through an
+SSH tunnel; local dashboard login has been verified. This is a lab deployment,
+not a persistent or production installation: systemd/Quadlet, NGINX/TLS, LAN
+exposure, and the inference runtime are not configured. The separate
+`ai-deploy` SSH account is non-root and has no sudo access. Treat all results
+as nested-lab evidence only: they cannot validate the physical server's
+GPU/ROCm, hardware performance, network/storage topology, or recovery
+behavior. Physical-host acceptance remains required.
 
 ## Project layout
 
@@ -173,12 +191,10 @@ for the documentation reference checklist.
   Server-Sent Event answer streaming; unit and API tests cover fetch controls
 
 ### Phase 3 — Mocked Integrations and Portable Features
-- Define typed contracts and mock providers for VM, network, and game-server
-  workflows; no live infrastructure controls
-- Build workspace-restricted agents and approval workflows
-- Implement model-agnostic image-brief/job groundwork; add reviewed diagnostic
-  retrieval, deterministic mocked repair validation, and maintenance
-  lifecycle simulations
+- Pre-host work only: portable contracts, UI/provider states, reviewed
+  diagnostic retrieval, deterministic repair/maintenance simulations, and
+  approval boundaries. Mocks do not validate Proxmox behavior or enable live
+  infrastructure controls.
 - See [AI Diagnostics Documentation](./docs/ai-diagnostics-self-healing.md)
 
 ### Phase 4 — Proxmox Readiness and Compatibility Gate
@@ -191,6 +207,9 @@ for the documentation reference checklist.
 ### Phase 5 — Target-Host Deployment and Core Integration (Server required)
 - Validate Linux dependencies, services, GPU telemetry, inference, storage,
   permissions, restart/reboot recovery, and the production proxy
+- Validate observe-only resource thresholds and sampling-gap behavior under
+  representative Proxmox workloads; Windows and generic CI results are not
+  target-host acceptance evidence
 - Validate real Proxmox identity mapping, HTTPS cookies, firewall, and separate
   LAN-client access; keep the backend private until these checks pass
 - Follow the [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)

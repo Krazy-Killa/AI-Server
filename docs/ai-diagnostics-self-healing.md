@@ -714,9 +714,11 @@ not silently change permissions.
 
 ### 7.3 Manual Remediation Guidance
 
-Reports include step-by-step instructions from the runbook's
-`manual_guidance`, with the expected output of each step and a "Re-run checks"
-button that triggers diagnostics and marks the incident resolved when healthy.
+In a future, explicitly approved remediation phase, incident reports may
+include step-by-step instructions from a runbook's `manual_guidance`, with the
+expected output of each step. A "Re-run checks" action would only collect new
+evidence; it must not automatically mark an incident resolved or execute
+remediation.
 
 ### 7.4 Learning from Repair Feedback and Outcomes
 
@@ -771,27 +773,50 @@ actions before.
 
 ### Phase 1: Basic Monitoring and Reporting (observe mode)
 - Can be built and tested now on the Windows test setup; no GPU or server needed.
-- **Implemented prototype**: explicit, on-demand read-only health checks for
-  the backend, llama.cpp, SearXNG, and Discord; CPU/RAM, log-volume free space,
-  and backend RSS snapshots; bounded SQLite-persisted observation, incident,
-  and audit histories; warning incidents open/update on failed checks and
-  resolve after a healthy check.
-- **Implemented interface**: bounded read-only API routes for status,
-  observation history, and filtered incident history, plus an explicit
-  `POST /api/diagnostics/observe` trigger. The dashboard displays the latest
-  observation and incidents and supports manual refresh/run. GET requests do
-  not run probes. Focused tests cover the observe-only core and API behavior.
-- **Remaining Phase 1 work**: broader health checks; threshold durations and
-  hysteresis; automated log analysis, failure reports, and
-  severity levels; incident correlation; curated local knowledge ingestion
-  and read-only RAG; Discord notifications; and recurring scheduling after
-  cadence, retention, and failure behavior are designed and tested.
+- **Implemented prototype**: explicitly triggered, read-only health checks for
+  backend process state, llama.cpp, the local SQLite memory database, SearXNG,
+  and Discord; CPU/RAM, log-volume free space, and backend RSS snapshots;
+  bounded SQLite-persisted observations, incidents, and audit events. The
+  SQLite integrity probe opens the database read-only. Failed service checks
+  open/update incidents immediately; resource thresholds require duration
+  confirmation and bounded gaps, then use a separate recovery hysteresis.
+- **Implemented resource policies**: CPU at or above 90% for 120 seconds,
+  recovering at or below 80% for 60 seconds; RAM at or above 90% for 120
+  seconds, recovering at or below 85% for 60 seconds; log-volume free space at
+  or below 10% for 60 seconds, recovering at or above 15% for 60 seconds.
+  Consecutive explicit observations must be no more than 300 seconds apart;
+  an excessive gap restarts duration confirmation. These are evidence-based
+  samples, not continuous monitoring or guarantees that a condition persisted
+  between samples.
+- **Implemented interface**: viewer-readable read-only status, observation,
+  incident, and saved-report endpoints; an operator-only explicit observation
+  trigger; and dashboard controls to view current evidence and download the
+  latest saved observation as JSON. Reports reconstruct incident state and
+  evidence at the selected observation rather than serializing later incident
+  updates. Report generation reads in-memory recorded history only; it does not
+  run health probes, write state, diagnose root cause, execute commands, or
+  remediate. Fault-injection tests cover threshold timing, oscillation,
+  observation gaps, restart persistence, probe failures, read-only database
+  checks, historical report fidelity, report generation, and API authorization.
+- **Remaining Phase 1 work**: validate threshold defaults on the target
+  Proxmox host under representative server workloads, including inference and
+  integrated-service activity; measure false-alert rates and sampling-gap
+  behavior before treating the defaults as production values. Windows
+  prototype results alone do not establish Proxmox suitability. Also remaining:
+  automated log analysis, root-cause analysis, severity levels beyond warning,
+  incident correlation, curated local knowledge ingestion and read-only RAG,
+  Discord notifications, and any recurring collection (which must be
+  separately designed and explicitly approved). None are enabled by this
+  prototype.
 - The prototype does not perform scheduled or automatic observations, access
   a RAG database, analyze logs, send notifications, execute commands, or
-  remediate failures. Its histories are lost when the backend process restarts.
-- **Exit criteria**: not yet met. Verify all checks run reliably, achieve
-  fewer than one false alert per day, and validate report accuracy after the
-  remaining Phase 1 capabilities are implemented.
+  remediate failures. Histories and threshold evidence persist across backend
+  restarts within the configured bounded SQLite retention.
+- **Exit criteria**: not yet met. After the target Proxmox host and integrated
+  services are available, validate probes and threshold defaults under
+  representative server workloads, measure false-alert rates over an adequate
+  observation period, assess sampling gaps, and review report accuracy before
+  expanding the system. Windows test results are prototype evidence only.
 
 ### Phase 2: Auto-Remediation for Safe Operations
 - Action registry, Tier 0/1 actions, verification, rollback, rate limiting.

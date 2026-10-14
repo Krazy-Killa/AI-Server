@@ -1,8 +1,11 @@
 # Local Testing Environment
 
-The Windows development environment is separate from the planned Linux/Proxmox
-server. The RX 6800 XT is available in the Windows development machine for
-testing GPU workloads before it is moved to the server.
+This project uses two pre-physical-server environments. Windows remains the
+shared-application and GPU prototype environment; the RX 6800 XT is available
+there for Windows-side tests before it is moved to the server. An additional
+deployment/integration lab runs Proxmox VE 9.1-1 as a nested Hyper-V guest on
+the same PC. The nested guest is for Linux/Proxmox deployment preparation and
+integration testing, not physical-server acceptance.
 
 ## Windows baseline
 
@@ -16,6 +19,22 @@ testing GPU workloads before it is moved to the server.
 The project Python environment is created outside the OneDrive workspace at
 `%LOCALAPPDATA%\AI-Server\venv` to avoid synchronizing virtual-environment
 files.
+
+## Nested Proxmox deployment lab
+
+The guest runs the dashboard and FastAPI backend from `/opt/ai-server`, with
+runtime state under `/var/lib/ai-server`. Both processes are currently started
+manually as the unprivileged `ai-server` account and listen only on
+`127.0.0.1`; Windows access is through an SSH tunnel. Dashboard login has been
+verified. The optional Discord bot and chat/inference report degraded because
+they have not been configured with their required services/runtime.
+
+This temporary lab setup does not include systemd/Quadlet supervision,
+NGINX/TLS, LAN exposure, or a configured inference runtime. Do not reuse its
+HTTP-only cookie setting outside the loopback SSH-tunnel test. Nested-lab
+results do not validate physical hardware, GPU/ROCm, network/storage topology,
+performance, or recovery behavior. The non-root `ai-deploy` SSH account is
+intended for deployment work and has no sudo access.
 
 ## Setup
 

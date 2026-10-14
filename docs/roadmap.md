@@ -33,30 +33,25 @@ remain outstanding. The production Linux/Proxmox stack is unvalidated.
 
 ## Sequencing and portability rule
 
-Work is ordered by what can be implemented and verified in the Windows
-prototype, then by what requires the actual Proxmox host. Windows is the build
-environment for the shared server application, not a disposable mock.
-Implement shared application behavior there and carry it forward; use explicit
-provider boundaries, configuration, and platform-specific adapters to isolate
-Linux/GPU/service differences. A mocked Proxmox response proves the client
-contract, not real authentication, service behavior, GPU compatibility,
-networking, or recovery.
-Prefer environment-driven paths and settings, keep platform-specific imports
-behind narrow providers, and preserve shared API behavior with cross-platform
-tests. Windows tests and generic Linux/WSL CI can catch portability defects,
-but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
+All remaining work is directed toward the planned Proxmox server. Proxmox VE
+9.1-1 is running as a nested Hyper-V guest on the Windows PC and is available
+as an additional Linux/Proxmox deployment and integration environment. The
+dashboard and backend have been deployed there for loopback-only testing over
+an SSH tunnel; this is a manually started lab deployment, not a persistent or
+production service setup. Use the guest to prepare and test suitable
+OS/API/deployment work before the physical server is available. It does not
+validate the physical host's hardware, GPU/ROCm, storage/network topology,
+sustained performance, or recovery behavior. Windows remains the active
+shared-application build environment, not the deployment target.
 
-- **Windows prototype:** implement and test shared APIs, schemas,
-  authorization, UI states, SQLite behavior, and policies against the working
-  local services. Treat this as real project development, while identifying
-  the operating-system and deployment assumptions.
-- **Cross-platform/mocked:** test common behavior on generic Linux/WSL/CI and
-  use fake providers or simulated clocks/services for unavailable dependencies.
-  Label these checks as simulations; they increase portability confidence but
-  do not certify Proxmox operation.
+- **Pre-physical-server work:** use portable contracts, deterministic tests,
+  and the nested Proxmox lab for Proxmox API, permissions,
+  VM workflows, and Linux service/deployment integration. Identify all lab
+  results as nested-lab evidence, not physical-server acceptance.
 - **Server-gated:** requires the actual Proxmox release, kernel, GPU, network,
-  service manager, or production proxy. Do not mark it done based on Windows
-  success or mocks.
+  service manager, installed services, or production proxy. Schedule it in
+  Phase 5 or later; do not mark it done based on Windows, mocks, or nested-lab
+  success where the physical server is required.
 - **Post-integration:** enable live operations only after their target-host
   integration, permissions, and recovery path are tested.
 
@@ -111,7 +106,13 @@ but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
   five-second auto-refresh only while open. Access is admin-only.
 - Persistent, bounded observe-only diagnostics: observations, incident
   state/transitions, and audit events in the local SQLite database; open
-  incidents restore on backend restart. Collection is explicit and read-only.
+  incidents and pending threshold evidence restore on backend restart.
+  Collection remains explicitly triggered and read-only. The expanded checks
+  include backend process state and a read-only SQLite integrity probe;
+  resource thresholds use duration confirmation, bounded observation gaps,
+  and recovery hysteresis. Viewer-readable evidence reports summarize the
+  selected saved observation, including incident state/evidence at that time,
+  without running probes.
 - Optional HTTPS launchers for whole-dashboard testing from a mobile device
   on a trusted private LAN. They bind to one configured private IPv4 address
   and serve only public UI assets. Phone certificate trust and dashboard access
@@ -135,45 +136,44 @@ but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
 
 ## Phase 3 — Mocked Integrations and Portable Feature Work
 
-### Done — interface groundwork
+### Done — interface groundwork and read-only inventory implementation
 
-- Virtual Machines panel has a planning-only empty inventory, guest-details
-  layout, and unavailable recovery-console state; it has no provider or live
-  management controls.
+- Virtual Machines panel has a read-only Proxmox VM/container inventory
+  provider, authenticated viewer-level API route, and refreshable UI. The
+  integration is implemented, covered by mocked tests, and connected to the
+  nested Proxmox lab with its dedicated read-only token. A live query returned
+  a populated guest list, verifying rendering; physical-host acceptance remains
+  outstanding. No VM management or console controls are exposed.
 - Network Services panel has planning-only views for DHCPv4, DHCPv6, DNS, web
   hosting, and routing/firewall. Service ownership, scopes, and configuration
   remain undecided; no backend or network changes are connected.
 
-### Next — continue implementation in the Windows prototype
+### Pre-physical-server work — portable and nested-lab eligible
 
-- Continue observe-only diagnostics with broader health checks, explicit
-  threshold durations/hysteresis, evidence reports, and fault-injection tests.
-  Keep collection and interpretation observe-only; no automatic execution.
-- Build local retrieval over reviewed diagnostic procedures and similar
-  incidents, with source and outcome metadata. Prior cases are evidence, not
-  trusted procedures; incident-derived runbooks remain drafts until reviewed.
-- Define structured repair proposals and validate them using a separate
-  deterministic mocked executor. The model must not execute commands, grant
-  itself authority, or change policy.
-- Simulate scheduled maintenance using mocked clocks, model/service providers,
-  and fault injection. The sidebar MAINT state must be driven by a real active
-  lifecycle, which is not implemented yet. Treat simulations as lifecycle
-  testing only; they do not prove host recovery or authorize deployment.
-- Build the workspace-restricted website agent with explicit approval before
-  file changes or command execution.
-- Implement the model-agnostic image brief/job contract and metadata before
-  integrating an image runtime.
-- Add contract and validation tests for prompt intent preservation, editable
-  revisions, approval state, and reproducibility metadata.
-- Prototype Windows image-runtime integration behind the image provider
-  interface where useful. Treat DirectML results as Windows-only; keep the
-  API/job contract and application behavior runtime-independent.
-- Define a shared GPU telemetry provider contract and Linux-provider
-  unavailable/error behavior with fixtures or generic Linux CI. Do not report
-  simulated measurements or claim the actual GPU is validated.
-- Define typed contracts, authorization boundaries, mock providers, and
-  failure-state UI for VM/network/game-server workflows. Define DHCP/DNS/
-  routing ownership, isolation, and recovery before any live control.
+- Prepare reviewed diagnostic runbooks and local retrieval tests. Keep
+  incident-derived runbooks and curated knowledge as untrusted drafts until
+  reviewed; retain incident records separately as evidence.
+- Use the nested Proxmox lab to exercise Proxmox API
+  authentication/permissions, VM lifecycle contracts, deployment scripts, and
+  Linux service integration where the guest environment supports the feature.
+  Record nested virtualization and lab-specific limitations.
+- Define structured remediation proposals and validate them with a separate
+  deterministic mocked executor. Do not connect the mock to live actions or
+  grant model output authority.
+- Simulate maintenance lifecycles with mocked clocks and service providers.
+  Use simulations to test policy and failure paths only; do not enable
+  scheduling or claim host recovery.
+- Build the workspace-restricted website agent with explicit approval
+  boundaries. Keep its file/command integrations disabled until permissions
+  and recovery are validated for the target deployment.
+- Define model-agnostic image job contracts and validate prompt intent,
+  revisions, approval state, and reproducibility metadata. Do not prioritize a
+  Windows-only runtime as a deployment deliverable.
+- Define portable GPU telemetry interfaces and unavailable/error behavior;
+  generic fixtures can test contracts but cannot validate the target GPU.
+- Define Proxmox-oriented VM, network-service, and game-server contracts,
+  authorization boundaries, and failure-state UI. Defer live VM controls
+  until Phase 6 and until ownership, isolation, and recovery are validated.
 
 ## Phase 4 — Proxmox Readiness and Compatibility Gate
 
@@ -183,11 +183,10 @@ until checked against the actual machine.
 
 ### In progress / waiting on target details
 
-- Finalize the host inventory: exact Proxmox point release/kernel, boot mode,
-  GPU ownership, network topology, storage devices/layout, recovery access,
-  and service placement. The initial host-preparation script's `--check`,
-  `--install-base`, `--install-searxng`, and private `--report` modes exist;
-  validate their behavior on the actual Proxmox host before relying on them.
+- Finalize the planned host specification and deployment inputs: intended
+  Proxmox point release, CPU/GPU, boot mode, network topology, storage layout,
+  recovery method, and service placement. Confirm these against the delivered
+  server and installed OS in Phase 5; do not treat plans as verified inventory.
 - Current provisional sizing: AMD CPU not yet selected, 32 GB system RAM with
   a possible 64 GB upgrade, 2 TB initial NVMe, and HDD-backed bulk/lower-I/O
   workloads. Confirm CPU/core count and actual memory needs against Proxmox,
@@ -197,30 +196,40 @@ until checked against the actual machine.
   backup; plan a separate backup and test restoration. Consider NVMe for
   databases, active VM disks, and frequently used model files; model tiering
   improves load/switch time, not inference speed after model load.
-- Check current compatibility for the exact Proxmox release, running kernel,
-  RX 6800 XT, ROCm/HIP, and application versions. AMD does not list the
-  planned GPU/Proxmox combination as officially supported; community reports
-  are leads, not proof. GPU passthrough is not planned. Follow the staged
-  recovery and acceptance requirements in the [GPU plan](./gpu-plan.md).
+- Research compatibility for the intended Proxmox release, RX 6800 XT,
+  ROCm/HIP, and application versions. Confirm the installed Proxmox release
+  and running kernel, and re-check compatibility on-host in Phase 5. AMD does
+  not list the planned GPU/Proxmox combination as officially supported;
+  community reports are leads, not proof. GPU passthrough is not planned.
+  Follow the staged recovery and acceptance requirements in the
+  [GPU plan](./gpu-plan.md).
 - Select pinned versions, host-vs-container boundaries, persistent paths,
   service accounts, least-privilege GPU access, firewall policy, TLS/proxy
   design, secrets handling, and rollback procedures before installation.
 
 ### Gate to begin deployment
 
-- Actual host inventory and recovery method are recorded.
+- Planned hardware, intended Proxmox release, and recovery method are
+  documented; actual host inventory and recovery access must be confirmed
+  before deployment on the delivered server.
 - Storage, backup/restore, service, and network plans are reviewed.
 - Experimental GPU risk is explicitly accepted or GPU-dependent features are
   deferred.
-- Deployment steps are pinned, reviewed, and have a recovery path. The host
-  preparation script does not install ROCm or the inference stack.
+- Deployment steps are pinned, reviewed, and have a recovery path. Source-level
+  review of the host-preparation script can happen pre-host; do not treat its
+  `--check`, installer, or report modes as validated until run on the target.
+  The script does not install ROCm or the inference stack.
 
-## Phase 5 — Target-Host Deployment and Core Integration
+## Phase 5 — Physical Target-Host Deployment and Core Integration
 
-**Waiting for the Proxmox server.** Do not mark complete from Windows runs,
-mocked authentication, or generic Linux tests alone.
+**Waiting for the physical Proxmox server.** The nested Hyper-V Proxmox
+installation is a development lab only. Do not mark physical-host acceptance
+complete from Windows runs, mocks, or nested-lab results.
 
-- Validate the host-preparation script and install only reviewed prerequisites.
+- Record the actual host inventory, installed Proxmox release/running kernel,
+  and recovery access. Validate the host-preparation script's `--check`,
+  `--report`, and reviewed installer modes on that host, then install only
+  reviewed prerequisites.
 - Build and validate ROCm/HIP and ROCm llama.cpp/`llama-server` for the exact
   host; record device identity, build flags, versions, and smoke-test results.
   This remains experimental for the planned RX 6800 XT/Proxmox combination.
@@ -228,6 +237,13 @@ mocked authentication, or generic Linux tests alone.
   adapter identity, utilization, and VRAM against a host tool during idle and
   inference. Return unavailable/null if the deployed source cannot provide
   trustworthy readings.
+- Validate the observe-only resource threshold defaults under representative
+  Proxmox server workloads, including inference and integrated-service
+  activity. Measure false-alert rates, persistence across explicit sampling
+  gaps, and recovery hysteresis before adopting production values. Collection
+  must remain explicitly triggered; do not enable automatic execution as part
+  of validation. Windows and generic Linux/CI results are not Proxmox
+  acceptance evidence.
 - Create Linux service management using Podman/Quadlet or systemd as
   appropriate. Cover the backend, llama-server, NGINX, SearXNG, and only
   runtimes that are actually integrated; use persistent paths, health checks,
@@ -289,63 +305,24 @@ been demonstrated on the target host.
   certificate trust have been verified on the phone, but broader device and
   interaction coverage remains outstanding
 
-## Suggested next work (in the Windows prototype)
+## Forward-work summary
 
-Continue shared application implementation and test it in the Windows
-prototype. Isolate target-specific components behind providers and use mocks
-only where the actual service/hardware is not available. Keep a separate
-acceptance gate for real Proxmox deployment.
+The next tasks are Phase 3 portable contracts, reviewed retrieval/runbooks,
+deterministic simulations, and Proxmox-oriented UI/provider work. Exercise
+suitable API, permissions, VM workflow, deployment-script, and Linux service
+work in the available nested Proxmox VE 9.1-1 lab. Record results as nested-lab
+validation and document limitations; do not substitute Windows-only runtimes
+for the planned Proxmox stack.
 
-Model recommendations below are advisory and describe roles, not requirements
-for a particular editor or agent platform. Use GPT Luna for implementation and
-focused tests; use Claude Sonnet as an additional design/safety reviewer for
-changes involving diagnostics, remediation, scheduling, or security. Re-check
-the current model options when starting each task.
-
-1. Expand the persistent observe-only diagnostics evidence: broaden checks,
-   define threshold duration/hysteresis behavior, produce evidence reports,
-   and add fault-injection tests. Keep observation explicitly triggered and
-   non-remediating.
-   **Models:** GPT Luna for implementation and tests; Claude Sonnet for
-   reviewing thresholds, failure handling, and observe-only boundaries.
-2. Create reviewed diagnostic runbooks and local RAG/retrieval tests. Keep
-   incident-derived runbooks and curated knowledge as untrusted drafts until
-   reviewed; retain incident records separately for evidence-based retrieval.
-   **Models:** Claude Sonnet for runbook structure and retrieval/evaluation
-   design; GPT Luna for ingestion code, tests, and integration.
-3. Define structured remediation proposals and independently validate them in
-   a mocked executor; enforce risk tiers, approval gates, and audit logging.
-   **Models:** Claude Sonnet for proposal-schema and safety-boundary review;
-   GPT Luna for the mocked executor, validation, and tests.
-4. Prototype and test scheduled maintenance with a mocked clock, model
-   manager, workload controller, update source, and recovery path. Treat this
-   as simulation only until the Proxmox host is available.
-   **Models:** Claude Sonnet for lifecycle and failure-mode review; GPT Luna
-   for the simulation and deterministic tests.
-5. Build the workspace-restricted website agent with explicit approval for
-   changes and command execution.
-   **Models:** GPT Luna for implementation and tests; Claude Sonnet for
-   reviewing workspace isolation, approvals, and command-execution boundaries.
-6. Define backend contracts and read-only/mock providers for the VM and
-   Network Services UI groundwork, then add the Game Servers dashboard.
-   Define the Proxmox VM lifecycle and guest-console boundary,
-   DHCPv4/DHCPv6/DNS/web/routing-firewall service inventory and safety states,
-   and a family Minecraft server as a candidate first game-server workflow.
-   Defer live management actions until a Proxmox host, network architecture,
-   game-server manager, authentication, and recovery path are selected and
-   validated.
-   **Models:** GPT Luna for schemas, UI, and mock-provider tests; Claude Sonnet
-   for reviewing Proxmox permissions, network lockout risks, guest isolation,
-   and recovery assumptions.
-
-Next server-gated milestone: execute Phase 4's compatibility/readiness gate
-against the actual hardware, then proceed through Phase 5 in controlled steps.
-Production authentication/session validation, LAN exposure, Linux GPU
-telemetry, and service/maintenance recovery remain gated on that host.
-Dashboard authentication and protected routes are implemented locally; the
-optional Windows LAN test mode is not production deployment. Keep the
-production backend local-only until HTTPS/proxy behavior, firewall/network
-controls, and the complete deployment have been validated.
+Once the physical server is available, confirm the installed host inventory
+and complete the Phase 4 readiness gate, then execute Phase 5 physical-host
+validation in controlled steps. This includes threshold validation under
+representative server workloads, GPU/ROCm telemetry, service and reboot
+recovery, and production authentication/proxy/network checks. Phase 6 live
+product integrations remain gated on physical Phase 5 stability, access
+control, and recovery. Keep the production backend local-only until
+HTTPS/proxy behavior, firewall/network controls, and deployment have been
+validated on the physical target.
 
 ## Documentation References
 
