@@ -3,9 +3,14 @@
 > Status: **design specification** (not yet implemented). Endpoints, modules and
 > tables described here are proposals for review and phased implementation.
 
-This document specifies an AI diagnostic agent that monitors the AI-Server,
-detects problems, attempts safe automatic corrections, and produces detailed
-failure reports when user intervention is required.
+This document specifies the AI Maintenance Agent: a reactive self-healing
+subsystem that monitors system telemetry and service health, retrieves relevant
+local diagnostic knowledge through retrieval-augmented generation (RAG), and
+produces structured repair proposals for a separate backend executor. The
+model analyzes logs, error codes, and hardware/VM health data; it never runs
+commands or performs repairs directly. All diagnostic data, maintenance
+procedures, and known-issue references are stored locally to support private,
+domain-specific troubleshooting and recovery.
 
 Existing building blocks it relies on: the FastAPI backend (`ai-backend/main.py`),
 `system_stats.py` (CPU/RAM/GPU telemetry), `model_manager.py` (model discovery
@@ -19,44 +24,56 @@ llama.cpp server, the optional SearXNG instance, the Discord bot
 
 ### 1.1 Overview
 
-The **Diagnostic Agent** is a background service inside (or beside) the backend
-that runs a continuous loop:
+The **AI Maintenance Agent** is a reactive service inside (or alongside) the
+backend. It responds to telemetry thresholds, health-check failures, service
+events, scheduled diagnostic requests, or a user request:
 
 ```
-Observe -> Detect -> Diagnose -> Decide -> Act (or Escalate) -> Verify -> Record
+Signal -> Correlate -> Retrieve local knowledge -> Diagnose -> Propose structured repair
+       -> Validate and authorize -> Backend executor -> Verify -> Record or escalate
 ```
 
-It is deliberately a **hybrid** system. Deterministic rules, runbooks and
-thresholds do the detection and execute all actions. The local LLM is used only
-for *interpretation*: summarizing logs, ranking candidate root causes, matching
-unfamiliar symptoms to runbooks, and writing human-readable reports. The LLM
-never executes commands; it can only *select* from a registry of pre-approved
-actions. This keeps behavior predictable and auditable.
+It is deliberately a **hybrid** system. Deterministic monitors detect
+conditions, the local RAG index retrieves relevant reviewed procedures and
+known issues, and the local LLM interprets evidence and proposes a repair as
+structured data. A deterministic backend executor independently validates
+each proposed step against the action registry, preconditions, risk tier,
+permissions, and approval policy before performing it. The model has no
+command execution tools and cannot bypass the executor.
 
 ### 1.2 Components
 
 | Component | Responsibility |
 |---|---|
-| **Monitor** | Runs scheduled health checks, tails logs, samples metrics, emits `Signal` objects. |
-| **Analyzer** | Correlates signals into `Incident`s, collects evidence, performs root cause analysis (rules first, LLM second). |
-| **Remediation Engine** | Maps a diagnosis to a runbook, enforces guardrails, executes actions, verifies and rolls back. |
+| **Monitor** | Reacts to telemetry thresholds, health-check failures, service events, and scheduled/user-triggered checks; emits `Signal` objects. |
+| **Analyzer** | Correlates signals into `Incident`s and collects evidence. |
+| **Local RAG Retriever** | Searches the local vector index and source files for relevant, versioned runbooks, known issues, platform facts, and prior reviewed repairs. |
+| **Diagnostic Model** | Analyzes retrieved evidence and produces ranked hypotheses and a schema-constrained repair proposal; has no direct execution capability. |
+| **Backend Executor** | Validates proposals against the fixed action registry, preconditions, risk policy, approvals, and rollback requirements; executes, verifies, or rejects them. |
+| **Maintenance Coordinator** | Owns scheduled maintenance windows, gates normal AI traffic, selects the diagnostic model, and restores service afterward. |
 | **Reporter** | Builds failure reports, assigns severity, notifies dashboard and Discord, handles escalation. |
 | **Knowledge Base (KB)** | Runbooks, failure patterns, dependency map, configuration facts (see section 2). |
 | **Audit Log** | Append-only record of every observation, decision and action. |
 
 ### 1.3 Data Flow
 
-1. Monitor emits a `Signal` (e.g. `llama_server.unreachable`, `ram.high`).
+1. A telemetry threshold, failed health check, service event, user request, or
+   scheduled diagnostic triggers an evaluation; the monitor emits one or more
+   `Signal`s (e.g. `llama_server.unreachable`, `ram.high`).
 2. Analyzer deduplicates and groups signals into an `Incident` (a single
    incident per root cause, not per symptom).
 3. Analyzer collects evidence (log excerpts, metrics, process state) and
    walks the dependency graph to find the *deepest* failing dependency.
-4. Analyzer proposes ranked hypotheses with confidence scores.
-5. Remediation Engine looks up a runbook for the top hypothesis and classifies
-   its actions by risk tier.
-6. Tier 0/1 actions run automatically if guardrails pass; Tier 2/3 create an
-   approval request; unknown causes or low confidence go straight to escalation.
-7. After each action the engine verifies recovery. On failure it rolls back,
+4. Local RAG retrieves bounded, relevant knowledge using the incident signals,
+   platform/version, and evidence. Source references and package version are
+   retained with the incident.
+5. Deterministic rules and the diagnostic model rank hypotheses. When used,
+   the model returns a structured proposal that references retrieved evidence
+   and registered action IDs; unknown causes or low confidence go to escalation.
+6. Backend Executor validates every proposed action. Tier 0/1 actions may run
+   automatically only if all guardrails pass; Tier 2/3 require the specified
+   approval. Model output itself never authorizes an action.
+7. After each action the executor verifies recovery. On failure it rolls back,
    tries the next runbook step (bounded), then escalates.
 8. Reporter publishes the outcome. Resolved incidents feed the learning loop.
 
@@ -68,7 +85,10 @@ An action is auto-executed only if **all** are true:
 - The runbook action is Tier 0 or Tier 1 (see 5.1).
 - Rate limits and circuit breakers permit it (section 9.5).
 - The diagnostic agent is not in `observe-only` mode.
-- No maintenance window or manual lock is active.
+- No unexpected maintenance window or manual lock is active. During a
+  scheduled window, only actions explicitly permitted for that window may run;
+  the window does not bypass operating mode, risk-tier, approval, or rollback
+  requirements.
 
 Otherwise: request approval (risky but understood) or escalate (not understood).
 
@@ -89,16 +109,99 @@ Otherwise: request approval (risky but understood) or escalate (not understood).
 | `assisted` | Proposes fixes; every action needs approval. |
 | `auto-safe` | Executes Tier 0/1 automatically; others need approval. |
 
+### 1.7 Scheduled Maintenance Windows
+
+The target schedule is a recurring daily maintenance window from **03:00 to
+04:00 server-local time**, using an explicitly configured IANA timezone rather
+than the browser's timezone. Daylight-saving transitions must be handled
+deterministically. The feature remains disabled until it has been configured
+and validated on the target server.
+
+The Maintenance Coordinator owns a persisted state machine:
+`scheduled -> entering -> maintenance -> restoring -> complete` (or
+`failed/needs_attention`). At the window start it:
+
+1. Records the currently selected normal model and service state.
+2. Enters maintenance mode and blocks new user-facing work. It safely drains
+   in-flight chat, research, model-switch, bot, and other inference or
+   maintenance-conflicting activity; clients receive a clear maintenance
+   response and retry guidance. The dashboard may retain a read-only
+   maintenance-status view.
+3. After draining, pauses or cleanly stops normal inference workloads and
+   user-facing processes that could contend for resources or conflict with
+   maintenance. It must not indiscriminately stop the maintenance control
+   plane: the coordinator, backend executor, telemetry/health monitor, local
+   RAG service, audit log, and required recovery/notification paths remain
+   available. The exact service dependency and stop/start order is defined per
+   deployment and tested before unattended operation.
+4. If work does not drain before the configured deadline, disruptive
+   maintenance is skipped and the missed window is reported rather than
+   forcibly killing requests or overlapping model changes.
+5. Selects and loads the best eligible installed model dedicated to diagnostics
+   using
+   an explicit policy (task capability, context size, compatibility, VRAM
+   requirement, and benchmarked diagnostic quality/latency). It loads that
+   model with the versioned diagnostics knowledge package described in
+   section 2; the package is required task context, not an assumption that the
+   model has been fine-tuned. It must not download or execute an arbitrary
+   model selected by the LLM. If no eligible diagnostic model or compatible
+   knowledge package can be loaded, deterministic checks continue where safe
+   and model-dependent work is skipped and reported.
+6. Runs reactive diagnostics and maintenance procedures against
+   telemetry, logs, error states, and available hardware/VM health data. Local
+   RAG supplies relevant reviewed procedures and known issues; the model
+   generates structured remediation proposals for the backend executor.
+   The executor validates and performs only registered, authorized actions.
+7. Runs only allowlisted update routines whose preconditions, scope,
+   verification, and rollback are registered. Model output can recommend
+   registered actions but cannot create commands or bypass the executor.
+8. Verifies update results and system integrity, stops starting work before
+   the window ends, restores the previous normal model, and restarts/resumes
+   paused services in dependency order. Normal operations are reopened only
+   after required health checks and stability checks pass.
+
+The 04:00 boundary is a target completion time, not permission to interrupt an
+operation unsafely or restore service prematurely. If work cannot finish
+safely within the window, the coordinator must stop at a safe boundary, roll
+back when defined, or remain in maintenance with user-facing workloads paused
+and raise an alert. It must not falsely report success or restore traffic to an
+unhealthy service. A manual kill switch and audit record apply throughout.
+
+Initial unattended update scope must be allowlisted and limited to
+application/model updates with verified sources, pre-update health checks,
+backups or snapshots where appropriate, post-update integrity and health
+verification, and a tested rollback path. Proxmox, kernel, GPU driver/ROCm,
+firmware, and other host-level or irreversible updates are excluded from
+unattended updates and require explicit human approval. Update checks can
+report available host updates without applying them.
+
+The real model-selection policy, maintenance scheduler, service gating,
+model restoration, and update rollback behavior require validation on the
+target Proxmox host and hardware. Development can test the coordinator with
+mocked clocks, model manager, and update adapters, but those tests do not prove
+production recovery.
+
 ---
 
 ## 2. Knowledge Base Structure
 
-The KB is versioned, human-reviewable text (YAML/Markdown) stored in the
-repository under `ai-backend/diagnostics/kb/`, with runtime additions kept in a
-local store (`data/diagnostics/kb_overrides/`) until reviewed.
+Diagnostic data, source documents, embeddings, and the vector index are stored
+on local server storage. Retrieval and inference must not send diagnostic
+content to an external service. The local RAG database indexes reviewed,
+versioned knowledge sources, while source files remain authoritative and
+human-reviewable. Runtime additions are kept as isolated drafts in local
+storage until reviewed. Backups, access controls, retention, and recovery of
+the index and its source documents are part of deployment.
+
+The target vector-store implementation is to be selected and validated for the
+deployment. Qdrant is already planned as a local service in the host stack and
+is a candidate backend; the design must also permit offline Windows development
+and tests without claiming a production Qdrant deployment before it exists.
 
 ```
 kb/
+  model/                # diagnostic model profile and reviewed task instructions
+  platform/             # platform- and version-specific reference files
   runbooks/            # step-by-step procedures, one file per failure type
   patterns/            # symptom signatures -> candidate causes
   dependencies.yaml    # service dependency graph
@@ -107,10 +210,62 @@ kb/
   thresholds.yaml      # metric thresholds and durations
 ```
 
+The local index contains chunked source text plus metadata such as document
+ID/version, platform, component/version applicability, review state, source
+path, and content hash. Search results must exclude drafts and incompatible
+platform/version entries by default. Retrieval should favor exact signal/error
+matches and applicable approved runbooks, with semantic search as a supplement.
+Every model response records the retrieved document IDs and versions used.
+
+```text
+Local sources -> validate/version -> chunk + embed locally -> local vector index
+Incident evidence -> filter by platform/version -> retrieve approved sources
+                   -> local diagnostic model -> structured repair proposal
+                   -> executor validation -> registered backend action
+```
+
+### Diagnostic Model Knowledge Package
+
+The diagnostic model must receive a task-specific, maintained set of learning
+files whenever it is selected. These files provide operational context without
+requiring model fine-tuning and without mixing diagnostics instructions into
+ordinary chat. A local RAG database retrieves only the applicable, approved
+files for the current incident. The model profile identifies compatible model capabilities,
+minimum context size, resource requirements, and the evaluation results used
+to select it. At inference time the system assembles a bounded context from:
+
+- A reviewed diagnostics system guide: role, scope, evidence-handling rules,
+  confidence requirements, escalation conditions, and the prohibition on
+  issuing commands or bypassing registered actions.
+- Relevant, versioned runbooks, symptom patterns, dependency/config facts,
+  recovery procedures, and safety/update policies.
+- Platform-specific files selected for the actual host (for example Windows
+  test setup versus Proxmox/Linux), including tested service names, paths,
+  ports, commands/probes, and supported component versions.
+- Approved diagnostic examples and evaluation cases that teach expected
+  evidence-based reasoning and report format.
+
+Only relevant files should be retrieved for an incident; do not indiscriminately
+place the entire KB or raw logs into the prompt. Retrieved evidence and logs
+remain untrusted input and must be clearly delimited, size-limited, and
+redacted as specified in section 3.4. The model may use these files to explain,
+rank hypotheses, and propose registered actions; deterministic checks and the
+backend executor remain authoritative.
+
+Knowledge files are not executable instructions. Built-in files are
+version-controlled and reviewed. New learning from incidents, user notes, or
+model output is stored as an isolated draft with its evidence and provenance;
+it never overwrites trusted files or becomes active until a human reviews,
+tests, and approves it. Each package release records its version and content
+hashes so an incident can be reproduced against the exact instructions the
+model received. No passwords, tokens, private keys, or other secrets belong
+in the package.
+
 ### 2.1 Runbooks
 
 Each runbook is structured data so the engine can execute it and the LLM can
-read it:
+use it as retrieved reference material. The backend executor runs only its
+registered actions; it does not execute free-form model-generated steps:
 
 ```yaml
 id: RB-LLAMA-001
@@ -267,10 +422,39 @@ classification and, if still unknown, escalated as "unrecognized failure".
 3. **Check dependencies**: find the lowest failing node in the dependency graph.
 4. **Map symptoms to causes** using the pattern table (deterministic scoring).
 5. **Collect evidence** supporting and contradicting each hypothesis.
-6. **Rank hypotheses**; if no rule exceeds the confidence threshold, ask the
-   LLM to propose causes *from the KB's candidate list plus evidence*.
-7. **Validate** with a non-invasive probe (e.g. check the port, run a small
-   request) before any action.
+6. **Retrieve local knowledge** for this incident from the approved local RAG
+   index, filtered by platform, component version, and review status.
+7. **Rank hypotheses**; if rules do not resolve the incident, ask the local
+   model to propose causes and structured repair steps grounded in the
+   retrieved sources and evidence.
+8. **Validate** hypotheses with non-invasive probes (e.g. check the port, run
+   a small request). Pass proposed repairs to the backend executor, which
+   validates them independently before any action.
+
+The model response is data, not an executable plan. A proposal contains only
+registered action identifiers and typed parameters, with evidence/source
+references and a rationale, for example:
+
+```json
+{
+  "incident_id": "inc_...",
+  "hypotheses": [
+    {"cause": "llama_server.process_dead", "confidence": 0.86,
+     "evidence_ids": ["ev_process_state_1"]}
+  ],
+  "proposed_steps": [
+    {"action_id": "service.restart", "parameters": {"service": "llama_server"},
+     "runbook_id": "RB-LLAMA-001", "evidence_ids": ["ev_process_state_1"]}
+  ],
+  "escalate": false
+}
+```
+
+The executor rejects unknown fields/actions, invalid parameter values,
+unavailable evidence references, stale or incompatible knowledge versions,
+and actions that fail preconditions, permission, risk, approval, or rollback
+checks. It obtains executable parameters from the trusted registry/runbook;
+model text is never interpolated into a shell command.
 
 ### 4.2 System State Assessment
 
@@ -436,6 +620,10 @@ New "Diagnostics" panel in the existing dashboard:
 - **Pending approvals**: action, risk, rationale, rollback plan; Approve / Deny.
 - **History**: resolved incidents and auto-fix success rates.
 - **Controls**: mode switch, maintenance window, pause auto-remediation.
+- **Maintenance status**: configured timezone and next window, normal/diagnostic
+  model, traffic gate, progress, update results, and restore/health-check status.
+- **Maintenance controls**: enable/disable future windows and request a safe
+  abort. A user control must not forcibly interrupt an unsafe update step.
 
 ### 7.2 Approval Workflow
 
@@ -457,9 +645,11 @@ button that triggers diagnostics and marks the incident resolved when healthy.
 ### 7.4 Knowledge Base Updates from Fixes
 
 When a user resolves an incident manually, the dashboard asks "What fixed it?".
-The agent drafts a runbook/pattern from the incident timeline and the user's
-note, which is stored as `draft` and promoted after review (edit, approve,
-reject). Approved entries are versioned and tracked for effectiveness.
+The agent drafts a runbook/pattern or diagnostic example from the incident
+timeline and the user's note, which is stored as `draft` and promoted only
+after review, platform-specific testing, and approval. Approved knowledge
+files are versioned and tracked for effectiveness; model-generated changes
+never update the active package directly.
 
 ---
 
@@ -468,6 +658,8 @@ reject). Approved entries are versioned and tracked for effectiveness.
 ### Phase 1: Basic Monitoring and Reporting (observe mode)
 - Can be built and tested now on the Windows test setup; no GPU or server needed.
 - Health checks, resource sampling, thresholds, log tailing.
+- Reactive triggers, incident correlation, local knowledge ingestion and
+  read-only RAG retrieval using a local development store.
 - Incident model, evidence bundles, failure reports, severity levels.
 - Dashboard status board and incident list; Discord notifications.
 - Read-only API endpoints; audit log.
@@ -475,7 +667,19 @@ reject). Approved entries are versioned and tracked for effectiveness.
 
 ### Phase 2: Auto-Remediation for Safe Operations
 - Action registry, Tier 0/1 actions, verification, rollback, rate limiting.
-- Runbook executor; approval workflow for Tier 2/3.
+- Schema-constrained repair proposals from the local model; backend executor
+  validation; runbook execution; approval workflow for Tier 2/3.
+- Scheduled maintenance coordinator: drain and gate normal AI traffic, load
+  an eligible installed diagnostic model with its versioned knowledge
+  package, run permitted tasks, then restore the previous model and reopen
+  traffic only after health checks.
+- Create reviewed diagnostic-model knowledge files: system guide, diagnostic
+  model profile/evaluation criteria, platform-specific references, and
+  incident examples. Test retrieval and ensure learned content stays draft
+  until reviewed.
+- Add application/model updates only after allowlisting, verification,
+  rollback, and safe-window behavior are tested. Host, kernel, GPU driver,
+  ROCm, and firmware updates remain approval-only.
 - **Exit criteria**: > 90% of Tier 1 fixes verified successful in testing; no restart loops under fault injection.
 
 ### Phase 3: Advanced Diagnostics and ML-Based Detection
@@ -501,7 +705,8 @@ reject). Approved entries are versioned and tracked for effectiveness.
   string interpolation); paths are validated against an allowlist of
   application directories.
 - The LLM has no tool access beyond choosing from registry IDs; its output is
-  schema-validated.
+  schema-validated and passed to the backend executor, which independently
+  checks every action and parameter before execution.
 
 ### 9.2 Action Approval
 Tiered approvals (section 7.2). Approvals are authenticated (see
@@ -607,6 +812,16 @@ blocked by guardrail (response includes the reason), 429 rate limited.
   `bot_manager` (bot start/stop/status), chat and research endpoints as
   synthetic probes. Actions call these modules rather than shelling out where
   possible.
+- **Local RAG storage**: diagnostic records, procedures, known issues,
+  embeddings, and vector index stay on local storage. Embedding and retrieval
+  operate locally; no diagnostic payload is sent to cloud AI or external
+  vector services. Qdrant is the planned production candidate and must be
+  validated locally on the target deployment.
+- **Proxmox health data**: when deployed, collect only the required hardware
+  and VM health fields through the Proxmox API using a dedicated, least-
+  privilege read-only identity or token. Keep credentials in server-side
+  secrets storage, redact them from evidence, and retain collected health data
+  locally under the diagnostics retention/access policy.
 - **Discord bot notifications**: a dedicated alerts channel; messages show
   severity, summary and a link to the dashboard; critical alerts can mention a
   role. Approvals are *only* linked from Discord, never granted by chat reply.
@@ -660,6 +875,12 @@ correct severity. Snapshot tests for report templates.
 - Rate limit and circuit breaker triggers under repeated failure.
 - Kill switch halts actions within seconds.
 - Audit log completeness and hash-chain integrity checks.
+- Maintenance-window tests cover timezone/DST boundaries, draining and
+  rejecting new work, diagnostic-model selection/failure, restoration of the
+  previous model, pausing and dependency-ordered resumption of normal
+  workloads, keeping the control plane available, integrity-check failures,
+  missed deadlines, process restart during maintenance, and refusing
+  unapproved host-level updates.
 
 ### 12.6 Rollout
 Run in `observe` mode first and compare with manual observations; enable
@@ -680,3 +901,11 @@ precision, false positives) and review weekly.
 | `DIAG_APPROVAL_TTL_S` | `3600` | Approval expiry |
 | `DIAG_AUDIT_RETENTION_DAYS` | `90` | Audit log retention |
 | `DIAG_DISCORD_CHANNEL_ID` | unset | Alerts channel |
+| `DIAG_MAINTENANCE_ENABLED` | `false` | Enable only after configuring and validating the maintenance lifecycle |
+| `DIAG_MAINTENANCE_DAYS` | `daily` | Recurrence for the target 03:00–04:00 window |
+| `DIAG_MAINTENANCE_START` | `03:00` | Local server time, `HH:MM` |
+| `DIAG_MAINTENANCE_END` | `04:00` | Local server time, `HH:MM` |
+| `DIAG_MAINTENANCE_TIMEZONE` | unset | Required IANA timezone for the schedule |
+| `DIAG_MAINTENANCE_DRAIN_TIMEOUT_S` | `300` | Maximum wait for in-flight work before skipping disruptive work |
+| `DIAG_DIAGNOSTIC_MODEL` | unset | Preferred eligible installed model; selection policy may choose another |
+| `DIAG_UPDATE_ALLOWLIST` | empty | Explicit update targets eligible for automation |
