@@ -115,6 +115,14 @@ Admins are told which identity is signed in, but the model is never given
 another admin's private transcript. Non-admin accounts and the Discord bot
 service credential cannot access or receive shared admin notes.
 
+The AI Interface is a separate admin-only server console. Its single
+operational transcript is shared with every administrator, with each user turn
+attributed to its authenticated account. It is not a private chat surface:
+admins are warned not to enter private chat content, personal details,
+passwords, or secrets. Its backend context never loads private AI Chat
+conversations. The separate AI Chat panel continues to store conversations
+privately per account.
+
 ## API behavior
 
 - `POST /api/auth/login` — authenticate `local` or `proxmox` credentials and
@@ -135,7 +143,9 @@ is mapped, or whether its password alone was valid.
 ## Browser and deployment requirements
 
 - Keep the API bound to loopback during development. Use HTTPS and a same-site
-  dashboard/API origin in LAN or remote deployments.
+  dashboard/API origin in LAN or remote deployments. The opt-in Windows
+  mobile-test launchers bind only to one configured private IPv4 address and
+  require TLS; they do not change the normal loopback-only launchers.
 - `AI_SERVER_AUTH_COOKIE_SECURE` must be enabled for HTTPS deployment. Only
   disable it for isolated local HTTP development; do not expose that
   configuration to a network.
@@ -153,10 +163,10 @@ is mapped, or whether its password alone was valid.
 
 ### Windows development — implemented and tested
 
-- The full backend suite passes 81 tests covering local CLI provisioning and
-  password reset, local login, session persistence/expiry/revocation, CSRF,
-  login throttling, role authorization, mocked Proxmox ticket login and
-  explicit mappings, and authenticated REST/WebSocket behavior.
+- Backend tests cover local CLI provisioning and password reset, local login,
+  session persistence/expiry/revocation, CSRF, login throttling, role
+  authorization, mocked Proxmox ticket login and explicit mappings, and
+  authenticated REST/WebSocket behavior.
 - The dashboard sign-in/status/logout flow and role-aware controls are wired
   to the protected API.
 - Machine routes require a scoped bot credential, passed by the Discord bot.

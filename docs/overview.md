@@ -8,12 +8,13 @@ The AI Command Interface is a unified dashboard, backend API, and Discord bot de
 - **Discord Bot** (Python)
 - **Model Registry**
 - **System Monitor**
-- **Chat Interface**
+- **AI Interface** (single admin-shared server console)
+- **AI Chat** (private conversations and web research)
 - **Local LLM Chat** (llama.cpp test integration)
 
 ## Current Status
-The Windows test setup connects dashboard chat to a local llama.cpp Qwen2.5
-1.5B Instruct model and reports live RX 6800 XT load and VRAM telemetry.
+The Windows build/prototype connects dashboard AI Chat to a local llama.cpp
+Qwen2.5 1.5B Instruct model and reports live RX 6800 XT load and VRAM telemetry.
 Dashboard authentication supports local accounts and explicitly mapped
 Proxmox identities, with protected sessions and role-gated APIs; Proxmox and
 production proxy deployment are not yet validated. Installed GGUF files are
@@ -24,6 +25,11 @@ model selection are connected to the optional bot service. Vision and image
 generation still use placeholders. VM, game-server, and network-service
 panels are planning views rather than live controls. Linux/Proxmox telemetry
 and runtime support remain to be implemented.
+Windows is the active build environment for shared application behavior;
+Proxmox-specific GPU, service, networking, and production deployment behavior
+still requires target-host integration and validation.
+The AI Interface has a single admin-shared, attributed transcript; private
+AI Chat conversations remain scoped to each account.
 
 ## Goals
 - Provide a unified control interface for local AI systems

@@ -61,7 +61,8 @@
         <div>
             <div class="nav-section-title">Workspace</div>
             <nav class="nav-list" aria-label="Main navigation">
-                <button class="nav-item active" type="button" data-panel="chat-panel" aria-current="page"><span class="nav-icon" aria-hidden="true">◎</span>AI Interface</button>
+                <button class="nav-item active" type="button" data-panel="interface-panel" aria-current="page"><span class="nav-icon" aria-hidden="true">◎</span>AI Interface</button>
+                <button class="nav-item" type="button" data-panel="chat-panel"><span class="nav-icon" aria-hidden="true">◌</span>AI Chat</button>
                 <button class="nav-item" type="button" data-panel="models-panel"><span class="nav-icon" aria-hidden="true">◉</span>Models</button>
                 <button class="nav-item" type="button" data-panel="system-panel"><span class="nav-icon" aria-hidden="true">◈</span>Host Monitor</button>
                 <button class="nav-item" type="button" data-panel="vms-panel"><span class="nav-icon" aria-hidden="true">▣</span>Virtual Machines</button>
@@ -75,9 +76,9 @@
         </div>
 
         <div class="sidebar-footer">
-            NODE / HOMELAB-01<br>
-            GPU / RX 6800 XT<br>
-            MODE / RESEARCH
+            NODE / <span id="sidebar-node-name">Checking…</span><br>
+            GPU / <span id="sidebar-gpu-name">Checking…</span><br>
+            MODE / <span id="sidebar-mode">LOCAL</span>
             <div class="user-session">
                 <span id="auth-identity">Signed in</span>
                 <button class="btn theme-toggle" id="auth-logout" type="button">Sign out</button>
@@ -86,9 +87,37 @@
     </aside>
 
     <main class="main">
+        <section class="panel active" id="interface-panel" aria-label="AI server interface">
+            <div class="panel-header">
+                <div class="panel-title">AI Interface</div>
+                <div class="panel-controls">
+                    <div class="pill pill-accent interface-console-badge">ADMIN-SHARED SERVER CONSOLE</div>
+                </div>
+            </div>
+            <div class="panel-body console-panel-body">
+                <p class="console-notice" id="console-notice">
+                    <span>This is one persistent console shared by administrators. Every message is visible to all
+                    admins. Do not enter private chat content, personal details, passwords, or secrets.
+                    Server actions are limited to explicitly requested, read-only diagnostics.</span>
+                    <button class="console-notice-dismiss" id="console-notice-dismiss" type="button"
+                        aria-label="Dismiss shared console notice" title="Dismiss notice">×</button>
+                </p>
+                <div class="chat-window" id="interface-window" aria-live="polite" aria-label="Shared server console">
+                    <div class="conversation-empty">Loading the shared server console…</div>
+                </div>
+                <div class="chat-input-row">
+                    <input class="chat-input" id="interface-input"
+                        placeholder="Ask about the server or request a read-only diagnostic…"
+                        aria-label="Server console request" autocomplete="off">
+                    <button class="btn" id="interface-send" type="button">Transmit</button>
+                </div>
+                <span class="console-status" id="interface-status" role="status" aria-live="polite"></span>
+            </div>
+        </section>
+
         <section class="panel" id="chat-panel" aria-label="Chat interface">
             <div class="panel-header">
-                <div class="panel-title">Chat Interface</div>
+                <div class="panel-title">AI Chat</div>
                 <div class="panel-controls">
                     <div class="pill pill-accent" id="active-model-label">Model: Checking…</div>
                     <div class="pill">Response: Local LLM</div>
@@ -180,11 +209,37 @@
                 <div class="panel-title">System Monitor</div>
                 <div class="panel-controls"><div class="pill" id="gpu-telemetry-status" title="GPU utilization status">GPU / Checking</div></div>
             </div>
-            <div class="panel-body">
-                <div class="metric-row"><span>GPU / PEAK ENGINE</span><div class="metric-bar"><div class="metric-bar-fill gpu"></div></div><span id="gpu-load-value">N/A</span></div>
-                <div class="metric-row"><span>VRAM / LIVE</span><div class="metric-bar"><div class="metric-bar-fill vram"></div></div><span id="vram-value">N/A</span></div>
-                <div class="metric-row"><span>CPU</span><div class="metric-bar"><div class="metric-bar-fill cpu"></div></div><span>18%</span></div>
-                <div class="metric-row"><span>RAM</span><div class="metric-bar"><div class="metric-bar-fill ram"></div></div><span id="ram-value">N/A</span></div>
+            <div class="panel-body system-monitor-body">
+                <div class="system-metrics-grid" aria-label="System resource metrics">
+                    <article class="metric-card">
+                        <div class="metric-card-heading">
+                            <span class="metric-card-label">GPU / PEAK ENGINE</span>
+                            <span class="metric-card-value" id="gpu-load-value">N/A</span>
+                        </div>
+                        <div class="metric-bar"><div class="metric-bar-fill gpu"></div></div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-card-heading">
+                            <span class="metric-card-label">VRAM / LIVE</span>
+                            <span class="metric-card-value" id="vram-value">N/A</span>
+                        </div>
+                        <div class="metric-bar"><div class="metric-bar-fill vram"></div></div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-card-heading">
+                            <span class="metric-card-label">CPU</span>
+                            <span class="metric-card-value">18%</span>
+                        </div>
+                        <div class="metric-bar"><div class="metric-bar-fill cpu"></div></div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-card-heading">
+                            <span class="metric-card-label">RAM</span>
+                            <span class="metric-card-value" id="ram-value">N/A</span>
+                        </div>
+                        <div class="metric-bar"><div class="metric-bar-fill ram"></div></div>
+                    </article>
+                </div>
             </div>
         </section>
 

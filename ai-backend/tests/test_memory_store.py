@@ -1,5 +1,7 @@
+import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -70,6 +72,42 @@ class ConversationStoreTests(unittest.TestCase):
         self.assertLessEqual(sum(len(item["content"]) for item in context), MAX_CONTEXT_CHARS)
         self.assertEqual(context[-1]["content"], "a" * 5000)
 
+    def test_existing_conversation_database_migrates_message_authors(self):
+        legacy_path = Path(self.directory.name) / "legacy.sqlite3"
+        with closing(sqlite3.connect(legacy_path)) as connection:
+            connection.executescript(
+                """
+                CREATE TABLE conversations (
+                    conversation_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );
+                CREATE TABLE conversation_messages (
+                    message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversation_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    sources_json TEXT,
+                    created_at INTEGER NOT NULL
+                );
+                INSERT INTO conversations VALUES
+                    ('legacy-id', 'local:alice', 'Old chat', 1, 1);
+                INSERT INTO conversation_messages
+                    (conversation_id, role, content, created_at)
+                    VALUES ('legacy-id', 'user', 'Existing message', 1);
+                """
+            )
+            connection.commit()
+
+        migrated = ConversationStore(legacy_path)
+
+        self.assertEqual(
+            migrated.get_conversation("local:alice", "legacy-id")["messages"][0]["content"],
+            "Existing message",
+        )
+
     def test_delete_removes_only_owned_conversation(self):
         conversation_id = self.store.create_conversation(self.owner)["conversation_id"]
         self.store.begin_user_turn(self.owner, conversation_id, "Private")
@@ -97,6 +135,42 @@ class ConversationStoreTests(unittest.TestCase):
         self.assertEqual(self.store.list_shared_insights(), [])
         with self.assertRaises(SharedInsightNotFound):
             self.store.delete_shared_insight(insight["insight_id"])
+
+    def test_admin_interface_has_one_persistent_shared_conversation(self):
+        conversation = self.store.get_admin_interface_conversation()
+        self.store.begin_user_turn(
+            "system:admin-interface",
+            conversation["conversation_id"],
+            "Check the backend health.",
+            "alice (local)",
+        )
+        self.store.append_assistant_message(
+            "system:admin-interface",
+            conversation["conversation_id"],
+            "The backend is running.",
+        )
+
+        reopened = ConversationStore(self.store.path)
+        shared = reopened.get_admin_interface_conversation()
+        context = reopened.begin_user_turn(
+            "system:admin-interface",
+            conversation["conversation_id"],
+            "What did Alice ask?",
+            "bob (local)",
+        )
+
+        self.assertEqual(shared["conversation_id"], conversation["conversation_id"])
+        self.assertEqual(shared["messages"][0]["author"], "alice (local)")
+        self.assertEqual(
+            context,
+            [
+                {
+                    "role": "user",
+                    "content": "[Admin alice (local)] Check the backend health.",
+                },
+                {"role": "assistant", "content": "The backend is running."},
+            ],
+        )
 
     def test_shared_insights_have_a_capacity_limit(self):
         with patch("memory_store.MAX_SHARED_INSIGHTS", 1):
@@ -201,7 +275,12 @@ class ConversationApiTests(unittest.TestCase):
         research_result = {
             "reply": "A cited answer [1].",
             "sources": [
-                {"title": "Reference", "url": "https://example.test", "snippet": "Details"}
+                {
+                    "title": "Reference",
+                    "url": "https://example.test",
+                    "snippet": "Details",
+                    "page_status": "fetched",
+                }
             ],
             "latency_ms": 20,
             "search_latency_ms": 5,
@@ -225,6 +304,45 @@ class ConversationApiTests(unittest.TestCase):
             "Research uses the staging endpoint.",
             run_research.call_args.kwargs["system_prompt"],
         )
+
+    def test_streaming_research_returns_sources_and_persists_completed_turn(self):
+        conversation_id = self.client.post("/api/memory/conversations").json()["conversation_id"]
+        self.store.add_shared_insight("Use the current staging API.", "local:publisher")
+        prepared = {
+            "sources": [
+                {
+                    "title": "Reference",
+                    "url": "https://example.test",
+                    "snippet": "Details",
+                    "page_status": "fetched",
+                }
+            ],
+            "prompt": "Prepared research prompt",
+            "system_prompt": "Safe research context",
+            "search_latency_ms": 5,
+        }
+        with (
+            patch.object(self.main, "prepare_research", return_value=prepared) as prepare,
+            patch.object(self.main, "stream_research", return_value=iter(["A cited ", "answer [1]."])),
+        ):
+            response = self.client.post(
+                "/api/research/stream",
+                json={"message": "Find a reference", "conversation_id": conversation_id},
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn('event: sources\ndata: {"sources":[{"title":"Reference"', response.text)
+        self.assertIn('event: token\ndata: {"content":"A cited "}', response.text)
+        self.assertIn('event: done\ndata:', response.text)
+        self.assertEqual(
+            self.store.get_conversation(
+                f"local:{self.auth_store.list_local_users()[0]['username']}",
+                conversation_id,
+            )["messages"][1]["content"],
+            "A cited answer [1].",
+        )
+        self.assertIn("test-admin (local)", prepare.call_args.args[1])
+        self.assertIn("Use the current staging API.", prepare.call_args.args[1])
 
     def test_published_note_and_current_identity_reach_only_another_admin_chat(self):
         owner_a = f"local:{self.auth_store.list_local_users()[0]['username'].casefold()}"
@@ -289,6 +407,57 @@ class ConversationApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(run_llm.call_args.args, ("Hello",))
         self.assertEqual(run_llm.call_args.kwargs, {})
+
+    def test_shared_interface_is_admin_only_and_keeps_private_chats_out_of_context(self):
+        private_owner = "local:test-admin"
+        private_conversation = self.store.create_conversation(private_owner)
+        self.store.begin_user_turn(
+            private_owner,
+            private_conversation["conversation_id"],
+            "PRIVATE_CHAT_MESSAGE_47f2",
+        )
+        first_reply = {"reply": "The backend is healthy.", "latency_ms": 2, "tokens": 4}
+        with patch.object(self.main, "run_llm", return_value=first_reply):
+            first = self.client.post(
+                "/api/interface/chat",
+                json={"message": "Check backend health."},
+            )
+        self.assertEqual(first.status_code, 200, first.text)
+
+        other_admin = self._login_local_user("other-admin", "admin")
+        shared = other_admin.get("/api/interface/conversation")
+        self.assertEqual(shared.status_code, 200, shared.text)
+        self.assertEqual(shared.json()["messages"][0]["author"], "test-admin (local)")
+
+        next_reply = {"reply": "The previous check succeeded.", "latency_ms": 2, "tokens": 5}
+        with patch.object(self.main, "run_llm", return_value=next_reply) as run_llm:
+            second = other_admin.post(
+                "/api/interface/chat",
+                json={"message": "What was the previous result?"},
+            )
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertIn(
+            "[Admin test-admin (local)] Check backend health.",
+            str(run_llm.call_args.kwargs["history"]),
+        )
+        self.assertNotIn(
+            "PRIVATE_CHAT_MESSAGE_47f2",
+            str(run_llm.call_args),
+        )
+        self.assertIn("other-admin (local)", run_llm.call_args.args[1])
+
+        operator = self._login_local_user("operator", "operator")
+        self.assertEqual(
+            operator.get("/api/interface/conversation").status_code,
+            403,
+        )
+        self.assertEqual(
+            operator.post(
+                "/api/interface/chat",
+                json={"message": "Check the host."},
+            ).status_code,
+            403,
+        )
 
     def test_admin_chat_context_is_bounded_and_prefers_newest_notes(self):
         for index in range(5):

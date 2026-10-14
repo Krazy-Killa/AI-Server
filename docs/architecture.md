@@ -32,7 +32,8 @@ GPU / LLM / Bot / System Stats
   - gpu/gpu_stub.py
   - gpu/gpu_llm.py
   - gpu/gpu_rocm.py
-- Provides REST endpoints for all dashboard features
+- Provides REST endpoints for the implemented dashboard features. VM and
+  network-service panels are planning-only UI and have no management API.
 - Streams local chat replies over WebSocket (`/ws/chat`)
 - Enforces dashboard account roles for REST/WebSocket routes and uses a
   separate scoped bearer credential for designated Discord-bot routes
@@ -40,6 +41,9 @@ GPU / LLM / Bot / System Stats
   admin-published shared insights in a separate SQLite database. Admin chat
   and research receive current-admin identity and bounded shared notes; other
   roles and Discord service requests do not.
+- Persists one separate admin-shared AI Interface transcript with attributed
+  admin turns. Only the explicit diagnostics observation is executable from
+  this console; private AI Chat transcripts are never loaded into it.
 - Persists bounded observe-only diagnostic observations, incident state, and
   audit events in that local database, restoring open incidents after restart;
   diagnostics remain manually triggered and cannot execute repairs or commands.
@@ -49,8 +53,17 @@ GPU / LLM / Bot / System Stats
 - The user explicitly enables Research Web for a message; ordinary chat stays
   local and does not search the web.
 - FastAPI queries a self-hosted SearXNG instance, passes a small set of
-  untrusted search excerpts to the local llama.cpp model, and returns a
-  summary with source links.
+  untrusted search excerpts and bounded retrieved page text to the local
+  llama.cpp model, and streams a cited summary with source links.
+- Retrieves at most three HTML pages per query, with a one-megabyte response
+  cap and five-second timeout per page. Only public IPs on ports 80/443 are
+  allowed; DNS results are pinned to the connection and every redirect is
+  validated. Unsafe, unavailable, and non-HTML pages use the search excerpt
+  instead. Page text and excerpts remain untrusted model evidence.
+- AI Chat consumes research through authenticated Server-Sent Events; the
+  REST endpoint remains available for complete JSON responses. Completed
+  research turns and their citation/page-fetch status are persisted to the
+  account-owned conversation.
 - SearXNG must enable JSON output and be configured through
   `SEARXNG_BASE_URL`; the Linux/Proxmox service deployment remains pending.
 - Website-building assistance is planned as workspace-scoped work, requiring
@@ -82,6 +95,11 @@ GPU / LLM / Bot / System Stats
   into shared notes. Shared notes are curated prompt context, not model
   training. There is no automatic fact extraction or semantic/vector
   retrieval. Diagnostic RAG remains a separate planned Phase 3 capability.
+- The AI Interface uses one fixed shared conversation owned by a synthetic
+  system identity. Only admin-only API routes can access it. Each console user
+  turn stores its authenticated admin attribution; the current admin receives
+  that shared history and approved notes as prompt context, never another
+  account's AI Chat transcript.
 
 ## GPU Pipeline
 

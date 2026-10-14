@@ -2,9 +2,10 @@
 
 ## Status key
 
-- **Done** — implemented and verified in the Windows development environment
-  or with focused mocks, as applicable; this does not imply production-host
-  validation.
+- **Done (Windows prototype)** — implemented and verified in the active
+  Windows build environment, or with focused mocks where noted. This counts as
+  project implementation for shared behavior; it does not imply target-host
+  validation for OS-, hardware-, network-, or service-specific behavior.
 - **In progress** — implementation is actively underway.
 - **Not started** — planned, but implementation has not begun.
 - **Experimental / waiting for server** — unsupported-by-vendor work that
@@ -12,9 +13,16 @@
   investigation is possible, but runtime validation is still required.
 
 Dashboard-owned login/session management and per-account SQLite conversation
-history are implemented and verified in the Windows development environment.
-Explicitly curated, admin-only shared operational notes are also implemented;
-raw transcripts remain private to each account.
+history are implemented and verified in the Windows build/prototype
+environment. Windows is the active server-development environment, not merely
+a disposable mock: shared application and API behavior is built here, then
+carried forward to Proxmox, with the expectation that most changes will be
+limited to platform-specific integration. Verify portability through tests;
+do not assume it solely from the language or framework.
+Explicitly curated, admin-only shared operational notes are also implemented.
+AI Chat transcripts remain private to each account. The AI Interface is a
+separate, single admin-shared operational transcript with attributed turns;
+its context does not load private AI Chat history.
 Proxmox-host and HTTPS-proxy validation remain outstanding. The dashboard,
 Windows backend foundation, operational logging, and interface polish are
 implemented. Transcript history is separate from diagnostic incident history
@@ -25,23 +33,27 @@ remain outstanding. The production Linux/Proxmox stack is unvalidated.
 
 ## Sequencing and portability rule
 
-Work is ordered by what can be implemented and verified before the physical
-server exists, then by how much real integration depends on the target host.
-Pre-server work should use explicit provider boundaries, configuration, and
-mock/test providers so Linux-specific behavior does not leak into the shared
-application. A mocked Proxmox response proves only the contract, not real
-authentication, service behavior, GPU compatibility, networking, or recovery.
+Work is ordered by what can be implemented and verified in the Windows
+prototype, then by what requires the actual Proxmox host. Windows is the build
+environment for the shared server application, not a disposable mock.
+Implement shared application behavior there and carry it forward; use explicit
+provider boundaries, configuration, and platform-specific adapters to isolate
+Linux/GPU/service differences. A mocked Proxmox response proves the client
+contract, not real authentication, service behavior, GPU compatibility,
+networking, or recovery.
 Prefer environment-driven paths and settings, keep platform-specific imports
 behind narrow providers, and preserve shared API behavior with cross-platform
 tests. Windows tests and generic Linux/WSL CI can catch portability defects,
 but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
 
-- **Portable/local:** build and test on Windows without requiring the future
-  host. Keep APIs, schemas, authorization, UI states, SQLite behavior, and
-  policy independent of the eventual runtime where practical.
-- **Mocked integration:** develop contracts and failure paths with fake
-  providers or simulated clocks/services; label these as simulations, not
-  deployment verification.
+- **Windows prototype:** implement and test shared APIs, schemas,
+  authorization, UI states, SQLite behavior, and policies against the working
+  local services. Treat this as real project development, while identifying
+  the operating-system and deployment assumptions.
+- **Cross-platform/mocked:** test common behavior on generic Linux/WSL/CI and
+  use fake providers or simulated clocks/services for unavailable dependencies.
+  Label these checks as simulations; they increase portability confidence but
+  do not certify Proxmox operation.
 - **Server-gated:** requires the actual Proxmox release, kernel, GPU, network,
   service manager, or production proxy. Do not mark it done based on Windows
   success or mocks.
@@ -68,6 +80,9 @@ but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
 - WebSocket streaming for local chat
 - CORS and WebSocket origin restrictions for configured dashboard origins
 - Windows SearXNG test setup and dashboard web-research integration
+- Cited web research with bounded public-page retrieval, explicit excerpt
+  fallback status, and authenticated SSE streaming. Focused unit/API tests
+  pass; a live SearXNG/llama.cpp end-to-end smoke test remains unverified.
 - Dashboard-owned authentication: local and mapped Proxmox login, persistent
   revocable sessions, role authorization, protected REST/WebSocket routes,
   CSRF and origin checks, login throttling, CLI account/mapping management,
@@ -83,20 +98,40 @@ but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
   RAG system. History is retained locally until its owner deletes it.
 - Admin shared insight memory: each note must be explicitly published by an
   admin; any admin can read or remove it. Admin identity and a bounded set of
-  approved notes are supplied to dashboard chat and research. Private account
+  approved notes are supplied to AI Chat and research. Private account
   transcripts are not shared, scraped, or used for model training. The newest
-  private conversation resumes at sign-in.
+  private AI Chat conversation resumes at sign-in.
+- AI Interface: a single persistent admin-shared operational transcript with
+  authenticated admin attribution, separate from AI Chat history. Server-side
+  authorization limits it to admins. Only explicitly requested read-only
+  diagnostics can run; general server command execution and maintenance are
+  not implemented.
 - Read-only `GET /api/backend/logs` endpoint and dashboard panel: configurable
   tail bounded to 500 lines, defaults to the latest 200; manual refresh and
   five-second auto-refresh only while open. Access is admin-only.
 - Persistent, bounded observe-only diagnostics: observations, incident
   state/transitions, and audit events in the local SQLite database; open
   incidents restore on backend restart. Collection is explicit and read-only.
-
-### In progress
-
-- Web research: basic cited search works in the Windows setup; full-page
-  fetching and streaming remain.
+- Optional HTTPS launchers for whole-dashboard testing from a mobile device
+  on a trusted private LAN. They bind to one configured private IPv4 address
+  and serve only public UI assets. Phone certificate trust and dashboard access
+  have been verified on the local device; firewall rules were not changed.
+  Mobile chat panels keep the header and composer visible while conversation
+  content scrolls; the AI Interface console badge stays beside its title, and
+  its safety notice can be dismissed until reload. Short landscape layouts
+  (600px high or less) retain compact horizontal navigation without a sidebar
+  toggle.
+  Portrait chat controls are condensed; short landscape layouts keep the
+  controls horizontal, place Research Web beside the input, and trim vertical
+  spacing to reserve conversation space, with Transmit beside the message field.
+- System Monitor telemetry is arranged in a responsive two-column metric grid,
+  collapsing to one column on very narrow screens; values still use the
+  existing telemetry update flow.
+- Collapsed desktop sidebar navigation icons are centered within the narrow
+  rail.
+- Tablet navigation uses a full-width grid, with six columns in landscape and
+  four in portrait; the header toggle hides or restores the navigation row to
+  preserve active-panel space when requested.
 
 ## Phase 3 — Mocked Integrations and Portable Feature Work
 
@@ -109,7 +144,7 @@ but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
   hosting, and routing/firewall. Service ownership, scopes, and configuration
   remain undecided; no backend or network changes are connected.
 
-### Next — can be implemented before the server is built
+### Next — continue implementation in the Windows prototype
 
 - Continue observe-only diagnostics with broader health checks, explicit
   threshold durations/hysteresis, evidence reports, and fault-injection tests.
@@ -121,11 +156,11 @@ but cannot certify Proxmox, GPU, proxy, or service-manager behavior.
   deterministic mocked executor. The model must not execute commands, grant
   itself authority, or change policy.
 - Simulate scheduled maintenance using mocked clocks, model/service providers,
-  and fault injection. Treat it as lifecycle testing only; it does not prove
-  host recovery or authorize deployment.
-- Complete cited web research (page fetching/streaming), then build the
-  workspace-restricted website agent with explicit approval before file
-  changes or command execution.
+  and fault injection. The sidebar MAINT state must be driven by a real active
+  lifecycle, which is not implemented yet. Treat simulations as lifecycle
+  testing only; they do not prove host recovery or authorize deployment.
+- Build the workspace-restricted website agent with explicit approval before
+  file changes or command execution.
 - Implement the model-agnostic image brief/job contract and metadata before
   integrating an image runtime.
 - Add contract and validation tests for prompt intent preservation, editable
@@ -243,18 +278,23 @@ been demonstrated on the target host.
 
 - Panel fade-in and sidebar transition; reduced-motion preference respected
 - Persistent dark/light theme
-- Responsive compact header and scrolling navigation below 760px
+- Responsive compact header and scrolling navigation on layouts 760px wide or
+  less, or 600px high or less
 - Persistent collapsible icon-only desktop sidebar
 - Persistent accent-colour selection
 
 ### Not started
 
-- Real-device mobile layout and interaction testing
+- Full real-device mobile layout and interaction testing; HTTPS LAN access and
+  certificate trust have been verified on the phone, but broader device and
+  interaction coverage remains outstanding
 
-## Suggested next work (before server deployment)
+## Suggested next work (in the Windows prototype)
 
-Complete portable and mocked work in dependency order; do not block it on
-server procurement, and do not treat mock success as deployment acceptance.
+Continue shared application implementation and test it in the Windows
+prototype. Isolate target-specific components behind providers and use mocks
+only where the actual service/hardware is not available. Keep a separate
+acceptance gate for real Proxmox deployment.
 
 Model recommendations below are advisory and describe roles, not requirements
 for a particular editor or agent platform. Use GPT Luna for implementation and
@@ -282,9 +322,8 @@ the current model options when starting each task.
    as simulation only until the Proxmox host is available.
    **Models:** Claude Sonnet for lifecycle and failure-mode review; GPT Luna
    for the simulation and deterministic tests.
-5. Complete web-research full-page fetching and streaming, then build the
-   workspace-restricted website agent with explicit approval for changes and
-   command execution.
+5. Build the workspace-restricted website agent with explicit approval for
+   changes and command execution.
    **Models:** GPT Luna for implementation and tests; Claude Sonnet for
    reviewing workspace isolation, approvals, and command-execution boundaries.
 6. Define backend contracts and read-only/mock providers for the VM and
@@ -303,9 +342,10 @@ Next server-gated milestone: execute Phase 4's compatibility/readiness gate
 against the actual hardware, then proceed through Phase 5 in controlled steps.
 Production authentication/session validation, LAN exposure, Linux GPU
 telemetry, and service/maintenance recovery remain gated on that host.
-Dashboard authentication and protected routes are implemented locally; keep
-the backend local-only until HTTPS/proxy behavior, firewall/network controls,
-and the complete deployment have been validated.
+Dashboard authentication and protected routes are implemented locally; the
+optional Windows LAN test mode is not production deployment. Keep the
+production backend local-only until HTTPS/proxy behavior, firewall/network
+controls, and the complete deployment have been validated.
 
 ## Documentation References
 

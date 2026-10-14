@@ -2,10 +2,12 @@
 
 ## Purpose and status
 
-This runbook records what can move from the Windows test environment, what
-must be implemented or decided for Linux, and the checks required before the
-AI Server is considered operational. It is a preparation guide, not evidence
-that Linux/Proxmox deployment has already been tested.
+Windows is the active build and prototype environment for the server project:
+shared application and API behavior is implemented and exercised there before
+deployment. This runbook identifies the platform-specific changes, decisions,
+and target-host checks needed to carry that implementation to Linux/Proxmox.
+It is a transition and acceptance guide, not evidence that target deployment
+has already been tested.
 
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the
@@ -84,9 +86,11 @@ design before creating production VM disks or file shares.
   llama.cpp build exposes that device name or that ROCm supports the chosen
   OS/kernel/GPU combination.
 
-These portability points describe code/configuration paths, not an integrated
-or production-validated Proxmox deployment. Treat each component as unverified
-until it passes the staged host checks and end-to-end acceptance below.
+The Windows build is the working prototype for shared application behavior;
+these portability points are not merely mocks. However, Windows verification
+does not establish Proxmox runtime behavior. Validate OS-, hardware-, network-,
+and service-specific components using the staged host checks and end-to-end
+acceptance below.
 
 ## Linux blockers to close
 

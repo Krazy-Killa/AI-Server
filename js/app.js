@@ -2,12 +2,11 @@
 // AI Dashboard — app.js (Expanded)
 // ===============================
 
-const isLocalDashboard = ['127.0.0.1', 'localhost'].includes(window.location.hostname)
-    && window.location.port === '8001';
+const isDashboardServer = window.location.port === '8001';
 const API_BASE = window.AI_SERVER_API_BASE || (
     window.location.protocol === 'file:'
         ? 'http://127.0.0.1:8000'
-        : isLocalDashboard
+        : isDashboardServer
             ? `${window.location.protocol}//${window.location.hostname}:8000`
             : window.location.origin
 );
@@ -21,8 +20,11 @@ const authNotice = document.getElementById('auth-notice');
 const dashboardApp = document.getElementById('dashboard-app');
 const authIdentity = document.getElementById('auth-identity');
 const authLogout = document.getElementById('auth-logout');
+const consoleNotice = document.getElementById('console-notice');
+const consoleNoticeDismiss = document.getElementById('console-notice-dismiss');
 let csrfToken = null;
 let currentRole = null;
+let interfaceAuthor = '';
 let releaseAuthGate;
 let authGateReleased = false;
 let authGate = new Promise(resolve => { releaseAuthGate = resolve; });
@@ -43,7 +45,12 @@ function showLogin(message) {
     holdAuthGate();
     csrfToken = null;
     currentRole = null;
+    interfaceAuthor = '';
     activeConversationId = null;
+    chatHistoryLoaded = false;
+    activeServerMode = null;
+    currentPanelId = 'interface-panel';
+    updateSidebarMode();
     sharedAdminMemory.hidden = true;
     sharedInsightList.replaceChildren();
     sharedInsightCount.textContent = '';
@@ -52,6 +59,8 @@ function showLogin(message) {
     conversationSelect.replaceChildren(new Option('New conversation', ''));
     conversationDeleteButton.disabled = true;
     clearChatWindow();
+    clearInterfaceWindow('Sign in to load the shared server console.');
+    interfaceStatus.textContent = '';
     authNotice.textContent = message;
     authScreen.hidden = false;
     dashboardApp.hidden = true;
@@ -59,10 +68,16 @@ function showLogin(message) {
     authUsername.focus();
 }
 
+consoleNoticeDismiss.addEventListener('click', () => {
+    consoleNotice.hidden = true;
+});
+
 function applyAuthorizationUI(role, username, provider, csrf) {
     currentRole = role;
     csrfToken = csrf;
+    interfaceAuthor = `${username} (${provider})`;
     authIdentity.textContent = `${username} · ${role} · ${provider}`;
+    document.querySelector('[data-panel="interface-panel"]').hidden = role !== 'admin';
     document.querySelector('[data-panel="chat-panel"]').hidden = role === 'viewer';
     document.querySelector('[data-panel="backend-logs-panel"]').hidden = role !== 'admin';
     document.getElementById('diagnostics-run').hidden = role === 'viewer';
@@ -72,8 +87,10 @@ function applyAuthorizationUI(role, username, provider, csrf) {
     if (botLogs) botLogs.hidden = role !== 'admin';
     if (role === 'viewer') {
         document.querySelector('[data-panel="system-panel"]').click();
+    } else if (role === 'admin') {
+        document.querySelector('[data-panel="interface-panel"]').click();
     } else {
-        loadConversationList(null, true);
+        document.querySelector('[data-panel="chat-panel"]').click();
     }
     sharedAdminMemory.hidden = role !== 'admin';
     if (role === 'admin') loadSharedAdminInsights();
@@ -167,7 +184,19 @@ const panels = document.querySelectorAll('.panel');
 const chatWindow = document.getElementById('chat-window');
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
+const interfaceWindow = document.getElementById('interface-window');
+const interfaceInput = document.getElementById('interface-input');
+const interfaceSendButton = document.getElementById('interface-send');
+const interfaceStatus = document.getElementById('interface-status');
+const interfacePanel = document.getElementById('interface-panel');
+let interfaceRequestInProgress = false;
+let interfaceLoadInProgress = false;
 const researchMode = document.getElementById('research-mode');
+const sidebarNodeName = document.getElementById('sidebar-node-name');
+const sidebarGpuName = document.getElementById('sidebar-gpu-name');
+const sidebarMode = document.getElementById('sidebar-mode');
+let activeServerMode = null;
+let currentPanelId = 'interface-panel';
 const conversationSelect = document.getElementById('conversation-select');
 const conversationNewButton = document.getElementById('conversation-new');
 const conversationDeleteButton = document.getElementById('conversation-delete');
@@ -178,9 +207,24 @@ const sharedInsightCount = document.getElementById('shared-insight-count');
 const sharedInsightStatus = document.getElementById('shared-insight-status');
 const sharedInsightForm = document.getElementById('shared-insight-form');
 const sharedInsightContent = document.getElementById('shared-insight-content');
+
+function updateSidebarMode() {
+    const activityModes = {
+        diagnostics: 'DIAG',
+        maintenance: 'MAINT',
+    };
+    sidebarMode.textContent = activityModes[activeServerMode]
+        || (currentPanelId === 'interface-panel'
+            ? 'CONSOLE'
+            : researchMode.checked ? 'RESEARCH' : 'LOCAL');
+}
+
+researchMode.addEventListener('change', updateSidebarMode);
+updateSidebarMode();
 const sharedInsightPublish = document.getElementById('shared-insight-publish');
 let activeConversationId = null;
 let chatRequestInProgress = false;
+let chatHistoryLoaded = false;
 
 // Bot panel elements
 const botStatusEl = document.getElementById('bot-status');
@@ -246,6 +290,8 @@ const ramValue = document.getElementById('ram-value');
 // ===============================
 navItems.forEach(item => {
     item.addEventListener('click', () => {
+        currentPanelId = item.dataset.panel;
+        updateSidebarMode();
         navItems.forEach(i => {
             i.classList.remove('active');
             i.removeAttribute('aria-current');
@@ -264,26 +310,41 @@ navItems.forEach(item => {
         });
         if (item.dataset.panel === 'backend-logs-panel') refreshBackendLogs();
         if (item.dataset.panel === 'diagnostics-panel') refreshDiagnostics();
+        if (item.dataset.panel === 'interface-panel') loadAdminInterface();
+        if (item.dataset.panel === 'chat-panel' && currentRole !== 'viewer' && !chatHistoryLoaded) {
+            chatHistoryLoaded = true;
+            loadConversationList(null, true);
+        }
     });
 });
 
 // Default: show chat panel only
 panels.forEach(panel => {
-    panel.style.display = panel.id === 'chat-panel' ? 'flex' : 'none';
+    panel.style.display = panel.id === 'interface-panel' ? 'flex' : 'none';
 });
 
 // ===============================
 // CHAT SYSTEM
 // ===============================
-function addMessage(text, sender = 'ai', latencyMs = null, sources = [], createdAt = null) {
-    const emptyState = chatWindow.querySelector('.conversation-empty');
+function addMessage(
+    text,
+    sender = 'ai',
+    latencyMs = null,
+    sources = [],
+    createdAt = null,
+    targetWindow = chatWindow,
+    author = null,
+) {
+    const emptyState = targetWindow.querySelector('.conversation-empty');
     if (emptyState) emptyState.remove();
     const msg = document.createElement('div');
     msg.classList.add('msg', sender === 'user' ? 'msg-user' : 'msg-ai');
 
     const label = document.createElement('div');
     label.classList.add('msg-label');
-    label.textContent = sender === 'user' ? 'USER • COMMAND' : 'AI • SYSTEM';
+    label.textContent = sender === 'user' && author
+        ? `ADMIN • ${author}`
+        : sender === 'user' ? 'USER • CHAT' : 'AI • SYSTEM';
 
     const messageText = document.createElement('div');
     messageText.classList.add('msg-text');
@@ -317,6 +378,11 @@ function addMessage(text, sender = 'ai', latencyMs = null, sources = [], created
                 link.target = '_blank';
                 link.rel = 'noopener noreferrer';
                 link.textContent = `[${index + 1}] ${source.title}`;
+                if (source.page_status === 'fetched') {
+                    link.title = 'Full page text retrieved for this answer';
+                } else if (source.page_status === 'excerpt_only') {
+                    link.title = 'Using the search-result excerpt only';
+                }
                 sourceList.appendChild(link);
             } catch {
                 return;
@@ -327,8 +393,8 @@ function addMessage(text, sender = 'ai', latencyMs = null, sources = [], created
 
     msg.appendChild(timestamp);
 
-    chatWindow.appendChild(msg);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    targetWindow.appendChild(msg);
+    targetWindow.scrollTop = targetWindow.scrollHeight;
     return msg;
 }
 
@@ -338,6 +404,93 @@ function clearChatWindow() {
     emptyState.className = 'conversation-empty';
     emptyState.textContent = 'Start a new chat or choose a saved conversation.';
     chatWindow.appendChild(emptyState);
+}
+
+function clearInterfaceWindow(message = 'No console activity yet. Send an operational request.') {
+    interfaceWindow.replaceChildren();
+    const emptyState = document.createElement('div');
+    emptyState.className = 'conversation-empty';
+    emptyState.textContent = message;
+    interfaceWindow.appendChild(emptyState);
+}
+
+async function loadAdminInterface() {
+    if (currentRole !== 'admin' || interfaceLoadInProgress || interfaceRequestInProgress) return;
+    interfaceLoadInProgress = true;
+    try {
+        const response = await apiFetch(`${API_BASE}/api/interface/conversation`);
+        const conversation = await response.json();
+        if (!response.ok) throw new Error(conversation.detail || 'Could not load the shared console.');
+
+        clearInterfaceWindow();
+        const messages = Array.isArray(conversation.messages) ? conversation.messages : [];
+        messages.forEach(message => {
+            if (message.role !== 'user' && message.role !== 'assistant') return;
+            addMessage(
+                message.content,
+                message.role,
+                null,
+                message.sources,
+                message.created_at,
+                interfaceWindow,
+                message.author,
+            );
+        });
+        if (!messages.length) clearInterfaceWindow();
+        interfaceStatus.textContent = `Shared with admins · ${messages.length} messages`;
+    } catch (error) {
+        clearInterfaceWindow('The shared server console is unavailable.');
+        interfaceStatus.textContent = error instanceof Error
+            ? error.message
+            : 'Could not load the shared console.';
+    } finally {
+        interfaceLoadInProgress = false;
+    }
+}
+
+async function sendInterfaceMessage() {
+    if (currentRole !== 'admin' || interfaceRequestInProgress || modelSwitchInProgress) return;
+    const text = interfaceInput.value.trim();
+    if (!text) return;
+
+    interfaceRequestInProgress = true;
+    interfaceSendButton.disabled = true;
+    interfaceInput.disabled = true;
+    interfaceInput.value = '';
+    addMessage(text, 'user', null, [], null, interfaceWindow, interfaceAuthor);
+    const pendingReply = addMessage(
+        'Processing server request…',
+        'ai',
+        null,
+        [],
+        null,
+        interfaceWindow,
+    );
+    interfaceStatus.textContent = 'Sending request to the server interface…';
+    try {
+        const response = await apiFetch(`${API_BASE}/api/interface/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Server interface request failed.');
+        if (typeof result.reply !== 'string') throw new Error('Server response did not contain a reply.');
+        pendingReply.remove();
+        interfaceRequestInProgress = false;
+        await loadAdminInterface();
+    } catch (error) {
+        pendingReply.textContent = error instanceof Error
+            ? `Error: ${error.message}`
+            : 'Server interface request failed.';
+        interfaceStatus.textContent = 'Request failed; refreshing the shared console.';
+        interfaceRequestInProgress = false;
+        await loadAdminInterface();
+    } finally {
+        interfaceRequestInProgress = false;
+        interfaceSendButton.disabled = false;
+        interfaceInput.disabled = false;
+    }
 }
 
 async function loadConversationList(selectedId = activeConversationId, resumeLatest = false) {
@@ -666,6 +819,76 @@ async function requestReply(text, useResearch, conversationId) {
     return data;
 }
 
+async function streamResearch(text, thinkingMsg, conversationId) {
+    const response = await apiFetch(`${API_BASE}/api/research/stream`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify({ message: text, conversation_id: conversationId }),
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || `Research request failed: ${response.status}`);
+    }
+    if (!response.body) throw new Error('Research stream is unavailable in this browser.');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const textEl = thinkingMsg.querySelector('.msg-text');
+    let buffer = '';
+    let reply = '';
+    let sources = [];
+    let completed = false;
+    let latencyMs = null;
+
+    function handleEvent(block) {
+        let event = 'message';
+        const dataLines = [];
+        for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) event = line.slice(6).trim();
+            else if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+        }
+        if (dataLines.length === 0) return;
+        const data = JSON.parse(dataLines.join('\n'));
+        if (event === 'sources') {
+            sources = Array.isArray(data.sources) ? data.sources : [];
+        } else if (event === 'token' && typeof data.content === 'string') {
+            reply += data.content;
+            textEl.textContent = reply;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        } else if (event === 'done') {
+            completed = true;
+            latencyMs = Number.isFinite(data.latency_ms) ? data.latency_ms : null;
+        } else if (event === 'error') {
+            throw new Error(data.detail || 'Research stream failed.');
+        }
+    }
+
+    try {
+        while (!completed) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, '\n');
+            let boundary;
+            while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+                const block = buffer.slice(0, boundary);
+                buffer = buffer.slice(boundary + 2);
+                handleEvent(block);
+            }
+        }
+        buffer = (buffer + decoder.decode()).replace(/\r\n/g, '\n');
+        if (buffer.trim()) handleEvent(buffer);
+    } finally {
+        if (!completed) await reader.cancel().catch(() => {});
+    }
+    if (!completed) throw new Error('Research stream ended before the answer completed.');
+
+    thinkingMsg.remove();
+    addMessage(reply, 'ai', latencyMs, sources);
+}
+
 async function sendMessage() {
     if (modelSwitchInProgress || chatRequestInProgress) return;
     const text = chatInput.value.trim();
@@ -687,19 +910,18 @@ async function sendMessage() {
 
     try {
         conversationId = await ensureConversation();
-        if (!useResearch) {
+        if (useResearch) {
+            await streamResearch(text, thinkingMsg, conversationId);
+        } else {
             try {
                 await streamChat(text, thinkingMsg, conversationId);
-                await loadConversationList(conversationId);
-                return;
             } catch (err) {
                 if (!(err && err.fallback)) throw err;
+                const data = await requestReply(text, false, conversationId);
+                thinkingMsg.remove();
+                addMessage(data.reply, 'ai', data.latency_ms, data.sources);
             }
         }
-
-        const data = await requestReply(text, useResearch, conversationId);
-        thinkingMsg.remove();
-        addMessage(data.reply, 'ai', data.latency_ms, data.sources);
         await loadConversationList(conversationId);
 
     } catch (err) {
@@ -718,6 +940,10 @@ async function sendMessage() {
 }
 
 sendBtn.addEventListener('click', sendMessage);
+interfaceSendButton.addEventListener('click', sendInterfaceMessage);
+interfaceInput.addEventListener('keypress', event => {
+    if (event.key === 'Enter') sendInterfaceMessage();
+});
 chatInput.addEventListener('keypress', e => {
     if (e.key === 'Enter') sendMessage();
 });
@@ -835,13 +1061,21 @@ async function loadModelInventory() {
 }
 
 async function requestModelSwitch(modelId) {
-    if (!modelId || currentRole === 'viewer' || modelSwitchInProgress || chatRequestInProgress) return;
+    if (
+        !modelId
+        || currentRole === 'viewer'
+        || modelSwitchInProgress
+        || chatRequestInProgress
+        || interfaceRequestInProgress
+    ) return;
 
     modelSwitchInProgress = true;
     activeModelSelect.disabled = true;
     sendBtn.disabled = true;
     chatInput.disabled = true;
     researchMode.disabled = true;
+    interfaceSendButton.disabled = true;
+    interfaceInput.disabled = true;
     modelRegistryStatus.textContent = 'Switching Model…';
     modelList.querySelectorAll('.model-card').forEach(card => {
         card.disabled = true;
@@ -867,6 +1101,8 @@ async function requestModelSwitch(modelId) {
         sendBtn.disabled = false;
         chatInput.disabled = false;
         researchMode.disabled = false;
+        interfaceSendButton.disabled = false;
+        interfaceInput.disabled = false;
         await loadModelInventory();
     }
 
@@ -1321,6 +1557,18 @@ async function pollSystemStats() {
         if (!response.ok) throw new Error(`System stats request failed: ${response.status}`);
         const data = await response.json();
 
+        sidebarNodeName.textContent = typeof data.node_name === 'string' && data.node_name.trim()
+            ? data.node_name
+            : 'UNAVAILABLE';
+        sidebarGpuName.textContent = typeof data.gpu_adapter === 'string' && data.gpu_adapter.trim()
+            ? data.gpu_adapter
+            : data.gpu_status === 'checking' ? 'CHECKING' : 'UNAVAILABLE';
+        activeServerMode = data.activity_mode === 'diagnostics'
+            || data.activity_mode === 'maintenance'
+            ? data.activity_mode
+            : null;
+        updateSidebarMode();
+
         setBarFill(gpuBar, data.gpu);
         setBarFill(cpuBar, data.cpu);
         setBarFill(ramBar, data.ram);
@@ -1359,6 +1607,10 @@ async function pollSystemStats() {
 
     } catch (err) {
         console.error("System stats error:", err);
+        sidebarNodeName.textContent = 'UNAVAILABLE';
+        sidebarGpuName.textContent = 'UNAVAILABLE';
+        activeServerMode = null;
+        updateSidebarMode();
         ramValue.textContent = 'N/A';
         setBarFill(ramBar, null);
     }
@@ -1366,6 +1618,11 @@ async function pollSystemStats() {
 
 setInterval(pollSystemStats, 2000);
 pollSystemStats();
+setInterval(() => {
+    if (interfacePanel.style.display === 'flex' && currentRole === 'admin') {
+        loadAdminInterface();
+    }
+}, 5000);
 
 // ===============================
 // SETTINGS — THEME, ACCENT, SIDEBAR (persisted)

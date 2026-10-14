@@ -6,26 +6,59 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### In Development
+
+- Reviewed retrieval of similar incidents and diagnostic procedures.
+- Image-generation backend groundwork and later runtime integration.
+- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
+  validation on the target server.
+
+## [0.6.0] - 2026-10-14
+
 ### Added
 
+- Split the admin-shared, single-transcript server console (AI Interface) from
+  per-account private conversations and web research (AI Chat). The console
+  stores attributed admin turns separately and does not load private chat
+  history.
+- Display the backend host name, detected GPU adapter, and selected local or
+  web-research mode in the sidebar using live system telemetry and UI state;
+  show DIAG during active observations and recognize MAINT only when an
+  implemented maintenance lifecycle reports it.
 - Persisted bounded observe-only diagnostics observations, incident state, and
   audit events to the local SQLite memory database. Open incidents are restored
   after restart; collection remains manually triggered, with no scheduler,
   commands, or remediation.
-
-### In Development
-
-- Reviewed retrieval of similar incidents and diagnostic procedures.
-- Complete web-research page fetching and streaming.
-- Image-generation backend groundwork and later runtime integration.
-- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
-  validation on the target server.
+- Completed cited web research with limited public-page retrieval, DNS-pinned
+  and redirect-validated fetches, HTML-only extraction, excerpt fallbacks,
+  untrusted-page prompt boundaries, and SSE token streaming in AI Chat.
+  Research source fetch status and citations persist with completed turns.
+- Added opt-in HTTPS launchers for mobile LAN testing. They bind only to a
+  configured private IPv4 address, require exact CORS and Secure-cookie
+  settings, and serve only the dashboard's public assets; normal development
+  launchers remain loopback-only.
+- Kept the mobile dashboard header and chat composers within the viewport so
+  conversation content scrolls independently on AI Interface and AI Chat.
+- Kept the AI Interface shared-console badge beside its title on mobile and
+  made the shared-console safety notice dismissible until page reload.
+- Prevented the desktop sidebar-collapse control from shrinking the
+  full-width navigation layout on phones in landscape orientation.
+- Condensed mobile chat controls to leave more room for conversation history
+  while keeping landscape controls horizontal, moving Research Web beside the
+  input, and keeping Transmit inline in AI Chat and AI Interface.
+- Reorganized System Monitor resource readings into a responsive grid of
+  individual metric cards.
+- Centered navigation icons in the collapsed desktop sidebar rail.
+- Changed tablet navigation to a full-width grid in portrait and landscape;
+  the header toggle now hides or restores the tablet navigation row.
 
 ### Changed
 
 - Reorganized the roadmap to separate portable Windows-testable work,
   mocked integrations, Proxmox readiness, target-host deployment, and live
-  server-dependent features.
+  server-dependent features. Clarified that Windows is the active build and
+  prototype environment for shared application behavior, not just a mock;
+  Proxmox-specific runtime behavior still requires target-host validation.
 
 ## [0.5.0] - 2026-10-14
 

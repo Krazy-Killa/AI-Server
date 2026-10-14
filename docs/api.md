@@ -34,8 +34,12 @@ token; unauthenticated clients receive `{"authenticated": false}`.
 
 The Discord bot uses a separate bearer credential and is limited to its
 machine API routes. It does not use or receive a dashboard user's session.
-Keep the backend loopback-only until HTTPS deployment and access controls are
-validated; see [Authentication & Session Management](./authentication.md).
+The normal development backend is loopback-only. Optional Windows mobile
+testing uses the dedicated LAN launcher with HTTPS on a single configured
+private IPv4 address, an exact configured CORS origin, and Secure cookies;
+this does not replace production HTTPS proxy and firewall validation. See
+[Authentication & Session Management](./authentication.md) and the
+[mobile LAN testing guide](./testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
 
 ## Authorization roles
 
@@ -43,7 +47,7 @@ validated; see [Authentication & Session Management](./authentication.md).
 - `operator`: viewer access plus chat/research, model selection, and manual
   diagnostics observations, including explicit diagnostic requests in chat.
 - `admin`: operator access plus backend logs, bot restart, and management of
-  explicitly published shared admin insights.
+  explicitly published shared admin insights and the shared AI Interface.
 
 The local CLI manages accounts and explicit Proxmox identity-to-role mappings.
 The API does not expose account administration.
@@ -52,12 +56,17 @@ The API does not expose account administration.
 
 GET /api/system  
 Requires the viewer role.
-Returns CPU and RAM telemetry plus GPU load. On Windows, `gpu` is the live
+Returns the backend host's `node_name`, CPU and RAM telemetry, plus GPU load.
+On Windows, `gpu` is the live
 utilization of the busiest engine on the detected AMD discrete GPU. The
 response includes `gpu_adapter`, `gpu_engine`, `gpu_status`, and `gpu_error`;
 `gpu` is `null` when the live reading is unavailable. `vram_used` and
 `vram_total` report live dedicated-memory usage and device-local capacity in
-GiB; they are `null` if GPU telemetry is unavailable.
+GiB; they are `null` if GPU telemetry is unavailable. `activity_mode` is
+`diagnostics` while a read-only observation is running, or `null` while idle.
+The dashboard gives this active work precedence over its local/research chat
+selection. `maintenance` is recognized by the dashboard but is not currently
+reported because a maintenance lifecycle has not been implemented.
 
 GET /api/gpu  
 Requires the viewer role.
@@ -97,6 +106,28 @@ diagnostics. Such a request runs one read-only observation and provides its
 results to the local model for explanation. Informational questions (for
 example, "How do I run diagnostics?") do not start an observation. The Discord
 bot service credential does not gain this capability through chat.
+
+---
+
+## AI Interface
+
+The AI Interface is an admin-only server console with one persistent transcript
+shared among administrators. Turns are attributed to the signed-in admin.
+Private AI Chat conversations are stored separately and are never loaded into
+the shared console context. Do not enter private chat content, personal
+details, passwords, or secrets in the shared console.
+
+GET /api/interface/conversation
+Returns the single shared transcript, with author attribution for user turns.
+
+POST /api/interface/chat
+Requires the admin role and a valid CSRF token/origin. Body:
+`{"message": "Check backend health"}`
+
+The local model may run a read-only diagnostic observation when explicitly
+requested. Other server commands, configuration changes, repairs, and
+maintenance actions are not implemented. The shared conversation is not a
+general Chat/Research workspace.
 
 ---
 
@@ -173,16 +204,42 @@ Body:
 }
 
 Searches through the configured SearXNG instance, asks the local model to
-summarize up to five result excerpts, and returns `reply`, `sources`,
-`search_latency_ms`, `latency_ms`, and `tokens`. Each source includes a title,
-URL, and excerpt. Source excerpts are treated as untrusted prompt data; the
-endpoint does not fetch full pages. For admin sessions, explicitly published
-shared admin insights and the current admin identity are included alongside
-the research safety prompt. Returns HTTP 503 if SearXNG or llama.cpp is
-unavailable or the search response is unusable. Configure the SearXNG base URL
-with `SEARXNG_BASE_URL` (default `http://127.0.0.1:8888`); its JSON output must
-be enabled in the SearXNG configuration. Queries may be forwarded by SearXNG
-to its upstream search engines; do not include secrets or private data.
+summarize up to five results, and returns `reply`, `sources`,
+`search_latency_ms`, `latency_ms`, and `tokens`. Each source includes `title`,
+`url`, `snippet`, and `page_status` (`fetched`, `excerpt_only`, or
+`not_fetched`). The backend attempts full-page retrieval for at most the first
+three sources; the rest use their SearXNG excerpt. Fetches accept only public
+HTTP(S) destinations on ports 80/443, resolve and pin public IP addresses,
+revalidate every redirect (maximum three), require an HTML content type, and
+bound each response to 1 MB and five seconds. Failed, unsafe, oversized, or
+non-HTML fetches fall back to the search excerpt. Fetched page text and search
+excerpts are explicitly untrusted evidence; instructions in them are never
+followed. For admin sessions, explicitly published shared admin insights and
+the current admin identity are included alongside the research safety prompt.
+Returns HTTP 503 if SearXNG is unavailable or its search response is unusable;
+model-stream errors are reported in-band by the streaming endpoint below.
+Configure the SearXNG base URL with `SEARXNG_BASE_URL` (default
+`http://127.0.0.1:8888`); its JSON output must be enabled in the SearXNG
+configuration. Queries may be forwarded by SearXNG to its upstream search
+engines; do not include secrets or private data.
+
+POST /api/research/stream
+Requires the operator role and a valid CSRF token/origin. Uses the same request
+body and bounded page-retrieval policy as `POST /api/research`; the browser
+uses this endpoint for AI Chat's Research Web mode. Returns Server-Sent Events
+(`text/event-stream`):
+
+- `event: sources` with `{"sources": [...], "search_latency_ms": 123}` before
+  answer generation. Each source includes `page_status`.
+- `event: token` with `{"content": "..."}` for each generated text chunk.
+- `event: done` with `{"latency_ms": 1234}` after the completed assistant turn
+  and its citations have been persisted when a conversation ID was supplied.
+- `event: error` with `{"detail": "..."}` if generation or persistence fails
+  after streaming has begun. Partial replies are not saved as completed turns.
+
+Search/preparation failures return HTTP 503 before the stream begins.
+Authenticated conversation IDs use the same account-scoped history and admin
+shared-context behavior as `POST /api/research`.
 
 WS /ws/chat  
 Requires an authenticated operator session and an allowed dashboard origin.
@@ -206,7 +263,7 @@ Server sends JSON messages:
 
 Closing the connection mid-reply stops generation. The dashboard uses this
 endpoint for ordinary chat and falls back to `POST /api/chat` if the stream
-cannot start. Web research remains non-streaming.
+cannot start. AI Chat's Research Web mode uses `POST /api/research/stream`.
 
 ---
 
@@ -273,11 +330,7 @@ Returns:
 
 POST /api/bot/heartbeat
 POST /api/bot/logs
-Discord-bot-only machine routes; both require `Authorization: Bearer
-<AI_SERVER_BOT_API_TOKEN>`. The heartbeat reports bot latency/commands and
-returns any pending restart request. The log endpoint records a short,
-content-free operational event. These routes reject dashboard session
-credentials.
+Discord-bot-only machine routes; both require the configured `AI_SERVER_BOT_API_TOKEN` service credential. The heartbeat reports bot latency/commands and returns any pending restart request. The log endpoint records a short, content-free operational event. These routes reject dashboard session credentials.
 
 POST /api/bot/restart
 Requires the admin role and CSRF protection. Requests a bot restart and

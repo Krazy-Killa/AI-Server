@@ -1,4 +1,4 @@
-"""Persistent, account-scoped conversation history."""
+"""Persistent private conversations and the admin-shared console transcript."""
 
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ MAX_CONVERSATION_LIST = 100
 MAX_TITLE_LENGTH = 80
 MAX_SHARED_INSIGHTS = 100
 MAX_SHARED_INSIGHT_LENGTH = 2_000
+ADMIN_INTERFACE_OWNER = "system:admin-interface"
+ADMIN_INTERFACE_CONVERSATION_ID = "00000000-0000-4000-8000-000000000001"
 
 
 class ChatMessage(TypedDict):
@@ -41,7 +43,7 @@ class MemoryStoreError(RuntimeError):
 
 
 class ConversationStore:
-    """SQLite store for private conversations and curated admin insights."""
+    """SQLite store for private chats, the shared console, and admin insights."""
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path).expanduser()
@@ -85,6 +87,7 @@ class ConversationStore:
                             REFERENCES conversations(conversation_id) ON DELETE CASCADE,
                         role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
                         content TEXT NOT NULL,
+                        author_id TEXT,
                         sources_json TEXT,
                         created_at INTEGER NOT NULL
                     );
@@ -100,6 +103,16 @@ class ConversationStore:
                         ON admin_shared_insights(created_at DESC, insight_id DESC);
                     """
                 )
+                message_columns = {
+                    row["name"]
+                    for row in connection.execute(
+                        "PRAGMA table_info(conversation_messages)"
+                    )
+                }
+                if "author_id" not in message_columns:
+                    connection.execute(
+                        "ALTER TABLE conversation_messages ADD COLUMN author_id TEXT"
+                    )
         except sqlite3.Error as error:
             raise MemoryStoreError("Could not initialize the conversation database.") from error
         if os.name != "nt":
@@ -108,12 +121,38 @@ class ConversationStore:
     @staticmethod
     def _record(row: sqlite3.Row) -> dict[str, object]:
         sources = json.loads(row["sources_json"]) if row["sources_json"] else []
-        return {
+        record = {
             "role": row["role"],
             "content": row["content"],
             "sources": sources,
             "created_at": row["created_at"],
         }
+        if row["author_id"] is not None:
+            record["author"] = row["author_id"]
+        return record
+
+    def get_admin_interface_conversation(self) -> dict[str, object]:
+        timestamp = int(time.time())
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """INSERT OR IGNORE INTO conversations
+                    (conversation_id, owner_id, title, created_at, updated_at)
+                    VALUES (?, ?, 'AI Interface Console', ?, ?)""",
+                    (
+                        ADMIN_INTERFACE_CONVERSATION_ID,
+                        ADMIN_INTERFACE_OWNER,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+            return self.get_conversation(
+                ADMIN_INTERFACE_OWNER, ADMIN_INTERFACE_CONVERSATION_ID
+            )
+        except sqlite3.Error as error:
+            raise MemoryStoreError(
+                "Could not load the shared AI Interface conversation."
+            ) from error
 
     def create_conversation(self, owner_id: str) -> dict[str, object]:
         conversation_id = str(uuid.uuid4())
@@ -170,7 +209,7 @@ class ConversationStore:
                 if conversation is None:
                     raise ConversationNotFound
                 rows = connection.execute(
-                    """SELECT role, content, sources_json, created_at
+                    """SELECT role, content, author_id, sources_json, created_at
                        FROM conversation_messages WHERE conversation_id = ?
                        ORDER BY message_id""",
                     (conversation_id,),
@@ -199,7 +238,11 @@ class ConversationStore:
             raise MemoryStoreError("Could not delete the conversation.") from error
 
     def begin_user_turn(
-        self, owner_id: str, conversation_id: str, content: str
+        self,
+        owner_id: str,
+        conversation_id: str,
+        content: str,
+        author_id: str | None = None,
     ) -> list[ChatMessage]:
         timestamp = int(time.time())
         try:
@@ -213,16 +256,16 @@ class ConversationStore:
                 if conversation is None:
                     raise ConversationNotFound
                 rows = connection.execute(
-                    """SELECT role, content FROM conversation_messages
+                    """SELECT role, content, author_id FROM conversation_messages
                        WHERE conversation_id = ?
                        ORDER BY message_id DESC LIMIT ?""",
                     (conversation_id, MAX_CONTEXT_MESSAGES),
                 ).fetchall()
                 connection.execute(
                     """INSERT INTO conversation_messages
-                       (conversation_id, role, content, created_at)
-                       VALUES (?, 'user', ?, ?)""",
-                    (conversation_id, content, timestamp),
+                       (conversation_id, role, content, author_id, created_at)
+                       VALUES (?, 'user', ?, ?, ?)""",
+                    (conversation_id, content, author_id, timestamp),
                 )
                 title = " ".join(content.split())[:MAX_TITLE_LENGTH]
                 connection.execute(
@@ -237,10 +280,13 @@ class ConversationStore:
             history: list[ChatMessage] = []
             total_chars = 0
             for row in rows:
-                message_length = len(row["content"])
+                content = row["content"]
+                if row["role"] == "user" and row["author_id"]:
+                    content = f"[Admin {row['author_id']}] {content}"
+                message_length = len(content)
                 if total_chars + message_length > MAX_CONTEXT_CHARS:
                     break
-                history.append({"role": row["role"], "content": row["content"]})
+                history.append({"role": row["role"], "content": content})
                 total_chars += message_length
             return list(reversed(history))
         except ConversationNotFound:

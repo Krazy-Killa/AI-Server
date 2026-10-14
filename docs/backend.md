@@ -11,6 +11,7 @@ ai-backend/
     system_stats.py
     model_manager.py
     bot_manager.py
+    web_research.py
     gpu/
         windows_gpu.py
         gpu_stub.py
@@ -21,7 +22,7 @@ ai-backend/
 
 main.py  
 - FastAPI app  
-- Route definitions, including the `/ws/chat` streaming endpoint  
+- Route definitions, including `/ws/chat` and `/api/research/stream`
 - Protected conversation create/list/read/delete routes and turn persistence
 - Admin-only shared-insight routes and signed-in identity/shared-context
   injection for dashboard chat and research
@@ -32,6 +33,13 @@ config.py
 - Reads and validates environment settings once at import into a frozen
   `settings` object; invalid values stop startup with a clear message  
 - Covers llama.cpp, model-switch options, SearXNG, CORS, chat limits, and logging  
+
+web_research.py
+- Searches SearXNG, retrieves a bounded set of public HTML pages, extracts
+bounded text, and passes all external content to the model as untrusted
+evidence. Redirect destinations and DNS-resolved IPs are revalidated.
+- Supports complete JSON research responses and streamed answer chunks; failed
+page fetches visibly fall back to the search excerpt.
 
 diagnostics.py
 - Performs only explicitly requested, read-only health checks and resource
@@ -101,6 +109,5 @@ production runtime dependencies remain in `requirements.txt`.
 
 ## Future Additions
 
-- Streaming for web research responses
 - Linux/Proxmox GPU telemetry and inference integration
-- Log shipping or dashboard log viewing for backend logs
+- Log shipping to a centralized destination

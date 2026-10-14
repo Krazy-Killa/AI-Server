@@ -1,3 +1,5 @@
+import platform
+
 import psutil
 
 from gpu.windows_gpu import get_gpu_load
@@ -14,6 +16,7 @@ def get_system_stats():
     gpu = get_gpu_load()
 
     return {
+        "node_name": platform.node(),
         "gpu": gpu["gpu_load"],
         "gpu_adapter": gpu["gpu_adapter"],
         "gpu_engine": gpu["gpu_engine"],

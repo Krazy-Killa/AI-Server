@@ -1,12 +1,15 @@
 # AI Command Interface
 
 A local AI and homelab dashboard with a browser-based interface, FastAPI
-backend, and optional Discord bot. This project is being developed and tested
-on Windows before deployment to a dedicated Linux/Proxmox server.
+backend, and optional Discord bot. Windows is the active build and prototype
+environment for the server project. Shared application behavior is developed
+and exercised here before deployment to the planned Linux/Proxmox host; only
+OS-, hardware-, and deployment-specific parts are expected to need target
+adjustments, with portability checked as the application is built.
 
 ## Project status
 
-### Working in the Windows test environment
+### Implemented and running in the Windows build environment
 
 - Local chat through llama.cpp, with GPU inference on the RX 6800 XT.
 - Installed GGUF model discovery and model switching from the dashboard.
@@ -18,7 +21,10 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Streaming local chat over WebSocket, validated configuration, and rotating
   backend logs. Backend tests: `python -m unittest discover` in `ai-backend`
   (the test client is installed from `ai-backend/requirements-dev.txt`).
-- Per-account private SQLite chat history with automatic resume of the latest
+- Separate AI Interface and AI Chat panels. AI Interface is a single,
+  persistent admin-shared server console transcript with attributed turns;
+  private AI Chat history is never loaded into its context. AI Chat retains
+  per-account private SQLite history with automatic resume of the latest
   conversation and bounded recent-turn context. Admins can separately publish
   operational notes to a curated shared store; only those approved notes are
   available across admin chat contexts. This is not transcript extraction,
@@ -26,11 +32,12 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Dashboard polish: persistent dark/light theme, accent colour, collapsible
   sidebar, and panel transitions (Settings page and header toggle).
 
-### Not yet operational
+### Remaining work and target-specific validation
 
 - Web research needs SearXNG running. On Windows it runs in WSL: install once
   with `wsl bash scripts/searxng/install-searxng.sh`, then start it with
-  `run-searxng.bat` (see `docs/testing-environment.md`).
+  `run-searxng.bat`. A live SearXNG-to-llama.cpp smoke test of the new
+  full-page/streaming path remains outstanding (see `docs/testing-environment.md`).
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
@@ -45,18 +52,21 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Dashboard login supports local accounts and explicitly mapped Proxmox
   identities, with revocable sessions and role-protected routes. Provision the
   first admin using the local CLI; Proxmox host/proxy security validation is
-  still required before LAN access.
-  CORS is restricted to dashboard origins, but do not expose the backend
-  beyond this machine until deployment validation is complete. Backend logs
+  still required before production deployment or broader LAN exposure. The
+  opt-in HTTPS launchers allow trusted private-LAN testing; do not expose the
+  backend to untrusted networks or the public internet. CORS is restricted to
+  dashboard origins. Backend logs
   may contain operational details and are available only to authenticated
   administrators.
 - AI diagnostics currently provide manually triggered, observe-only health
   checks with bounded SQLite-persisted observations, incidents, and audit
-  events. Scheduling, semantic retrieval, and remediation are not implemented.
+  events. The sidebar shows DIAG while an observation is running. The MAINT
+  indicator awaits an implemented maintenance lifecycle; scheduling, semantic
+  retrieval, and remediation are not implemented.
 
 ## Windows quick start
 
-The Windows test environment uses Python 3.12. Its virtual environment and
+The Windows build environment uses Python 3.12. Its virtual environment and
 llama.cpp build/model files are kept outside the OneDrive project folder,
 under `%LOCALAPPDATA%\AI-Server`.
 
@@ -77,16 +87,25 @@ The backend listens on `http://127.0.0.1:8000`; llama.cpp listens on
 switch among installed GGUFs. Switching interrupts active inference while
 llama.cpp restarts.
 
+For full dashboard testing on a phone over a trusted private Wi-Fi network,
+use the opt-in HTTPS LAN launchers and certificate/firewall instructions in
+the [testing guide](./docs/testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
+The default launchers remain loopback-only.
+
 ## Planned deployment
 
 The initial target is a Proxmox VE 9.x host with one AMD RX 6800 XT. The GPU
-is currently in the Windows development machine and is intended to move to
+is currently in the Windows build machine and is intended to move to
 the AI Server after a replacement GPU is acquired. The planned host stack is
 ROCm/HIP, ROCm-built llama.cpp with `llama-server`, ONNX Runtime ROCm EP,
 ComfyUI ROCm, Podman/Quadlet, NGINX, and Qdrant; ROCm/HIP is intended to be
 installed on the Proxmox host. These are deployment targets, not installed or
-validated server components. AMD's published support matrix currently does
-not list this GPU and Proxmox combination as officially supported, so GPU
+validated target-host components. Most application and API behavior is
+developed in the Windows prototype; GPU drivers/telemetry, Linux services,
+permissions, networking, and production proxy behavior require
+platform-specific integration and verification. AMD's published support
+matrix currently does not list this GPU and Proxmox combination as officially
+supported, so GPU
 installation is experimental and requires compatibility checks and staged
 verification on the actual Proxmox release, kernel, and component versions.
 The GPU will be used directly by the Proxmox host; VM passthrough is not
@@ -150,7 +169,8 @@ for the documentation reference checklist.
 - ✅ Configuration, logging, WebSocket chat, and account authentication
 - ✅ Private SQLite conversations and explicitly shared admin notes
 - ✅ Observe-only diagnostics with persistent bounded SQLite incident history
-- In progress: cited web research; full-page fetching and streaming remain
+- ✅ Cited web research with bounded, SSRF-resistant page retrieval and
+  Server-Sent Event answer streaming; unit and API tests cover fetch controls
 
 ### Phase 3 — Mocked Integrations and Portable Features
 - Define typed contracts and mock providers for VM, network, and game-server
@@ -185,9 +205,11 @@ for the documentation reference checklist.
 ### Phase 7 — Polish
 - ✅ UI animations and transitions
 - ✅ Theme switching (dark/light modes)
-- ✅ Mobile-responsive layout (real-device testing pending)
+- ✅ Responsive layout; mobile LAN access and certificate trust verified on a
+  phone, with full real-device layout and interaction testing still pending
 - ✅ Collapsible sidebar navigation
-- Keep real-device and deployed-environment interaction testing outstanding
+- Keep broader real-device and deployed-environment interaction testing
+  outstanding
 
 ## Documentation
 

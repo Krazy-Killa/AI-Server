@@ -31,6 +31,78 @@ Start the dashboard in a second terminal with `run-dashboard.bat`, then open
 `http://127.0.0.1:8001`. Serving the dashboard over HTTP allows it to call the
 local API from the browser.
 
+### Test the dashboard from a mobile device on the LAN
+
+The normal launchers remain loopback-only. For a full mobile test (including
+login and API requests), use the opt-in HTTPS LAN launchers below. Do not
+disable secure cookies or expose the development servers to the public
+internet. Keep the PC and phone on a trusted private Wi-Fi network and do not
+configure router port forwarding.
+
+1. Find the PC's private Wi-Fi IPv4 address with `ipconfig` (for example,
+   `192.168.1.50`). Reserve that address in the router if possible so it does
+   not change during testing.
+2. Install and initialize [mkcert](https://github.com/FiloSottile/mkcert) on
+   the PC. In PowerShell, generate a certificate whose subject includes that
+   exact IP address:
+
+   ```powershell
+   $lanIp = "192.168.1.50"
+   $certDir = "$env:LOCALAPPDATA\AI-Server\certs"
+   New-Item -ItemType Directory -Force $certDir
+   mkcert -install
+   mkcert -cert-file "$certDir\lan.pem" -key-file "$certDir\lan-key.pem" $lanIp
+   ```
+
+   Find mkcert's CA directory with `mkcert -CAROOT`. Keep `lan-key.pem` and
+   `rootCA-key.pem` on the PC. Install only the public `rootCA.pem` on the
+   phone and explicitly enable trust for it as required by that phone's
+   OS/browser. Never copy either private key to the phone. If the certificate
+   is not trusted, stop and fix trust rather than bypassing the browser
+   warning.
+3. In the ignored project-root `.env`, configure these values using your
+   address and certificate paths:
+
+   ```dotenv
+   AI_SERVER_LAN_HOST=192.168.1.50
+   AI_SERVER_LAN_TLS_CERT=%LOCALAPPDATA%\AI-Server\certs\lan.pem
+   AI_SERVER_LAN_TLS_KEY=%LOCALAPPDATA%\AI-Server\certs\lan-key.pem
+   AI_SERVER_CORS_ORIGINS=https://192.168.1.50:8001
+   AI_SERVER_AUTH_COOKIE_SECURE=true
+   ```
+
+4. Start `run-lan-backend.bat` and `run-lan-dashboard.bat` in separate
+   terminals. They bind only to the configured private address and serve HTTPS
+   on ports 8000 (API) and 8001 (dashboard). The dashboard server serves only
+   `index.html`, `css/style.css`, and `js/app.js`; it does not expose the
+   repository or `.env`. Open `https://192.168.1.50:8001` on the phone.
+   To use the optional Discord bot while the LAN backend is running, set
+   `AI_SERVER_API_BASE=https://192.168.1.50:8000` in `.env` and restart the
+   bot. Its default `http://127.0.0.1:8000` points to loopback, where the
+   LAN-only backend is not listening. Restore the loopback URL when returning
+   to the normal backend launcher.
+5. If Windows Firewall blocks the connection, open PowerShell as
+   Administrator and allow TCP ports 8000 and 8001 only on the **Private**
+   profile and only from `LocalSubnet`; do not allow these ports on Public
+   networks:
+
+   ```powershell
+   New-NetFirewallRule -DisplayName "AI Server LAN Test" -Direction Inbound `
+     -Action Allow -Protocol TCP -LocalPort 8000,8001 -Profile Private `
+     -RemoteAddress LocalSubnet
+   ```
+
+   Stop both servers with Ctrl+C after testing. Remove the rule when finished:
+
+   ```powershell
+   Remove-NetFirewallRule -DisplayName "AI Server LAN Test"
+   ```
+
+The IP address in the certificate, `.env`, and browser URL must match. If the
+address changes, regenerate the certificate and update the CORS origin. The
+backend, llama.cpp, and SearXNG normal launchers remain loopback-bound; the
+LAN backend can still reach those local services on the PC.
+
 ## GPU load telemetry
 
 On Windows, the system monitor reads the RX 6800 XT's `GPU Engine` performance
@@ -80,15 +152,22 @@ Windows telemetry reports live GPU load and VRAM while it runs.
 
 ### Explicit web research
 
-The Chat Interface includes a **Research Web** checkbox. When enabled, the
-next message uses `POST /api/research`; otherwise chat stays local and does not
-search. The research endpoint expects SearXNG at
-`http://127.0.0.1:8888` by default. Set `SEARXNG_BASE_URL` before launching
-the backend to use another instance. The endpoint uses up to five result
-excerpts and returns their source links with the local model's answer. It does
-not yet fetch full pages. Search queries may be forwarded by SearXNG to its
-configured upstream search engines, so avoid sending secrets or private data in
-Research mode.
+The AI Chat panel includes a **Research Web** checkbox. When enabled, the
+next message uses `POST /api/research/stream`; otherwise chat stays local and
+does not search. The complete-response `POST /api/research` endpoint remains
+available. Both expect SearXNG at `http://127.0.0.1:8888` by default. Set
+`SEARXNG_BASE_URL` before launching the backend to use another instance.
+Research searches up to five sources and attempts to fetch full text from at
+most three public HTTP(S) HTML pages. Each fetch is limited to one megabyte
+and five seconds, revalidates up to three redirects, and rejects non-public
+addresses and nonstandard ports. Unsafe, unavailable, and non-HTML pages fall
+back to their SearXNG excerpts; source metadata reports `page_status`. The
+stream returns source metadata before answer tokens, and completed turns are
+saved with their citations. Automated unit and API tests cover these
+boundaries; a live browser-to-WSL SearXNG-to-llama.cpp end-to-end smoke test
+after this implementation is still unverified. Search queries may be
+forwarded by SearXNG to its configured upstream search engines, so avoid
+sending secrets or private data in Research mode.
 
 SearXNG does not support native Windows, so the test environment runs it inside
 WSL (Ubuntu) with no root access needed. One-time install from the project
@@ -112,7 +191,7 @@ Invoke-RestMethod "http://127.0.0.1:8888/search?q=test&format=json"
 
 The Models page discovers `.gguf` files in
 `%LOCALAPPDATA%\AI-Server\models` and marks the file reported by llama.cpp's
-`/props` endpoint as loaded. Choose an installed model from the AI Interface
+`/props` endpoint as loaded. Choose an installed model from AI Chat
 dropdown or click its card on the Models page to switch the running server.
 The backend verifies that the loopback port belongs to the expected
 `llama-server`, restarts it with the selected file, and only reports success

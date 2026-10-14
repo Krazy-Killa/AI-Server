@@ -370,6 +370,10 @@ class DiagnosticsMonitor:
         with self._collection_lock:
             return self._collect_observation()
 
+    @property
+    def is_running(self) -> bool:
+        return self._collection_lock.locked()
+
     def _collect_observation(self) -> DiagnosticObservation:
         observation_id = f"obs_{uuid4().hex}"
         started_at = _timestamp()

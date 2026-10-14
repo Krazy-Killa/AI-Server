@@ -31,6 +31,8 @@ sync with `LLAMA_CPP_DEVICE`, `LLAMA_CPP_GPU_LAYERS`, and
 | `AI_SERVER_MAX_TOKENS` | Maximum tokens generated per chat reply; defaults to `256`. |
 | `AI_SERVER_MAX_CHAT_CHARS` | Maximum characters accepted per streamed chat message; defaults to `4000`. |
 | `AI_SERVER_CORS_ORIGINS` | Comma-separated browser origins allowed to call the API and open `/ws/chat`; defaults to `http://127.0.0.1:8001,http://localhost:8001`. `*` is rejected. Add the dashboard's origin here before serving it from another host. |
+| `AI_SERVER_LAN_HOST` | Optional private IPv4 address used only by `run-lan-backend.bat` and `run-lan-dashboard.bat`; the opt-in mobile test launchers reject loopback, wildcard, and public addresses. |
+| `AI_SERVER_LAN_TLS_CERT` / `AI_SERVER_LAN_TLS_KEY` | Certificate chain and matching private-key paths for the HTTPS-only LAN test launchers. The certificate must include `AI_SERVER_LAN_HOST`; keep the private key on the PC. |
 | `AI_SERVER_AUTH_DB_PATH` | SQLite authentication database; defaults to `%LOCALAPPDATA%\AI-Server\data\auth.sqlite3` on Windows or `~/AI-Server/data/auth.sqlite3` elsewhere. Protect this file and its directory. |
 | `AI_SERVER_MEMORY_DB_PATH` | SQLite dashboard memory; defaults to `memory.sqlite3` beside the authentication database. Protect it and its directory; it contains private saved conversations/research citations, explicitly published admin-shared operational notes, and bounded observe-only diagnostic history. |
 | `AI_SERVER_AUTH_COOKIE_SECURE` | `true` by default; use Secure session cookies for HTTPS. Set `false` only for isolated loopback HTTP development; never expose that setup to a network. |
@@ -108,12 +110,16 @@ bots and responds only when directly mentioned; ordinary channel messages do
 not trigger AI requests. Keep the bot's server permissions limited to the
 channels where it should respond.
 
-The dashboard connects to the backend on port 8000 when served locally from
-port 8001, and otherwise uses its own origin by default. A deployment can set
+The dashboard connects to the backend on port 8000 when served from port 8001,
+and otherwise uses its own origin by default. A deployment can set
 `window.AI_SERVER_API_BASE` before `js/app.js` loads when it needs a different
-API origin. The server-side variables do not set this browser value. LAN
-access requires HTTPS, a reachable API/proxy configuration, and security
-hardening first. See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).
+API origin. The server-side variables do not set this browser value. For
+private-LAN mobile testing, use the dedicated HTTPS-only launchers and follow
+the [mobile LAN testing guide](./testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
+This opt-in test path is not a production deployment; keep the production
+backend loopback-bound until the HTTPS proxy, firewall, and access-control
+checks in the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
+pass.
 
 ## `.gitignore` coverage
 

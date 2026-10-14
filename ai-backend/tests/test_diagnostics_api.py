@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 os.environ.setdefault(
     "AI_SERVER_LOG_DIR", tempfile.mkdtemp(prefix="ai-server-test-logs-")
@@ -53,6 +53,36 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.monitor_patch.start()
         self.addCleanup(self.monitor_patch.stop)
         self.client, self.auth_store = authenticated_client(self, main)
+
+    def test_system_status_reports_active_diagnostics_mode(self):
+        with (
+            patch.object(self.main, "get_system_stats", return_value={"cpu": 12.5}),
+            patch.object(
+                type(self.main.diagnostics_monitor),
+                "is_running",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+        ):
+            response = self.client.get("/api/system")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["activity_mode"], "diagnostics")
+
+    def test_system_status_reports_no_activity_mode_when_idle(self):
+        with (
+            patch.object(self.main, "get_system_stats", return_value={"cpu": 12.5}),
+            patch.object(
+                type(self.main.diagnostics_monitor),
+                "is_running",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            response = self.client.get("/api/system")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["activity_mode"])
 
     def test_status_and_incidents_are_available_only_from_explicit_observations(self):
         status = self.client.get("/api/diagnostics/status")
@@ -133,6 +163,30 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertIn("read-only diagnostics observation", system_prompt)
         self.assertIn("llama_server.health", system_prompt)
         self.assertIn("llama.cpp is not ready.", system_prompt)
+
+    def test_interface_console_can_run_explicit_read_only_diagnostics(self):
+        llm_result = {
+            "reply": "The backend is healthy; llama.cpp is degraded.",
+            "latency_ms": 12,
+            "tokens": 9,
+        }
+        with (
+            patch.object(self.main, "run_llm", return_value=llm_result) as run_llm,
+            patch.object(
+                self.main.diagnostics_monitor,
+                "run_observation",
+                wraps=self.main.diagnostics_monitor.run_observation,
+            ) as run_observation,
+        ):
+            response = self.client.post(
+                "/api/interface/chat", json={"message": "Run diagnostics."}
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        run_observation.assert_called_once_with()
+        system_prompt = run_llm.call_args.args[1]
+        self.assertIn("read-only diagnostics observation", system_prompt)
+        self.assertIn("llama_server.health", system_prompt)
 
     def test_diagnostics_questions_do_not_trigger_an_observation(self):
         llm_result = {"reply": "Use the Diagnostics panel.", "latency_ms": 5, "tokens": 6}
