@@ -2,7 +2,163 @@
 // AI Dashboard — app.js (Expanded)
 // ===============================
 
-const API_BASE = "http://127.0.0.1:8000";
+const isLocalDashboard = ['127.0.0.1', 'localhost'].includes(window.location.hostname)
+    && window.location.port === '8001';
+const API_BASE = window.AI_SERVER_API_BASE || (
+    window.location.protocol === 'file:'
+        ? 'http://127.0.0.1:8000'
+        : isLocalDashboard
+            ? `${window.location.protocol}//${window.location.hostname}:8000`
+            : window.location.origin
+);
+const authScreen = document.getElementById('auth-screen');
+const authForm = document.getElementById('auth-form');
+const authProvider = document.getElementById('auth-provider');
+const authUsername = document.getElementById('auth-username');
+const authPassword = document.getElementById('auth-password');
+const authSubmit = document.getElementById('auth-submit');
+const authNotice = document.getElementById('auth-notice');
+const dashboardApp = document.getElementById('dashboard-app');
+const authIdentity = document.getElementById('auth-identity');
+const authLogout = document.getElementById('auth-logout');
+let csrfToken = null;
+let currentRole = null;
+let releaseAuthGate;
+let authGateReleased = false;
+let authGate = new Promise(resolve => { releaseAuthGate = resolve; });
+
+function holdAuthGate() {
+    if (!authGateReleased) return;
+    authGateReleased = false;
+    authGate = new Promise(resolve => { releaseAuthGate = resolve; });
+}
+
+function releaseDashboardRequests() {
+    if (authGateReleased) return;
+    authGateReleased = true;
+    releaseAuthGate();
+}
+
+function showLogin(message) {
+    holdAuthGate();
+    csrfToken = null;
+    currentRole = null;
+    activeConversationId = null;
+    sharedAdminMemory.hidden = true;
+    sharedInsightList.replaceChildren();
+    sharedInsightCount.textContent = '';
+    sharedInsightStatus.textContent = '';
+    sharedInsightContent.value = '';
+    conversationSelect.replaceChildren(new Option('New conversation', ''));
+    conversationDeleteButton.disabled = true;
+    clearChatWindow();
+    authNotice.textContent = message;
+    authScreen.hidden = false;
+    dashboardApp.hidden = true;
+    authPassword.value = '';
+    authUsername.focus();
+}
+
+function applyAuthorizationUI(role, username, provider, csrf) {
+    currentRole = role;
+    csrfToken = csrf;
+    authIdentity.textContent = `${username} · ${role} · ${provider}`;
+    document.querySelector('[data-panel="chat-panel"]').hidden = role === 'viewer';
+    document.querySelector('[data-panel="backend-logs-panel"]').hidden = role !== 'admin';
+    document.getElementById('diagnostics-run').hidden = role === 'viewer';
+    document.getElementById('bot-restart').hidden = role !== 'admin';
+    botApplyModelButton.disabled = role === 'viewer';
+    const botLogs = document.getElementById('bot-log-window');
+    if (botLogs) botLogs.hidden = role !== 'admin';
+    if (role === 'viewer') {
+        document.querySelector('[data-panel="system-panel"]').click();
+    } else {
+        loadConversationList(null, true);
+    }
+    sharedAdminMemory.hidden = role !== 'admin';
+    if (role === 'admin') loadSharedAdminInsights();
+    authScreen.hidden = true;
+    dashboardApp.hidden = false;
+    releaseDashboardRequests();
+}
+
+async function apiFetch(url, options = {}) {
+    await authGate;
+    const headers = new Headers(options.headers || {});
+    const method = (options.method || 'GET').toUpperCase();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && csrfToken) {
+        headers.set('X-CSRF-Token', csrfToken);
+    }
+    const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+    });
+    if (response.status === 401 && !url.includes('/api/auth/')) {
+        showLogin('Your session expired. Sign in again to continue.');
+    }
+    return response;
+}
+
+async function restoreSession() {
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/status`, {
+            credentials: 'include',
+        });
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.detail || 'Could not check the dashboard session.');
+        if (!status.authenticated) {
+            showLogin('Sign in with a local dashboard account or Proxmox VE.');
+            return;
+        }
+        applyAuthorizationUI(status.role, status.username, status.provider, status.csrf_token);
+    } catch (error) {
+        showLogin(error instanceof Error
+            ? `Backend unavailable: ${error.message}`
+            : 'Backend unavailable. Start the AI Server backend, then sign in.');
+    }
+}
+
+authForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    authSubmit.disabled = true;
+    authNotice.textContent = 'Signing in…';
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                provider: authProvider.value,
+                username: authUsername.value,
+                password: authPassword.value,
+            }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || `Sign-in failed (${response.status}).`);
+        authPassword.value = '';
+        applyAuthorizationUI(result.role, result.username, result.provider, result.csrf_token);
+    } catch (error) {
+        authNotice.textContent = error instanceof Error
+            ? error.message
+            : 'Sign-in failed. Check your credentials and try again.';
+    } finally {
+        authSubmit.disabled = false;
+    }
+});
+
+authLogout.addEventListener('click', async () => {
+    authLogout.disabled = true;
+    try {
+        const response = await apiFetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
+        if (!response.ok) throw new Error('Sign out failed.');
+        showLogin('You have been signed out.');
+    } catch (error) {
+        authNotice.textContent = error instanceof Error ? error.message : 'Sign out failed.';
+    } finally {
+        authLogout.disabled = false;
+    }
+});
 
 // Cache DOM elements
 const navItems = document.querySelectorAll('.nav-item');
@@ -12,6 +168,19 @@ const chatWindow = document.getElementById('chat-window');
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
 const researchMode = document.getElementById('research-mode');
+const conversationSelect = document.getElementById('conversation-select');
+const conversationNewButton = document.getElementById('conversation-new');
+const conversationDeleteButton = document.getElementById('conversation-delete');
+const conversationStatus = document.getElementById('conversation-status');
+const sharedAdminMemory = document.getElementById('shared-admin-memory');
+const sharedInsightList = document.getElementById('shared-insight-list');
+const sharedInsightCount = document.getElementById('shared-insight-count');
+const sharedInsightStatus = document.getElementById('shared-insight-status');
+const sharedInsightForm = document.getElementById('shared-insight-form');
+const sharedInsightContent = document.getElementById('shared-insight-content');
+const sharedInsightPublish = document.getElementById('shared-insight-publish');
+let activeConversationId = null;
+let chatRequestInProgress = false;
 
 // Bot panel elements
 const botStatusEl = document.getElementById('bot-status');
@@ -106,7 +275,9 @@ panels.forEach(panel => {
 // ===============================
 // CHAT SYSTEM
 // ===============================
-function addMessage(text, sender = 'ai', latencyMs = null, sources = []) {
+function addMessage(text, sender = 'ai', latencyMs = null, sources = [], createdAt = null) {
+    const emptyState = chatWindow.querySelector('.conversation-empty');
+    if (emptyState) emptyState.remove();
     const msg = document.createElement('div');
     msg.classList.add('msg', sender === 'user' ? 'msg-user' : 'msg-ai');
 
@@ -120,7 +291,8 @@ function addMessage(text, sender = 'ai', latencyMs = null, sources = []) {
 
     const timestamp = document.createElement('div');
     timestamp.classList.add('msg-timestamp');
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timestampDate = typeof createdAt === 'number' ? new Date(createdAt * 1000) : new Date();
+    const time = timestampDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     timestamp.textContent = typeof latencyMs === 'number'
         ? `${time} · ${(latencyMs / 1000).toFixed(2)}s`
         : time;
@@ -160,11 +332,231 @@ function addMessage(text, sender = 'ai', latencyMs = null, sources = []) {
     return msg;
 }
 
+function clearChatWindow() {
+    chatWindow.replaceChildren();
+    const emptyState = document.createElement('div');
+    emptyState.className = 'conversation-empty';
+    emptyState.textContent = 'Start a new chat or choose a saved conversation.';
+    chatWindow.appendChild(emptyState);
+}
+
+async function loadConversationList(selectedId = activeConversationId, resumeLatest = false) {
+    if (currentRole === 'viewer') return;
+    try {
+        const response = await apiFetch(`${API_BASE}/api/memory/conversations`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Could not load saved chats.');
+
+        conversationSelect.replaceChildren(new Option('New conversation', ''));
+        const conversations = Array.isArray(data.conversations) ? data.conversations : [];
+        conversations.forEach(conversation => {
+            if (typeof conversation.conversation_id !== 'string' || typeof conversation.title !== 'string') return;
+            const option = new Option(`${conversation.title} (${conversation.message_count})`, conversation.conversation_id);
+            conversationSelect.add(option);
+        });
+        const conversationToOpen = selectedId || (
+            resumeLatest && conversations.length ? conversations[0].conversation_id : null
+        );
+        if (conversationToOpen && conversations.some(item => item.conversation_id === conversationToOpen)) {
+            conversationSelect.value = conversationToOpen;
+            activeConversationId = conversationToOpen;
+            conversationDeleteButton.disabled = false;
+            if (resumeLatest) await openConversation(conversationToOpen);
+        } else {
+            activeConversationId = null;
+            conversationSelect.value = '';
+            conversationDeleteButton.disabled = true;
+            clearChatWindow();
+        }
+        conversationStatus.textContent = `${conversations.length} saved`;
+    } catch (error) {
+        conversationStatus.textContent = error instanceof Error ? error.message : 'Could not load saved chats.';
+    }
+}
+
+async function openConversation(conversationId) {
+    try {
+        const response = await apiFetch(
+            `${API_BASE}/api/memory/conversations/${encodeURIComponent(conversationId)}`
+        );
+        const conversation = await response.json();
+        if (!response.ok) throw new Error(conversation.detail || 'Could not open this conversation.');
+        clearChatWindow();
+        for (const message of conversation.messages || []) {
+            if (message.role !== 'user' && message.role !== 'assistant') continue;
+            addMessage(
+                message.content,
+                message.role === 'user' ? 'user' : 'ai',
+                null,
+                message.sources,
+                message.created_at,
+            );
+        }
+        activeConversationId = conversationId;
+        conversationSelect.value = conversationId;
+        conversationDeleteButton.disabled = false;
+        conversationStatus.textContent = conversation.title;
+    } catch (error) {
+        conversationSelect.value = activeConversationId || '';
+        conversationStatus.textContent = error instanceof Error ? error.message : 'Could not open this conversation.';
+    }
+}
+
+function startNewConversation() {
+    activeConversationId = null;
+    conversationSelect.value = '';
+    conversationDeleteButton.disabled = true;
+    conversationStatus.textContent = 'New chat';
+    clearChatWindow();
+}
+
+async function ensureConversation() {
+    if (activeConversationId) return activeConversationId;
+    const response = await apiFetch(`${API_BASE}/api/memory/conversations`, {
+        method: 'POST',
+    });
+    const conversation = await response.json();
+    if (!response.ok) throw new Error(conversation.detail || 'Could not create a conversation.');
+    activeConversationId = conversation.conversation_id;
+    conversationSelect.add(
+        new Option(`${conversation.title} (0)`, conversation.conversation_id),
+        1,
+    );
+    conversationSelect.value = activeConversationId;
+    conversationDeleteButton.disabled = false;
+    conversationStatus.textContent = conversation.title;
+    return activeConversationId;
+}
+
+async function deleteConversation() {
+    if (!activeConversationId || !window.confirm('Delete this conversation and its saved messages?')) return;
+    const conversationId = activeConversationId;
+    conversationDeleteButton.disabled = true;
+    try {
+        const response = await apiFetch(
+            `${API_BASE}/api/memory/conversations/${encodeURIComponent(conversationId)}`,
+            { method: 'DELETE' },
+        );
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Could not delete this conversation.');
+        startNewConversation();
+        await loadConversationList(null);
+    } catch (error) {
+        conversationStatus.textContent = error instanceof Error ? error.message : 'Could not delete this conversation.';
+        conversationDeleteButton.disabled = false;
+    }
+}
+
+conversationSelect.addEventListener('change', () => {
+    if (conversationSelect.value) openConversation(conversationSelect.value);
+    else startNewConversation();
+});
+conversationNewButton.addEventListener('click', startNewConversation);
+conversationDeleteButton.addEventListener('click', deleteConversation);
+
+async function loadSharedAdminInsights() {
+    sharedInsightStatus.textContent = 'Loading shared notes…';
+    sharedInsightList.replaceChildren();
+    try {
+        const response = await apiFetch(`${API_BASE}/api/memory/shared-insights`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Could not load shared admin notes.');
+
+        const insights = Array.isArray(data.insights) ? data.insights : [];
+        sharedInsightCount.textContent = `(${insights.length})`;
+        if (!insights.length) {
+            const empty = document.createElement('p');
+            empty.className = 'shared-insight-empty';
+            empty.textContent = 'No notes have been published.';
+            sharedInsightList.appendChild(empty);
+        }
+        insights.forEach(insight => {
+            if (!Number.isInteger(insight.insight_id) || typeof insight.content !== 'string') return;
+            const item = document.createElement('article');
+            item.className = 'shared-insight-item';
+            const copy = document.createElement('div');
+            copy.className = 'shared-insight-copy';
+            copy.textContent = insight.content;
+            const meta = document.createElement('div');
+            meta.className = 'shared-insight-meta';
+            const date = Number.isInteger(insight.created_at)
+                ? new Date(insight.created_at * 1000).toLocaleString()
+                : 'Date unavailable';
+            meta.textContent = `Published by ${insight.created_by || 'admin'} · ${date}`;
+            copy.appendChild(meta);
+
+            const remove = document.createElement('button');
+            remove.className = 'btn-secondary shared-insight-delete';
+            remove.type = 'button';
+            remove.textContent = 'Remove';
+            remove.setAttribute('aria-label', 'Remove this shared insight');
+            remove.addEventListener('click', () => deleteSharedInsight(insight.insight_id));
+            item.append(copy, remove);
+            sharedInsightList.appendChild(item);
+        });
+        sharedInsightStatus.textContent = '';
+    } catch (error) {
+        sharedInsightStatus.textContent = error instanceof Error
+            ? error.message
+            : 'Could not load shared admin notes.';
+    }
+}
+
+async function deleteSharedInsight(insightId) {
+    if (!window.confirm('Remove this note from shared admin knowledge?')) return;
+    sharedInsightStatus.textContent = 'Removing shared note…';
+    try {
+        const response = await apiFetch(
+            `${API_BASE}/api/memory/shared-insights/${encodeURIComponent(insightId)}`,
+            { method: 'DELETE' },
+        );
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Could not remove the shared note.');
+        await loadSharedAdminInsights();
+        sharedInsightStatus.textContent = 'Shared note removed.';
+    } catch (error) {
+        sharedInsightStatus.textContent = error instanceof Error
+            ? error.message
+            : 'Could not remove the shared note.';
+    }
+}
+
+sharedInsightForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const content = sharedInsightContent.value.trim();
+    if (!content) return;
+    if (!window.confirm(
+        'Publish this note to every admin? It will be available in admin chat context. ' +
+        'Do not include private chat, credentials, or information that should not be shared.',
+    )) return;
+
+    sharedInsightPublish.disabled = true;
+    sharedInsightStatus.textContent = 'Publishing shared note…';
+    try {
+        const response = await apiFetch(`${API_BASE}/api/memory/shared-insights`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Could not publish the shared note.');
+        sharedInsightContent.value = '';
+        await loadSharedAdminInsights();
+        sharedInsightStatus.textContent = 'Note published to shared admin knowledge.';
+    } catch (error) {
+        sharedInsightStatus.textContent = error instanceof Error
+            ? error.message
+            : 'Could not publish the shared note.';
+    } finally {
+        sharedInsightPublish.disabled = false;
+    }
+});
+
 const backendStatusEl = document.getElementById('backend-status');
 
 async function pollBackendStatus() {
     try {
-        const response = await fetch(`${API_BASE}/api/system`, { method: "GET" });
+        const response = await apiFetch(`${API_BASE}/api/system`, { method: "GET" });
 
         if (!response.ok) throw new Error("Backend offline");
 
@@ -188,7 +580,7 @@ const WS_BASE = API_BASE.replace(/^http/, 'ws');
 
 // Streams a reply over WebSocket. Rejects with { fallback: true } if the
 // stream could not start, so the caller can use the REST endpoint instead.
-function streamChat(text, thinkingMsg) {
+function streamChat(text, thinkingMsg, conversationId) {
     return new Promise((resolve, reject) => {
         let socket;
         try {
@@ -212,7 +604,10 @@ function streamChat(text, thinkingMsg) {
             chatWindow.scrollTop = chatWindow.scrollHeight;
         };
 
-        socket.onopen = () => socket.send(JSON.stringify({ message: text }));
+        socket.onopen = () => socket.send(JSON.stringify({
+            message: text,
+            conversation_id: conversationId,
+        }));
 
         socket.onmessage = (event) => {
             let data;
@@ -256,11 +651,11 @@ function streamChat(text, thinkingMsg) {
     });
 }
 
-async function requestReply(text, useResearch) {
-    const response = await fetch(`${API_BASE}${useResearch ? '/api/research' : '/api/chat'}`, {
+async function requestReply(text, useResearch, conversationId) {
+    const response = await apiFetch(`${API_BASE}${useResearch ? '/api/research' : '/api/chat'}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ message: text, conversation_id: conversationId })
     });
 
     const data = await response.json();
@@ -272,35 +667,53 @@ async function requestReply(text, useResearch) {
 }
 
 async function sendMessage() {
-    if (modelSwitchInProgress) return;
+    if (modelSwitchInProgress || chatRequestInProgress) return;
     const text = chatInput.value.trim();
     if (!text) return;
     const useResearch = researchMode.checked;
+    chatRequestInProgress = true;
+    sendBtn.disabled = true;
+    chatInput.disabled = true;
+    conversationSelect.disabled = true;
+    conversationNewButton.disabled = true;
+    conversationDeleteButton.disabled = true;
 
     addMessage(useResearch ? `WEB RESEARCH: ${text}` : text, 'user');
     chatInput.value = '';
 
     addMessage(useResearch ? 'Searching the web and preparing a cited answer…' : 'Processing request…', 'ai');
     const thinkingMsg = chatWindow.lastElementChild;
+    let conversationId = null;
 
     try {
+        conversationId = await ensureConversation();
         if (!useResearch) {
             try {
-                await streamChat(text, thinkingMsg);
+                await streamChat(text, thinkingMsg, conversationId);
+                await loadConversationList(conversationId);
                 return;
             } catch (err) {
                 if (!(err && err.fallback)) throw err;
             }
         }
 
-        const data = await requestReply(text, useResearch);
+        const data = await requestReply(text, useResearch, conversationId);
         thinkingMsg.remove();
         addMessage(data.reply, 'ai', data.latency_ms, data.sources);
+        await loadConversationList(conversationId);
 
     } catch (err) {
         thinkingMsg.remove();
         const message = err instanceof Error ? err.message : 'Unknown chat error.';
         addMessage(`Error: ${message}`, 'ai');
+        if (conversationId) await loadConversationList(conversationId);
+    } finally {
+        chatRequestInProgress = false;
+        sendBtn.disabled = modelSwitchInProgress;
+        chatInput.disabled = modelSwitchInProgress;
+        conversationSelect.disabled = false;
+        conversationNewButton.disabled = false;
+        conversationDeleteButton.disabled = !activeConversationId;
     }
 }
 
@@ -341,7 +754,8 @@ function renderModelInventory(inventory) {
             activeModelSelect.appendChild(option);
         });
     }
-    activeModelSelect.disabled = modelSwitchInProgress || models.length === 0;
+
+    activeModelSelect.disabled = currentRole === 'viewer' || modelSwitchInProgress || models.length === 0;
 
     modelList.replaceChildren();
     if (models.length === 0) {
@@ -357,7 +771,7 @@ function renderModelInventory(inventory) {
         card.className = `model-card${model.loaded ? ' model-card-loaded' : ''}`;
         card.dataset.modelId = model.id;
         card.setAttribute('aria-pressed', String(model.loaded));
-        card.disabled = modelSwitchInProgress;
+        card.disabled = currentRole === 'viewer' || modelSwitchInProgress;
 
         const name = document.createElement('div');
         name.className = 'model-name';
@@ -398,7 +812,7 @@ function renderModelInventory(inventory) {
 
 async function loadModelInventory() {
     try {
-        const response = await fetch(`${API_BASE}/api/models`);
+        const response = await apiFetch(`${API_BASE}/api/models`);
         if (!response.ok) throw new Error(`Model inventory request failed: ${response.status}`);
         renderModelInventory(await response.json());
     } catch (err) {
@@ -421,7 +835,7 @@ async function loadModelInventory() {
 }
 
 async function requestModelSwitch(modelId) {
-    if (!modelId || modelSwitchInProgress) return;
+    if (!modelId || currentRole === 'viewer' || modelSwitchInProgress || chatRequestInProgress) return;
 
     modelSwitchInProgress = true;
     activeModelSelect.disabled = true;
@@ -436,7 +850,7 @@ async function requestModelSwitch(modelId) {
     let switchError = null;
     let activeModelId = null;
     try {
-        const response = await fetch(`${API_BASE}/api/model/select`, {
+        const response = await apiFetch(`${API_BASE}/api/model/select`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model_id: modelId })
@@ -481,7 +895,7 @@ loadModelInventory();
 // ===============================
 async function pollBotStatus() {
     try {
-        const response = await fetch(`${API_BASE}/api/bot/status`);
+        const response = await apiFetch(`${API_BASE}/api/bot/status`);
         if (!response.ok) throw new Error(`Bot status request failed: ${response.status}`);
         const data = await response.json();
 
@@ -515,8 +929,9 @@ pollBotStatus();
 // BOT LOG STREAMING
 // ===============================
 async function pollBotLogs() {
+    if (currentRole !== 'admin') return;
     try {
-        const response = await fetch(`${API_BASE}/api/bot/logs`);
+        const response = await apiFetch(`${API_BASE}/api/bot/logs`);
         if (!response.ok) throw new Error(`Bot logs request failed: ${response.status}`);
         const logs = await response.json();
 
@@ -548,7 +963,7 @@ async function refreshBackendLogs() {
     backendLogsRequestInProgress = true;
     backendLogsRefreshButton.disabled = true;
     try {
-        const response = await fetch(`${API_BASE}/api/backend/logs?limit=200`);
+        const response = await apiFetch(`${API_BASE}/api/backend/logs?limit=200`);
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.detail || `Backend logs request failed: ${response.status}`);
@@ -705,8 +1120,8 @@ async function refreshDiagnostics() {
     diagnosticsNotice.textContent = 'Loading observe-only diagnostics…';
     try {
         const [statusResponse, incidentsResponse] = await Promise.all([
-            fetch(`${API_BASE}/api/diagnostics/status`),
-            fetch(`${API_BASE}/api/diagnostics/incidents?status=all&limit=100`),
+            apiFetch(`${API_BASE}/api/diagnostics/status`),
+            apiFetch(`${API_BASE}/api/diagnostics/incidents?status=all&limit=100`),
         ]);
         const [statusData, incidentsData] = await Promise.all([
             statusResponse.json(),
@@ -747,7 +1162,7 @@ async function runDiagnosticsObservation() {
     diagnosticsStatus.textContent = 'Running observe-only checks…';
     diagnosticsNotice.textContent = 'Collecting read-only health checks and resource evidence. No repairs or commands will be run.';
     try {
-        const response = await fetch(`${API_BASE}/api/diagnostics/observe`, { method: 'POST' });
+        const response = await apiFetch(`${API_BASE}/api/diagnostics/observe`, { method: 'POST' });
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.detail || `Observation failed (${response.status}).`);
@@ -775,8 +1190,8 @@ async function runDiagnosticsObservation() {
 
 async function refreshDiagnosticsAfterObservation() {
     const [statusResponse, incidentsResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/diagnostics/status`),
-        fetch(`${API_BASE}/api/diagnostics/incidents?status=all&limit=100`),
+        apiFetch(`${API_BASE}/api/diagnostics/status`),
+        apiFetch(`${API_BASE}/api/diagnostics/incidents?status=all&limit=100`),
     ]);
     const [statusData, incidentsData] = await Promise.all([
         statusResponse.json(),
@@ -819,7 +1234,7 @@ botRestartButton.addEventListener('click', async () => {
     botRestartButton.disabled = true;
     botFeedback.textContent = 'Sending restart request...';
     try {
-        const response = await fetch(`${API_BASE}/api/bot/restart`, { method: 'POST' });
+        const response = await apiFetch(`${API_BASE}/api/bot/restart`, { method: 'POST' });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || `Restart failed (${response.status}).`);
         botRestartPending = true;
@@ -834,7 +1249,7 @@ botRestartButton.addEventListener('click', async () => {
 
 async function loadBotModels() {
     try {
-        const response = await fetch(`${API_BASE}/api/models`);
+        const response = await apiFetch(`${API_BASE}/api/models`);
         if (!response.ok) throw new Error(`Model inventory request failed: ${response.status}`);
         const inventory = await response.json();
         const models = Array.isArray(inventory.models) ? inventory.models : [];
@@ -868,7 +1283,7 @@ botApplyModelButton.addEventListener('click', async () => {
     botApplyModelButton.disabled = true;
     botFeedback.textContent = 'Switching the active server model...';
     try {
-        const response = await fetch(`${API_BASE}/api/model/select`, {
+        const response = await apiFetch(`${API_BASE}/api/model/select`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model_id: modelId }),
@@ -902,7 +1317,7 @@ function setBarFill(el, percent) {
 
 async function pollSystemStats() {
     try {
-        const response = await fetch(`${API_BASE}/api/system`);
+        const response = await apiFetch(`${API_BASE}/api/system`);
         if (!response.ok) throw new Error(`System stats request failed: ${response.status}`);
         const data = await response.json();
 
@@ -961,13 +1376,6 @@ const sidebarToggle = document.getElementById('sidebar-toggle');
 const themeToggle = document.getElementById('theme-toggle');
 const themeLabel = document.getElementById('theme-label');
 const saveConfigButton = document.getElementById('save-config');
-const authPreview = document.getElementById('auth-preview');
-const authPreviewOpen = document.getElementById('auth-preview-open');
-
-if (authPreview && authPreviewOpen) {
-    authPreviewOpen.addEventListener('click', () => authPreview.showModal());
-}
-
 const ACCENTS = {
     blue: '74, 140, 255',
     green: '66, 245, 197',
@@ -1050,3 +1458,4 @@ if (saveConfigButton) {
 applyTheme(prefs.theme);
 applyAccent(prefs.accent);
 applySidebar(prefs.sidebarCollapsed);
+restoreSession();

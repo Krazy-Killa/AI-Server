@@ -9,7 +9,7 @@ os.environ.setdefault(
     "AI_SERVER_LOG_DIR", tempfile.mkdtemp(prefix="ai-server-test-logs-")
 )
 
-from fastapi.testclient import TestClient
+from auth_test_helpers import authenticated_client
 
 
 class BackendLogsEndpointTests(unittest.TestCase):
@@ -27,7 +27,7 @@ class BackendLogsEndpointTests(unittest.TestCase):
         )
         self.settings_patch.start()
         self.addCleanup(self.settings_patch.stop)
-        self.client = TestClient(main.app)
+        self.client, self.auth_store = authenticated_client(self, main)
 
     def test_returns_only_the_requested_most_recent_lines(self):
         log_file = self.main.settings.log_directory / "backend.log"

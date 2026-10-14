@@ -26,6 +26,10 @@ echo Installing backend and Windows DirectML dependencies...
 "%VENV_DIR%\Scripts\python.exe" -m pip install -r "%PROJECT_ROOT%ai-backend\requirements-windows.txt"
 if errorlevel 1 exit /b 1
 
+echo Installing backend test client dependencies...
+"%VENV_DIR%\Scripts\python.exe" -m pip install -r "%PROJECT_ROOT%ai-backend\requirements-dev.txt"
+if errorlevel 1 exit /b 1
+
 echo Installing Discord bot dependencies...
 "%VENV_DIR%\Scripts\python.exe" -m pip install -r "%PROJECT_ROOT%ai-discord-bot\requirements-windows.txt"
 if errorlevel 1 exit /b 1

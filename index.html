@@ -14,7 +14,30 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="app">
+<section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
+    <form class="auth-card" id="auth-form">
+        <div class="auth-preview-header">
+            <div class="logo-orb" aria-hidden="true"></div>
+            <div>
+                <h2 id="auth-title">AI Server Sign-In</h2>
+                <p id="auth-notice" role="status">Checking your dashboard session…</p>
+            </div>
+        </div>
+        <label for="auth-provider">Identity provider</label>
+        <select id="auth-provider" name="provider">
+            <option value="local">Local dashboard account</option>
+            <option value="proxmox">Proxmox VE</option>
+        </select>
+        <label for="auth-username">Username</label>
+        <input id="auth-username" name="username" autocomplete="username"
+               required maxlength="256">
+        <label for="auth-password">Password</label>
+        <input id="auth-password" name="password" type="password"
+               autocomplete="current-password" required maxlength="1024">
+        <button class="btn" id="auth-submit" type="submit">Sign in</button>
+    </form>
+</section>
+<div class="app" id="dashboard-app" hidden>
     <header>
         <div class="header-left">
             <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="true">☰</button>
@@ -55,6 +78,10 @@
             NODE / HOMELAB-01<br>
             GPU / RX 6800 XT<br>
             MODE / RESEARCH
+            <div class="user-session">
+                <span id="auth-identity">Signed in</span>
+                <button class="btn theme-toggle" id="auth-logout" type="button">Sign out</button>
+            </div>
         </div>
     </aside>
 
@@ -80,17 +107,46 @@
                     <input type="range" min="0" max="1" step="0.1" value="0.7" class="slider" aria-label="Temperature">
                 </div>
 
+                <div class="conversation-controls">
+                    <label for="conversation-select">SAVED CHATS</label>
+                    <select id="conversation-select" aria-label="Saved conversations">
+                        <option value="">New conversation</option>
+                    </select>
+                    <button class="btn-secondary" id="conversation-new" type="button">New chat</button>
+                    <button class="btn-secondary" id="conversation-delete" type="button" disabled>Delete</button>
+                    <span id="conversation-status" role="status" aria-live="polite"></span>
+                </div>
+
+                <details class="shared-admin-memory" id="shared-admin-memory" hidden>
+                    <summary>
+                        Shared admin knowledge
+                        <span id="shared-insight-count" class="shared-insight-count"></span>
+                    </summary>
+                    <div class="shared-admin-memory-content">
+                        <p class="shared-memory-notice">
+                            Your chat transcript stays private. Only notes you explicitly publish here are
+                            shared with admins and included in admin chat context.
+                        </p>
+                        <div id="shared-insight-list" class="shared-insight-list" aria-live="polite">
+                            <p class="shared-insight-empty">Loading published notes…</p>
+                        </div>
+                        <form id="shared-insight-form" class="shared-insight-form">
+                            <label for="shared-insight-content">PUBLISH AN OPERATIONAL INSIGHT</label>
+                            <textarea id="shared-insight-content" maxlength="2000" rows="3"
+                                placeholder="Write only information that should be shared with every administrator."
+                                required></textarea>
+                            <div class="shared-insight-actions">
+                                <span id="shared-insight-status" role="status" aria-live="polite"></span>
+                                <button class="btn-secondary" id="shared-insight-publish" type="submit">
+                                    Publish to admins
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
+
                 <div class="chat-window" id="chat-window" aria-live="polite" aria-label="Conversation">
-                    <div class="msg msg-ai">
-                        <div class="msg-label">AI / SYSTEM</div>
-                        <div class="msg-text">Neural interface online. Awaiting your directive.</div>
-                        <div class="msg-timestamp">14:02</div>
-                    </div>
-                    <div class="msg msg-user">
-                        <div class="msg-label">USER / COMMAND</div>
-                        <div class="msg-text">Show me system diagnostics.</div>
-                        <div class="msg-timestamp">14:03</div>
-                    </div>
+                    <div class="conversation-empty">Start a new chat or choose a saved conversation.</div>
                 </div>
 
                 <div class="chat-input-row">
@@ -129,11 +185,6 @@
                 <div class="metric-row"><span>VRAM / LIVE</span><div class="metric-bar"><div class="metric-bar-fill vram"></div></div><span id="vram-value">N/A</span></div>
                 <div class="metric-row"><span>CPU</span><div class="metric-bar"><div class="metric-bar-fill cpu"></div></div><span>18%</span></div>
                 <div class="metric-row"><span>RAM</span><div class="metric-bar"><div class="metric-bar-fill ram"></div></div><span id="ram-value">N/A</span></div>
-                <div class="vm-list">
-                    <div class="vm-item">&gt; WebServer-01 / Ubuntu</div>
-                    <div class="vm-item">&gt; Win10-Gaming</div>
-                    <div class="vm-item">&gt; Bot-VM</div>
-                </div>
             </div>
         </section>
 
@@ -147,32 +198,66 @@
             </div>
             <div class="panel-body">
                 <div class="infra-summary">
-                    <div class="infra-stat"><span class="infra-label">HYPERVISOR</span><strong>Awaiting selection</strong></div>
-                    <div class="infra-stat"><span class="infra-label">VM INSTANCES</span><strong>Not connected</strong></div>
-                    <div class="infra-stat"><span class="infra-label">ISOLATION</span><strong>Per-VM boundaries</strong></div>
+                    <div class="infra-stat"><span class="infra-label">HYPERVISOR</span><strong>Proxmox VE / planned</strong></div>
+                    <div class="infra-stat"><span class="infra-label">INVENTORY</span><strong>Not connected</strong></div>
+                    <div class="infra-stat"><span class="infra-label">GUEST CONSOLE</span><strong>Recovery workflow planned</strong></div>
                 </div>
-                <div class="section-kicker">PLANNED ENVIRONMENTS</div>
-                <div class="infra-grid">
-                    <article class="infra-card">
-                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">01</span><span class="pill">PLANNED</span></div>
-                        <h2>Game Hosting</h2>
-                        <p>Dedicated guests for game servers, separated from AI and internal services.</p>
-                        <div class="infra-meta"><span>ROLE / GAME SERVER HOSTS</span><span>STATUS / NOT DEPLOYED</span></div>
-                    </article>
-                    <article class="infra-card">
-                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">02</span><span class="pill">PLANNED</span></div>
-                        <h2>Website Environment</h2>
-                        <p>A separate guest for the public website and its application stack.</p>
-                        <div class="infra-meta"><span>ROLE / WEB HOSTING</span><span>STATUS / NOT DEPLOYED</span></div>
-                    </article>
-                    <article class="infra-card">
-                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">03</span><span class="pill">PLANNED</span></div>
-                        <h2>Internal Services</h2>
-                        <p>Isolated guests for trusted home-lab services and administration tools.</p>
-                        <div class="infra-meta"><span>ROLE / PRIVATE SERVICES</span><span>STATUS / NOT DEPLOYED</span></div>
-                    </article>
+                <div class="vm-workspace">
+                    <section class="infra-section" aria-labelledby="vm-inventory-heading">
+                        <div class="diagnostics-section-header">
+                            <div>
+                                <div class="section-kicker">GUEST INVENTORY</div>
+                                <h2 id="vm-inventory-heading">Virtual machines</h2>
+                            </div>
+                            <span class="pill">NO LIVE DATA</span>
+                        </div>
+                        <div class="infra-table-scroll">
+                            <table class="infra-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">NAME</th>
+                                        <th scope="col">VMID</th>
+                                        <th scope="col">GUEST / ROLE</th>
+                                        <th scope="col">POWER STATE</th>
+                                        <th scope="col">STORAGE TIER</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="5" class="infra-table-empty">
+                                            No VM inventory is available. Connect a Proxmox provider after the host and
+                                            least-privilege API account are configured.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="infra-section vm-detail" aria-labelledby="vm-detail-heading">
+                        <div class="section-kicker">GUEST DETAILS / RECOVERY</div>
+                        <h2 id="vm-detail-heading">Select a virtual machine</h2>
+                        <p class="infra-description">
+                            Guest configuration, assigned resources, disks, network interfaces, snapshots, and task
+                            history will appear here when live inventory is connected.
+                        </p>
+                        <div class="vm-console" aria-label="Guest console connection status">
+                            <div class="vm-console-header">
+                                <span>RECOVERY CONSOLE</span>
+                                <span class="pill">UNAVAILABLE / NOT CONNECTED</span>
+                            </div>
+                            <div class="vm-console-screen" role="status">
+                                <span class="vm-console-prompt" aria-hidden="true">&gt;</span>
+                                <span>No guest selected. Console access will require an authenticated,
+                                    short-lived Proxmox console session.</span>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-                <div class="infra-notice">No hypervisor is connected. This is a planning view; no VM status or controls are live.</div>
+                <div class="infra-notice">
+                    Planning interface only. No VM data is live and there are no create, power, snapshot, or console
+                    controls yet. Future destructive actions require authorization, confirmation, audit history, and a
+                    tested recovery path.
+                </div>
             </div>
         </section>
 
@@ -213,32 +298,48 @@
             </div>
             <div class="panel-body">
                 <div class="infra-summary">
-                    <div class="infra-stat"><span class="infra-label">NETWORK ROLE</span><strong>Not configured</strong></div>
-                    <div class="infra-stat"><span class="infra-label">ACTIVE SERVICES</span><strong>None connected</strong></div>
-                    <div class="infra-stat"><span class="infra-label">SERVICE ISOLATION</span><strong>Planned</strong></div>
+                    <div class="infra-stat"><span class="infra-label">NETWORK OWNER</span><strong>Not decided</strong></div>
+                    <div class="infra-stat"><span class="infra-label">SERVICE STATUS</span><strong>Not connected</strong></div>
+                    <div class="infra-stat"><span class="infra-label">NETWORK SCOPES</span><strong>Not configured</strong></div>
                 </div>
-                <div class="section-kicker">POTENTIAL INTERNAL SERVICES</div>
+                <div class="section-kicker">CORE SERVICE AREAS</div>
                 <div class="infra-grid">
                     <article class="infra-card">
-                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">DNS</span><span class="pill">OPTIONAL</span></div>
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">v4</span><span class="pill">PLANNED</span></div>
+                        <h2>DHCPv4</h2>
+                        <p>IPv4 address pools, lease visibility, reservations, and gateway/DNS options. Network range and existing DHCP ownership are undecided.</p>
+                        <div class="infra-meta"><span>SCOPE / NOT CONFIGURED</span><span>STATUS / NOT CONNECTED</span></div>
+                    </article>
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">v6</span><span class="pill">PLANNED</span></div>
+                        <h2>DHCPv6</h2>
+                        <p>IPv6 address and/or prefix assignment, router advertisements, and DNS options depend on the chosen IPv6 design.</p>
+                        <div class="infra-meta"><span>MODE / NOT DECIDED</span><span>STATUS / NOT CONNECTED</span></div>
+                    </article>
+                    <article class="infra-card">
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">DNS</span><span class="pill">PLANNED</span></div>
                         <h2>DNS</h2>
-                        <p>Internal name resolution for private hosts and services, if assigned to this server.</p>
-                        <div class="infra-meta"><span>EXAMPLE ROLE / LOCAL RESOLVER</span><span>STATUS / NOT RUNNING</span></div>
+                        <p>Local zones, upstream forwarding, and host/service records for the home network. Zone ownership and resolver choice are undecided.</p>
+                        <div class="infra-meta"><span>ZONES / NOT CONFIGURED</span><span>STATUS / NOT CONNECTED</span></div>
                     </article>
                     <article class="infra-card">
-                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">DH</span><span class="pill">OPTIONAL</span></div>
-                        <h2>DHCP</h2>
-                        <p>Address assignment is a future option. Keep it disabled unless deliberately configured for the network.</p>
-                        <div class="infra-meta"><span>EXAMPLE ROLE / ADDRESS LEASES</span><span>STATUS / NOT RUNNING</span></div>
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">WEB</span><span class="pill">PLANNED</span></div>
+                        <h2>Web Hosting</h2>
+                        <p>Inventory and health view for hosted sites and applications, with boundaries between internal and public services still to be defined.</p>
+                        <div class="infra-meta"><span>HOSTING SCOPE / TBD</span><span>STATUS / NOT CONNECTED</span></div>
                     </article>
                     <article class="infra-card">
-                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">GW</span><span class="pill">OPTIONAL</span></div>
-                        <h2>Gateway &amp; Routing</h2>
-                        <p>Network gateway functions may remain on existing network equipment instead of this host.</p>
-                        <div class="infra-meta"><span>EXAMPLE ROLE / NETWORK EDGE</span><span>STATUS / NOT ASSIGNED</span></div>
+                        <div class="infra-card-top"><span class="infra-icon" aria-hidden="true">L3</span><span class="pill">PLANNED</span></div>
+                        <h2>Routing &amp; Firewall</h2>
+                        <p>Future visibility into routes, network segments, and firewall policy. Edge-router ownership remains undecided.</p>
+                        <div class="infra-meta"><span>NETWORK EDGE / TBD</span><span>STATUS / NOT CONNECTED</span></div>
                     </article>
                 </div>
-                <div class="infra-notice">DHCP and DNS can affect connectivity for the whole network. No services are enabled or configured by this interface.</div>
+                <div class="infra-notice infra-notice-warning">
+                    Planning interface only. Nothing here changes network settings. DHCP, routing, and firewall changes
+                    can disconnect clients or the dashboard; live controls must wait for service ownership, scopes,
+                    segmentation, and an independent recovery path to be defined and tested.
+                </div>
             </div>
         </section>
 
@@ -346,11 +447,8 @@
                         <button class="btn theme-toggle" id="theme-toggle" type="button">Switch to light</button>
                     </div>
                     <div class="settings-item">
-                        <div class="settings-label">Proxmox Authentication</div>
-                        <div class="settings-value">Groundwork only — sign-in is not connected</div>
-                        <button class="btn theme-toggle" id="auth-preview-open" type="button">
-                            Preview sign-in
-                        </button>
+                        <div class="settings-label">Dashboard Account</div>
+                        <div class="settings-value">Account creation, role changes, and password resets are managed on the backend host.</div>
                     </div>
                     <div class="settings-item">
                         <div class="settings-label">Accent Spectrum</div>
@@ -370,32 +468,6 @@
         </section>
     </main>
 </div>
-<dialog class="auth-preview" id="auth-preview" aria-labelledby="auth-preview-title"
-        aria-describedby="auth-preview-notice">
-    <div class="auth-preview-header">
-        <div class="logo-orb" aria-hidden="true"></div>
-        <div>
-            <h2 id="auth-preview-title">Proxmox Sign-In</h2>
-            <p id="auth-preview-notice" role="status">
-                Preview only. Authentication is not connected; do not enter credentials.
-            </p>
-        </div>
-    </div>
-    <form>
-        <fieldset disabled>
-            <label for="proxmox-user">Proxmox user ID and realm</label>
-            <input id="proxmox-user" name="username" autocomplete="username"
-                   placeholder="user@realm">
-            <label for="proxmox-password">Proxmox password</label>
-            <input id="proxmox-password" name="password" type="password"
-                   autocomplete="current-password" placeholder="Not connected">
-            <button class="btn" type="submit">Sign in</button>
-        </fieldset>
-    </form>
-    <form method="dialog">
-        <button class="btn auth-preview-close" type="submit">Close preview</button>
-    </form>
-</dialog>
 <script src="js/app.js"></script>
 </body>
 </html>

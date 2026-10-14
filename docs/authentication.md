@@ -2,143 +2,179 @@
 
 ## Status and scope
 
-**Status:** Proxmox authentication groundwork implemented; production login and
-session management are not implemented.
-**Production implementation and validation:** Waiting for the Proxmox server.
+**Status:** Windows implementation complete and verified by the backend test
+suite, including mocked Proxmox responses. No production/Proxmox-host or
+HTTPS-proxy validation has been performed.
 
-The AI Server will authenticate dashboard users against Proxmox VE rather than
-maintaining a second username/password database. The backend will still own
-application sessions and authorization: successful Proxmox authentication
-identifies the user, but does not by itself grant access to AI Server features.
+The dashboard supports two identity providers:
 
-The Windows test environment has no Proxmox identity provider. Work that can
-be done before the server exists is limited to interface design, isolated
-components, and mocked tests. The real login flow, session lifetime and
-revocation behavior must be implemented and validated against the target
-Proxmox VE host before enabling LAN or remote access.
+- **Local dashboard accounts**, stored and managed by the application.
+- **Proxmox VE accounts**, authenticated by the Proxmox HTTPS ticket API and
+  admitted only when an administrator has explicitly mapped the exact
+  Proxmox identity to a dashboard role.
 
-Current groundwork consists of `ai-backend/proxmox_auth.py`, which provides a
-Proxmox HTTPS ticket client and typed authenticator/authorization-policy
-interfaces; `ai-backend/tests/test_proxmox_auth.py`, which tests the client
-against mocked responses; and a disabled sign-in preview in the dashboard.
-There is no login API route, session store, authorization policy
-implementation, or protected endpoint yet. The preview does not accept or
-submit credentials.
+The application owns sessions and permissions in both cases. Proxmox
+authentication does not grant access by itself, and Proxmox ACLs do not
+implicitly become dashboard permissions. Unmapped Proxmox identities are
+denied. There is no public registration. The first local administrator is
+provisioned from the backend command line; subsequent users, role changes,
+password resets, disabling accounts, and Proxmox identity mappings are also
+managed through that trusted local CLI.
 
-## Authentication design
+Windows tests can verify local accounts, session behavior, authorization,
+and mocked Proxmox responses. They cannot verify a real Proxmox realm,
+certificate, ticket lifetime, disabled-user behavior, reverse-proxy TLS, or
+production cookie behavior. Keep the backend bound to loopback until the
+deployment security checks below pass.
 
-### Proxmox identity
+## Identity and role policy
 
-- Users sign in with a Proxmox VE user ID, including its realm, such as
-  `user@pve`, `user@pam`, or an organization-configured LDAP/OIDC realm.
-- The backend sends the submitted credentials to the configured Proxmox API
-  over HTTPS and validates the TLS certificate.
-- The backend does not store or log the user's Proxmox password.
-- Use a dedicated, non-root Proxmox account for routine dashboard access.
-  Never ask users to sign in as `root`.
-- Proxmox API tokens are for narrowly scoped server-to-server automation, not
-  for interactive dashboard login. Keep any such token separate from user
-  sessions and grant only the permissions that integration requires.
+### Local dashboard accounts
 
-### Login and application session flow
+- Usernames are unique, case-insensitive dashboard identities.
+- Passwords are never stored in plaintext; local credentials use a salted,
+  adaptive password hash. Passwords must be 8-1024 characters long.
+- Local account creation is CLI-only; there is no self-registration or public
+  password-reset flow. An administrator resets a password using the local
+  CLI.
+- Account creation and role changes require access to the host running the
+  backend and its authentication database.
 
-1. The browser submits the Proxmox user ID and password to
-   `POST /api/auth/login` over HTTPS.
-2. The backend calls the Proxmox VE ticket endpoint
-   `POST /api2/json/access/ticket` and checks the response.
-3. On success, the backend creates an application session associated with the
-   authenticated Proxmox user and realm. The application session is distinct
-   from the Proxmox ticket.
-4. The backend returns a random, opaque session identifier in a `Secure`,
-   `HttpOnly`, `SameSite` cookie. Do not return the Proxmox ticket to browser
-   JavaScript or put it in local storage.
-5. The backend stores session state server-side, including the Proxmox
-   identity, creation/expiry times, and revocation state. Mutating requests
-   must have CSRF protection and pass origin checks.
-6. Logout revokes the application session and clears the cookie. The backend
-   must not claim to log the user out of the Proxmox web interface.
+### Proxmox identities
 
-The exact application-session lifetime, Proxmox ticket handling/renewal, and
-behavior when an account is disabled must be settled and tested against the
-installed Proxmox VE version. Sessions must have bounded lifetimes and be
-revocable; do not use a self-contained JWT as the only session state if that
-would prevent prompt revocation.
+- Sign in with a Proxmox user ID including its realm, for example `user@pve`.
+- Send credentials only to the configured Proxmox API over HTTPS with
+  certificate validation enabled. Never disable TLS verification to bypass
+  certificate errors.
+- Do not store or log the submitted Proxmox password, ticket, or CSRF token.
+  The ticket is used only to verify the login; the dashboard creates its own
+  application session.
+- Administrators explicitly map each exact Proxmox user ID to `admin`,
+  `operator`, or `viewer` using the trusted local CLI. Unmapped users are
+  denied by default. There is no automatic Proxmox group or ACL-to-role
+  translation.
+- Use dedicated, non-root Proxmox users for routine access. API tokens are
+  separate machine credentials and are not interactive login credentials.
 
-## Application authorization
+### Dashboard roles
 
-Proxmox authentication proves identity. It does not automatically authorize
-dashboard actions or make Proxmox ACLs equivalent to AI Server permissions.
-The AI Server must:
+- **Viewer:** read-only system/model/bot status and observe-only diagnostics.
+- **Operator:** viewer access plus chat/research, an explicit diagnostics
+  observation, and model selection.
+- **Admin:** operator access plus backend log access, bot restart, and
+  read/manage access to explicitly published shared operational notes. User
+  and Proxmox-role administration remains a local CLI operation.
 
-- Map Proxmox identities or approved Proxmox groups to explicit application
-  roles and capabilities.
-- Deny access by default and protect every non-public API and WebSocket.
-- Keep application permissions separate from any service API token used to
-  manage Proxmox resources.
-- Audit successful and failed logins, session creation/revocation, and
-  privileged application actions without recording passwords or tokens.
+All routes are denied unless public, authenticated with the dedicated
+Discord-bot service credential, or authorized for the caller's role. WebSocket
+chat requires an authenticated operator session. A browser origin check is
+additional protection, not authentication.
 
-Initially, access should be restricted to a configured allowlist of Proxmox
-users or groups. The policy for mapping Proxmox users/groups to dashboard
-roles must be finalized before implementation.
+## Login and application sessions
 
-## Proposed application endpoints
+- `POST /api/auth/login` accepts a provider (`local` or `proxmox`), username,
+  and password. Responses use generic credential errors and create a random,
+  opaque server-side session.
+- The session identifier is delivered only in an `HttpOnly`, `SameSite`
+  cookie, configured `Secure` for HTTPS deployments. Neither session IDs nor
+  provider credentials belong in local storage, URLs, or logs.
+- The backend stores only a digest of the opaque session identifier, along
+  with identity, role, creation/expiry times, and a CSRF secret. Logout
+  revokes the server-side session and clears the cookie.
+- Sessions have bounded idle and absolute lifetimes. The initial policy is a
+  30-minute idle timeout and 12-hour absolute lifetime; sessions are not
+  silently extended beyond the absolute lifetime. Reauthenticate after
+  expiry. These values must be revisited after real deployment testing.
+- `GET /api/auth/status` reports the authenticated identity and role, or
+  `authenticated: false`; it does not return the session ID.
+- State-changing browser requests require the session CSRF token in
+  `X-CSRF-Token` and an allowed `Origin`. Login is origin-checked and
+  rate-limited. WebSocket handshakes require both a valid session and an
+  allowed dashboard origin.
+- Login attempts are throttled per identity and source address. Do not trust
+  forwarded client IP headers unless a specifically trusted proxy is later
+  configured.
 
-These endpoints are design targets only; none are currently implemented.
+The Discord bot is a machine client, not an interactive dashboard user. Its
+backend calls use a separate, high-entropy bearer credential configured
+outside source control. This credential is limited to bot API routes and
+must not grant dashboard administrator access.
 
-- `POST /api/auth/login` — authenticate against Proxmox and set the session
-  cookie.
-- `POST /api/auth/logout` — revoke the current application session and clear
-  its cookie.
-- `GET /api/auth/status` — return the current application identity and
-  capabilities, or an unauthenticated response.
-- `POST /api/auth/refresh` — renew or revalidate the application session only
-  according to the behavior verified for the target Proxmox version. Do not
-  extend a session beyond its permitted Proxmox-backed lifetime.
+Dashboard conversation history is scoped to the identity provider and
+username. The backend does not expose one account's conversations to another;
+the bot service credential is not an account and does not create dashboard
+history. Conversation history is stored separately from authentication
+records in the configured memory database and remains until the owner deletes
+it.
 
-Registration, local password reset, password hashing, and AI Server-managed
-user accounts are out of scope. User and credential lifecycle remains with
-Proxmox and its configured authentication realm.
+Shared admin memory is a separate store of operational notes. An admin must
+explicitly publish each note; there is no transcript scraping, automatic
+fact-sharing, or model training. Every admin can read and remove published
+notes, and admin chat/research context may include the newest bounded set.
+Admins are told which identity is signed in, but the model is never given
+another admin's private transcript. Non-admin accounts and the Discord bot
+service credential cannot access or receive shared admin notes.
 
-## Browser and API security requirements
+## API behavior
 
-- Serve the dashboard and API over HTTPS in any LAN or remote deployment.
-- Use a same-origin reverse proxy where practical.
-- Set session cookies with `Secure`, `HttpOnly`, and `SameSite`; use a CSRF
-  token or equivalent protection for state-changing cookie-authenticated
-  requests.
-- Restrict CORS and WebSocket origins to configured dashboard origins.
-- Rate-limit login attempts and return generic credential failure messages.
-- Never log passwords, Proxmox tickets, application session IDs, or API tokens.
-- Keep sessions and Proxmox credentials out of URL parameters and browser
-  storage.
-- Validate Proxmox's TLS certificate; do not disable certificate verification
-  to work around deployment issues.
+- `POST /api/auth/login` — authenticate `local` or `proxmox` credentials and
+  set the session cookie. Returns a CSRF token and identity/role metadata.
+- `GET /api/auth/status` — return current identity/role and CSRF token, or
+  `authenticated: false`.
+- `POST /api/auth/logout` — revoke the current session and clear its cookie.
+- `GET /` — minimal backend health response; no dashboard information.
+- `/api/memory/shared-insights` — admin-only, explicit publication and
+  management of shared operational notes.
+- `/api/bot/*` routes used by the Discord bot require the bot bearer
+  credential. All remaining API routes require a role-appropriate session.
 
-## Implementation and validation plan
+No refresh endpoint extends the absolute session lifetime. Authentication
+errors must not expose whether a username exists, whether a Proxmox identity
+is mapped, or whether its password alone was valid.
 
-### Before the Proxmox server exists
+## Browser and deployment requirements
 
-- [x] Define the Proxmox API client and authenticator/authorization-policy
-  interfaces.
-- [x] Write unit tests with a mocked Proxmox ticket endpoint.
-- [x] Prepare a disabled login UI preview; it does not collect credentials.
-- [ ] Add login UI states and wire credential submission after a secure
-  backend login/session endpoint exists.
-- Do not present mocked authentication as production-ready authentication.
+- Keep the API bound to loopback during development. Use HTTPS and a same-site
+  dashboard/API origin in LAN or remote deployments.
+- `AI_SERVER_AUTH_COOKIE_SECURE` must be enabled for HTTPS deployment. Only
+  disable it for isolated local HTTP development; do not expose that
+  configuration to a network.
+- Configure exact dashboard origins; wildcard CORS is not allowed. Browser
+  requests include credentials and must not put them in browser storage.
+- Protect every non-public REST route and WebSocket; do not treat CORS or
+  Origin validation as a substitute for authentication.
+- Protect the authentication database and backups as sensitive data.
+- Do not log passwords, session IDs, CSRF tokens, Proxmox tickets, bot bearer
+  credentials, or submitted chat text.
+- Keep the Discord bot bearer credential separate from local user passwords
+  and Proxmox credentials. Rotate it if disclosed.
 
-### On the Proxmox server
+## Implementation and validation
 
-- Configure and verify the intended Proxmox realm, user/group allowlist, API
-  endpoint, and HTTPS certificate.
-- Implement and test the Proxmox login integration and application session
-  store.
-- Verify expiration, renewal/revalidation, logout/revocation, disabled-user
-  behavior, CSRF protections, origin restrictions, and rate limits.
-- Test that unauthorized users cannot access protected HTTP or WebSocket
-  endpoints and that application roles do not grant unintended Proxmox
-  privileges.
-- Enable LAN or remote access only after the security checks pass.
+### Windows development — implemented and tested
+
+- The full backend suite passes 81 tests covering local CLI provisioning and
+  password reset, local login, session persistence/expiry/revocation, CSRF,
+  login throttling, role authorization, mocked Proxmox ticket login and
+  explicit mappings, and authenticated REST/WebSocket behavior.
+- The dashboard sign-in/status/logout flow and role-aware controls are wired
+  to the protected API.
+- Machine routes require a scoped bot credential, passed by the Discord bot.
+- `node --check js/app.js` and `git diff --check` pass in the Windows
+  development environment.
+
+### Before LAN or remote access
+
+- Configure and verify the intended Proxmox realm, API endpoint, exact user
+  mappings, and trusted TLS certificate.
+- Verify session lifetime and revocation, behavior when Proxmox users are
+  disabled, cookie settings through the deployed HTTPS proxy, trusted-origin
+  behavior, and rate limits.
+- Confirm unauthorized users cannot access REST or WebSocket endpoints and
+  each role receives only its documented capabilities.
+- Confirm the auth database and bot credential are stored with appropriate
+  host permissions and backups.
+- Keep LAN/remote access disabled until these checks pass.
 
 ## References
 

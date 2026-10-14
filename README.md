@@ -17,7 +17,12 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Explicit web-research UI and backend integration for SearXNG.
 - Streaming local chat over WebSocket, validated configuration, and rotating
   backend logs. Backend tests: `python -m unittest discover` in `ai-backend`
-  (the WebSocket tests need `httpx`).
+  (the test client is installed from `ai-backend/requirements-dev.txt`).
+- Per-account private SQLite chat history with automatic resume of the latest
+  conversation and bounded recent-turn context. Admins can separately publish
+  operational notes to a curated shared store; only those approved notes are
+  available across admin chat contexts. This is not transcript extraction,
+  model training, or semantic retrieval.
 - Dashboard polish: persistent dark/light theme, accent colour, collapsible
   sidebar, and panel transitions (Settings page and header toggle).
 
@@ -29,16 +34,22 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
-- VM, game-server, and network-service panels are planning views. The Discord
-  page reports live bot heartbeats and operational logs and supports restart,
+- VM and network-service panels have planning-only UI groundwork (empty VM
+  inventory/recovery-console state and DHCPv4/DHCPv6/DNS/web/routing/firewall
+  views); they are not connected to live services. Game-server management
+  remains a planning view. The Discord page reports live bot heartbeats and
+  operational logs and supports restart,
   command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
   approval before file changes or command execution.
-- Proxmox authentication groundwork is implemented (mocked HTTPS ticket client
-  and disabled sign-in preview); there is no login route or session store yet.
+- Dashboard login supports local accounts and explicitly mapped Proxmox
+  identities, with revocable sessions and role-protected routes. Provision the
+  first admin using the local CLI; Proxmox host/proxy security validation is
+  still required before LAN access.
   CORS is restricted to dashboard origins, but do not expose the backend
-  beyond this machine; backend logs may contain operational details and are
-  currently available only through the same unauthenticated local API.
+  beyond this machine until deployment validation is complete. Backend logs
+  may contain operational details and are available only to authenticated
+  administrators.
 - AI-powered diagnostics and self-healing are not implemented yet beyond an
   on-demand, observe-only core prototype with an explicit API and dashboard
   panel; there is no scheduler, persistent history, or remediation.
@@ -142,12 +153,15 @@ for the documentation reference checklist.
 - ✅ Logging system and recent backend log viewer in the dashboard
 - ✅ Configuration management and restricted CORS/WebSocket origins
 - ✅ WebSocket streaming for local chat
-- **Proxmox authentication and application sessions** (groundwork done;
-  production login/session implementation awaits the Proxmox server)
-  - Proxmox API ticket client and mocked tests are ready
-  - Session management, login/logout endpoints, and protected API endpoints
-    remain to be implemented and verified against the server
-  - See [Authentication Documentation](./docs/authentication.md)
+- **Dashboard authentication and application sessions** (implemented and
+  tested in Windows, including mocked Proxmox authentication)
+  - Local dashboard accounts, explicit Proxmox identity-role mappings,
+    persistent sessions, role-protected REST/WebSocket routes, CSRF/origin
+    checks, and login/logout are implemented.
+  - Real Proxmox-provider, HTTPS proxy, LAN firewall, and separate-client
+    validation remain outstanding; do not expose the backend to the network
+    until those deployment checks pass.
+  - See [Authentication Documentation](./docs/authentication.md).
 
 ### Phase 3 — GPU Integration
 - llama.cpp Vulkan support (Windows testing complete)
@@ -158,7 +172,7 @@ for the documentation reference checklist.
 - NGINX reverse proxy setup
 - Vector storage (Qdrant)
 - **AI Diagnostics & Self-Healing System** (design specification plus initial
-  observe-only API/dashboard prototype; persistence, scheduling, and
+  observe-only API/dashboard prototype; persistent history, scheduling, and
   remediation are not implemented)
   - Real-time health monitoring and anomaly detection
   - Diagnostic engine for root cause analysis

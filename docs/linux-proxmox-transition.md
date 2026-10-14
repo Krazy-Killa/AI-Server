@@ -113,17 +113,22 @@ until it passes the staged host checks and end-to-end acceptance below.
    and `unavailable` if the selected telemetry source cannot provide a live
    measurement; do not substitute simulated values. Verify idle and
    inference readings against an independent host tool.
-4. **Decide how browsers reach the API.** `js/app.js` currently hardcodes
-   `http://127.0.0.1:8000`. In a browser on another device, this points to that
-   device, not the AI Server. Configure a server-reachable API origin or put
-   the dashboard and API behind a same-origin reverse proxy, and test from a
-   separate LAN client. Do not expose the llama.cpp port to the LAN.
-5. **Harden access before LAN use.** FastAPI's CORS and WebSocket origin
-   checks now default to the local dashboard origins (`AI_SERVER_CORS_ORIGINS`),
-   but there is still no authentication. Do not expose the API, model-switch
-   endpoint, or llama.cpp to an untrusted network. Before remote/LAN access,
-   decide and implement authentication, firewall rules, TLS or a
-   trusted reverse proxy, and a safe model-switch policy.
+4. **Decide and verify how browsers reach the API.** `js/app.js` uses
+   `http://127.0.0.1:8000` when opened as a local file, uses the dashboard
+   host's port 8000 when the local dashboard is served on port 8001, and uses
+   the dashboard's own origin otherwise. A deployment may set
+   `window.AI_SERVER_API_BASE` before the app loads. Choose a server-reachable
+   API origin or same-origin reverse proxy and test from a separate LAN
+   client. Do not expose the llama.cpp port to the LAN.
+5. **Validate deployment security before LAN use.** Dashboard-owned local
+   accounts, explicitly mapped Proxmox identities, role-protected REST and
+   WebSocket access, session cookies, CSRF checks, and origin restrictions are
+   implemented and tested in the Windows environment. This does not validate
+   real Proxmox ticket behavior or the production proxy. Do not expose the
+   API, model-switch endpoint, or llama.cpp to an untrusted network. Before
+   remote/LAN access, validate Proxmox login and role mappings as applicable,
+   HTTPS and secure-cookie behavior through the chosen proxy, firewall rules,
+   browser access from a separate client, and the model-switch policy.
 6. **Create Linux service management.** The `.bat` scripts only support
    Windows. Prepare Podman/Quadlet units for containerized services and
    systemd units or documented host environments for components that need
@@ -299,8 +304,9 @@ for the template and limitations.
       WebSocket routing, authentication, firewall, and TLS decisions
       documented and tested.
 - [ ] Observe-only diagnostics API and dashboard operate against live host
-      checks and never perform remediation; backend log access remains
-      protected/local-only until authentication is implemented.
+      checks and never perform remediation; verify backend logs and all other
+      protected routes remain accessible only to their authorized dashboard
+      roles through the deployed proxy.
 - [ ] llama.cpp remains loopback-only and only the intended services are
       reachable from approved networks.
 - [ ] SearXNG, if deployed, returns JSON results; secrets are stored outside

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from time import monotonic
-from typing import TypedDict
+from typing import Literal, TypedDict
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -21,14 +21,29 @@ class LLMResponse(TypedDict):
     latency_ms: int
 
 
+class ChatMessage(TypedDict):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class LLMRuntimeError(RuntimeError):
     """Raised when llama.cpp is unavailable or returns an invalid response."""
 
 
-def _build_request(prompt: str, system_prompt: str | None, stream: bool) -> Request:
+def _build_request(
+    prompt: str,
+    system_prompt: str | None,
+    stream: bool,
+    history: Sequence[ChatMessage] | None = None,
+) -> Request:
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
+    if history:
+        messages.extend(
+            {"role": message["role"], "content": message["content"]}
+            for message in history
+        )
     messages.append({"role": "user", "content": prompt})
 
     payload = json.dumps(
@@ -60,12 +75,17 @@ def _unreachable_error() -> LLMRuntimeError:
     )
 
 
-def stream_llm(prompt: str, system_prompt: str | None = None) -> Iterator[str]:
+def stream_llm(
+    prompt: str,
+    system_prompt: str | None = None,
+    *,
+    history: Sequence[ChatMessage] | None = None,
+) -> Iterator[str]:
     """Yield reply text chunks as llama.cpp generates them.
 
     Closing the generator closes the HTTP connection, which stops generation.
     """
-    request = _build_request(prompt, system_prompt, stream=True)
+    request = _build_request(prompt, system_prompt, stream=True, history=history)
     produced_text = False
 
     try:
@@ -94,8 +114,13 @@ def stream_llm(prompt: str, system_prompt: str | None = None) -> Iterator[str]:
         raise LLMRuntimeError("llama.cpp returned an empty chat reply.")
 
 
-def run_llm(prompt: str, system_prompt: str | None = None) -> LLMResponse:
-    request = _build_request(prompt, system_prompt, stream=False)
+def run_llm(
+    prompt: str,
+    system_prompt: str | None = None,
+    *,
+    history: Sequence[ChatMessage] | None = None,
+) -> LLMResponse:
+    request = _build_request(prompt, system_prompt, stream=False, history=history)
     started_at = monotonic()
 
     try:

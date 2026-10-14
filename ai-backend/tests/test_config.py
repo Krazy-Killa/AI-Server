@@ -20,6 +20,11 @@ CONFIG_VARIABLES = (
     "AI_SERVER_LOG_MAX_BYTES",
     "AI_SERVER_LOG_BACKUP_COUNT",
     "AI_SERVER_MAX_CHAT_CHARS",
+    "AI_SERVER_AUTH_DB_PATH",
+    "AI_SERVER_MEMORY_DB_PATH",
+    "AI_SERVER_AUTH_COOKIE_SECURE",
+    "PROXMOX_API_URL",
+    "AI_SERVER_BOT_API_TOKEN",
 )
 
 
@@ -35,6 +40,13 @@ class LoadSettingsTests(unittest.TestCase):
         self.assertEqual(settings.llm_max_tokens, 256)
         self.assertEqual(settings.log_level, "INFO")
         self.assertIn("http://127.0.0.1:8001", settings.cors_origins)
+        self.assertTrue(settings.auth_cookie_secure)
+        self.assertEqual(settings.proxmox_api_url, "")
+        self.assertEqual(settings.bot_api_token, "")
+        self.assertEqual(
+            settings.memory_database_path,
+            settings.auth_database_path.parent / "memory.sqlite3",
+        )
 
     def test_blank_values_use_defaults(self):
         settings = self.load(LLAMA_CPP_CTX_SIZE="  ", AI_SERVER_LOG_DIR="")
@@ -65,6 +77,28 @@ class LoadSettingsTests(unittest.TestCase):
     def test_rejects_wildcard_cors_origin(self):
         with self.assertRaisesRegex(ConfigError, "AI_SERVER_CORS_ORIGINS"):
             self.load(AI_SERVER_CORS_ORIGINS="*")
+
+    def test_loads_authentication_settings(self):
+        settings = self.load(
+            AI_SERVER_AUTH_DB_PATH="auth-test.sqlite3",
+            AI_SERVER_MEMORY_DB_PATH="memory-test.sqlite3",
+            AI_SERVER_AUTH_COOKIE_SECURE="false",
+            PROXMOX_API_URL="https://pve.example:8006/",
+            AI_SERVER_BOT_API_TOKEN="x" * 40,
+        )
+        self.assertEqual(settings.auth_database_path, Path("auth-test.sqlite3"))
+        self.assertEqual(settings.memory_database_path, Path("memory-test.sqlite3"))
+        self.assertFalse(settings.auth_cookie_secure)
+        self.assertEqual(settings.proxmox_api_url, "https://pve.example:8006")
+        self.assertEqual(settings.bot_api_token, "x" * 40)
+
+    def test_rejects_unsafe_proxmox_urls_and_short_bot_tokens(self):
+        with self.assertRaisesRegex(ConfigError, "PROXMOX_API_URL"):
+            self.load(PROXMOX_API_URL="http://pve.example:8006")
+        with self.assertRaisesRegex(ConfigError, "AI_SERVER_BOT_API_TOKEN"):
+            self.load(AI_SERVER_BOT_API_TOKEN="too-short")
+        with self.assertRaisesRegex(ConfigError, "AI_SERVER_AUTH_COOKIE_SECURE"):
+            self.load(AI_SERVER_AUTH_COOKIE_SECURE="sometimes")
 
 
 if __name__ == "__main__":

@@ -6,8 +6,41 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a separate admin-shared operational insight store. Admins explicitly
+  publish and remove notes; private conversation transcripts remain isolated
+  by account. Admin chat and research receive the signed-in admin identity and
+  bounded published context, while operators and Discord service calls do
+  not. The newest private chat resumes after sign-in; this is prompt-context
+  retrieval, not model training.
+- Added planning-only Virtual Machines and Network Services dashboard
+  interfaces: an empty VM inventory with guest-detail and recovery-console
+  states, plus DHCPv4/DHCPv6, DNS, web hosting, and routing/firewall service
+  views. No live APIs or infrastructure controls are connected.
+- Added explicit observe-only diagnostics from operator dashboard chat: direct
+  run/check requests execute one observation and provide its evidence to the
+  local model; informational questions and Discord bot requests do not trigger
+  the action.
+- Implemented dashboard-owned local accounts and Proxmox ticket login with
+  explicit role mappings, persistent revocable server-side sessions,
+  scrypt-hashed local passwords, role-gated REST/WebSocket routes, CSRF and
+  origin checks, and login throttling. Added a host-local account/mapping CLI,
+  authenticated login/logout UI, and a scoped Discord-bot bearer credential.
+  Windows unit/mocked-provider validation does not replace target Proxmox,
+  HTTPS proxy, or LAN exposure checks.
+- Added account-scoped SQLite conversation history with saved-chat listing,
+  resume and confirmed deletion, bounded recent-turn context for local chat,
+  and persisted research citations. Bot API chat remains stateless; automatic
+  fact extraction and semantic memory are not included.
+
 ### Changed
 
+- Reduced the minimum password length for local dashboard accounts from 12
+  to 8 characters; account creation and password resets use the same rule.
+- Clarified that the Discord gateway `DISCORD_TOKEN` and the backend bearer
+  `AI_SERVER_BOT_API_TOKEN` are distinct credentials, documented safe generation
+  and environment precedence, and improved the bot startup error accordingly.
 - Expanded the diagnostics design to define a staged path toward bounded
   autonomous repairs, using an incident history of evidence, user
   approval/denial feedback, attempted actions, and verified outcomes to inform
@@ -29,6 +62,10 @@ principles and [Semantic Versioning](https://semver.org/).
   model serving/switching, logging, optional research and Discord services,
   and observe-only diagnostics, with Linux, proxy, persistence, and recovery
   acceptance checks.
+- Expanded planned infrastructure dashboards: full Proxmox VM lifecycle and
+  guest-console access focused on guest recovery; DHCPv4/DHCPv6, DNS, web
+  hosting, and routing/firewall; and a family Minecraft server as a candidate
+  first game-server use case. Live management remains unimplemented.
 
 ## [0.4.0] - 2026-10-14
 

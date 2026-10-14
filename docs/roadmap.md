@@ -11,12 +11,18 @@
   depends on the Proxmox host, its kernel, or the production hardware; staged
   investigation is possible, but runtime validation is still required.
 
-There are currently no roadmap items in active implementation. The dashboard,
-Windows backend foundation, operational logging and Phase 5 interface polish
-are implemented. Proxmox authentication is groundwork only; diagnostics and
-the production Linux/Proxmox stack remain largely unimplemented. The
-observe-only diagnostics core, API, and dashboard view are implemented and
-still need persistence and production-host integration.
+Dashboard-owned login/session management and per-account SQLite conversation
+history are implemented and verified in the Windows development environment.
+Explicitly curated, admin-only shared operational notes are also implemented;
+raw transcripts remain private to each account.
+Proxmox-host and HTTPS-proxy validation remain outstanding. The dashboard,
+Windows backend foundation, operational logging, and Phase 5 interface polish
+are implemented. Transcript history is separate from planned Phase 3
+diagnostic RAG; automatic fact memory and model training from conversations
+are not implemented. The observe-only diagnostics core, API, and dashboard
+view are implemented; persistent incident history, diagnostic RAG, and
+production-host integration remain outstanding. The production Linux/Proxmox
+stack also remains unvalidated.
 
 ## Phase 1 — Local Test Environment
 
@@ -46,21 +52,33 @@ still need persistence and production-host integration.
   implementation planning. It does not upload data or validate runtime
   behavior; review the report before sharing, and capture fresh data on the
   actual server.
-- Proxmox authentication groundwork: HTTPS ticket-client and typed interface,
-  mocked response tests, and a disabled dashboard sign-in preview. This is not
-  production authentication.
+- Dashboard-owned authentication: local and mapped Proxmox login, persistent
+  revocable sessions, role authorization, protected REST/WebSocket routes,
+  CSRF and origin checks, login throttling, CLI account/mapping management,
+  and browser login/logout flow. The Windows backend suite passes;
+  production Proxmox and proxy validation remains outstanding.
+- Proxmox authentication foundation: HTTPS ticket client, typed interface,
+  and mocked API-response tests; the dashboard login uses this client.
+- Per-account conversational history: isolated SQLite storage, saved-chat
+  listing/resume/delete, and bounded recent-turn context for the local chat
+  model. Bot API requests remain stateless. This does not implement automatic
+  fact extraction, semantic/vector retrieval, or the separate diagnostics
+  RAG system. History is retained locally until its owner deletes it.
+- Admin shared insight memory: each note must be explicitly published by an
+  admin; any admin can read or remove it. Admin identity and a bounded set of
+  approved notes are supplied to dashboard chat and research. Private account
+  transcripts are not shared, scraped, or used for model training. The newest
+  private conversation resumes at sign-in.
 - Read-only `GET /api/backend/logs` endpoint and dashboard panel: configurable
   tail bounded to 500 lines, defaults to the latest 200; manual refresh and
-  five-second auto-refresh only while open. The endpoint is currently
-  unauthenticated, so keep the backend local-only until session authentication
-  and protected routes are implemented.
+  five-second auto-refresh only while open. Access is admin-only.
 
-### Not started
+### In progress
 
 - Web research: basic cited search works in the Windows setup; full-page
   fetching and streaming remain.
-- Complete login and session UI after the backend authentication/session
-  design is implemented. The current sign-in UI is an inert preview.
+### Not started
+
 - Image-generation backend groundwork: translate text requests into a
   structured, editable image brief (subject/details, setting,
   composition/viewpoint, style, mood, lighting, palette, aspect ratio/use, and
@@ -73,11 +91,9 @@ still need persistence and production-host integration.
 
 ### Waiting for server
 
-- Implement and validate Proxmox-backed login and proper application session
-  management against the target Proxmox VE host. The Windows test setup has no
-  Proxmox identity provider; confirm ticket/session lifetime, renewal,
-  revocation, and disabled-user behavior on the actual server; protect the
-  backend log endpoint and other non-public routes. Required before LAN or
+- Validate Proxmox-provider login, identity mapping, HTTPS certificate trust,
+  session behavior for disabled Proxmox users, and secure-cookie behavior
+  through the production proxy on the target host. Required before LAN or
   remote access. See [authentication.md](./authentication.md).
 - Validate the host-preparation script modes on the eventual Proxmox host;
   `--install-searxng` has not been tested in a Proxmox environment.
@@ -120,6 +136,10 @@ still need persistence and production-host integration.
   data; collecting checks requires an explicit POST.
 - Dashboard diagnostics panel shows latest check results, resource snapshot,
   and recent incidents, with manual refresh and an explicit run button.
+- Explicit "run/check diagnostics" requests in signed-in operator chat execute
+  one read-only observation and provide the captured evidence to the local
+  model for explanation; informational questions do not trigger a run, and the
+  Discord bot service credential does not receive this capability.
 - Focused tests cover observations, incident recovery, audit events, and
   explicit propagation of unexpected probe failures.
 - This is groundwork only: no scheduler, persistent storage, automated log
@@ -221,6 +241,15 @@ before building the host.
 
 ## Phase 4 — Advanced Features
 
+### Done — pre-server dashboard groundwork
+
+- Virtual Machines panel has a planning-only empty inventory, guest-details
+  layout, and unavailable recovery-console state; it has no provider or live
+  management controls.
+- Network Services panel has planning-only views for DHCPv4, DHCPv6, DNS, web
+  hosting, and routing/firewall. Service ownership, scopes, and configuration
+  remain undecided; no backend or network changes are connected.
+
 ### Not started — can begin before the server is built
 
 - Website-building agent, restricted to a configured workspace and requiring
@@ -258,7 +287,29 @@ before building the host.
   per-GPU instances with concurrent-client routing; compare compatibility,
   VRAM, throughput, latency, power, and stability against the single-GPU
   baseline
-- VM management through Proxmox and remote server control
+- Full Proxmox VM lifecycle management from the dashboard: live inventory and
+  status; create/configure from approved templates or ISOs; storage, CPU,
+  memory and network assignment; start/stop/reboot; snapshots/backups where
+  supported; task progress and audit history; and an authenticated browser
+  console for guest recovery. Use least-privilege Proxmox API permissions,
+  server-side authorization, explicit confirmation for destructive actions,
+  and bounded actions rather than exposing Proxmox credentials to the browser.
+  Prioritize the guest console as a recovery and administration path for
+  virtual machines.
+- Network Services backend integration and service plan for DHCPv4, DHCPv6,
+  DNS, web hosting, and routing/firewall. Define service ownership, address
+  scopes, IPv4/IPv6 behavior, DNS zones/forwarding, hosting boundaries, network
+  segmentation, and recovery before enabling live controls. DHCP and
+  routing/firewall changes can disconnect clients or the dashboard; require
+  safeguards, explicit confirmation, and a tested recovery path, and avoid
+  making the AI host the sole network edge without a deliberate availability
+  design.
+- Game Servers dashboard: first evaluate a family Minecraft server as the
+  initial use case, then select an edition/version and a management approach.
+  Plan guest isolation, resource limits, start/stop/status, player/health
+  visibility, allowlist and access controls, backups/world restore, and
+  optional mod/plugin handling. Do not enable public reachability until
+  firewall, authentication, and family-safety requirements are reviewed.
 
 ## Phase 5 — Polish
 
@@ -310,11 +361,23 @@ the current model options when starting each task.
    command execution.
    **Models:** GPT Luna for implementation and tests; Claude Sonnet for
    reviewing workspace isolation, approvals, and command-execution boundaries.
+6. Define backend contracts and read-only/mock providers for the VM and
+   Network Services UI groundwork, then add the Game Servers dashboard.
+   Define the Proxmox VM lifecycle and guest-console boundary,
+   DHCPv4/DHCPv6/DNS/web/routing-firewall service inventory and safety states,
+   and a family Minecraft server as a candidate first game-server workflow.
+   Defer live management actions until a Proxmox host, network architecture,
+   game-server manager, authentication, and recovery path are selected and
+   validated.
+   **Models:** GPT Luna for schemas, UI, and mock-provider tests; Claude Sonnet
+   for reviewing Proxmox permissions, network lockout risks, guest isolation,
+   and recovery assumptions.
 
-Production authentication/session management, LAN exposure, Linux GPU
-telemetry, and maintenance/service recovery validation remain gated on the
-target Proxmox server. Keep the backend local-only until authentication,
-protected routes, TLS, and network controls are in place.
+Production authentication/session validation, LAN exposure, Linux GPU
+telemetry, and maintenance/service recovery remain gated on the target Proxmox
+server. Dashboard authentication and protected routes are implemented locally;
+keep the backend local-only until HTTPS/proxy behavior, firewall/network
+controls, and the complete deployment have been validated.
 
 ## Documentation References
 

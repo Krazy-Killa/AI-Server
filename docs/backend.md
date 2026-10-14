@@ -5,6 +5,7 @@
 ai-backend/
     main.py
     config.py
+    memory_store.py
     logging_config.py
     system_stats.py
     model_manager.py
@@ -20,6 +21,9 @@ ai-backend/
 main.py  
 - FastAPI app  
 - Route definitions, including the `/ws/chat` streaming endpoint  
+- Protected conversation create/list/read/delete routes and turn persistence
+- Admin-only shared-insight routes and signed-in identity/shared-context
+  injection for dashboard chat and research
 - CORS limited to configured origins, plus WebSocket origin checks  
 - Request logging middleware (polled status endpoints log at DEBUG only)  
 
@@ -27,6 +31,15 @@ config.py
 - Reads and validates environment settings once at import into a frozen
   `settings` object; invalid values stop startup with a clear message  
 - Covers llama.cpp, model-switch options, SearXNG, CORS, chat limits, and logging  
+
+memory_store.py
+- Separate SQLite database for private account-scoped conversations and
+  admin-published shared operational notes
+- Enforces ownership on conversation reads, writes, and deletion
+- Provides bounded recent-turn context for local chat; source messages remain
+  available in full for the account's history view
+- Bounds admin shared context and does not expose it to non-admin or Discord
+  service requests
 
 logging_config.py  
 - Console plus rotating `backend.log` in `AI_SERVER_LOG_DIR` (default
@@ -73,8 +86,10 @@ before deploying the backend or exposing it to other devices.
 
 ## Testing
 
-From `ai-backend/`, run `python -m unittest discover -s tests`. The WebSocket
-endpoint tests need `httpx` (development only) and are skipped without it.
+From `ai-backend/`, install the development test client with
+`python -m pip install -r requirements-dev.txt`, then run
+`python -m unittest discover -s tests`. The test client is development-only;
+production runtime dependencies remain in `requirements.txt`.
 
 ## Future Additions
 

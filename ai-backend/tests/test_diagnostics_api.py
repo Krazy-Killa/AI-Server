@@ -10,7 +10,7 @@ os.environ.setdefault(
 )
 
 from diagnostics import DiagnosticsMonitor, ResourceSnapshot
-from fastapi.testclient import TestClient
+from auth_test_helpers import authenticated_client
 
 
 def resource_sample():
@@ -52,7 +52,7 @@ class DiagnosticsApiTests(unittest.TestCase):
         )
         self.monitor_patch.start()
         self.addCleanup(self.monitor_patch.stop)
-        self.client = TestClient(main.app)
+        self.client, self.auth_store = authenticated_client(self, main)
 
     def test_status_and_incidents_are_available_only_from_explicit_observations(self):
         status = self.client.get("/api/diagnostics/status")
@@ -92,6 +92,82 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertEqual(resolved.json()["count"], 0)
         self.assertEqual(invalid_limit.status_code, 422)
         self.assertEqual(invalid_status.status_code, 422)
+
+    def test_explicit_chat_request_runs_read_only_diagnostics_and_shares_evidence(self):
+        llm_result = {
+            "reply": "The backend is healthy, but llama.cpp is degraded.",
+            "latency_ms": 12,
+            "tokens": 9,
+        }
+        with (
+            patch.object(self.main, "run_llm", return_value=llm_result) as run_llm,
+            patch.object(
+                self.main.diagnostics_monitor,
+                "run_observation",
+                wraps=self.main.diagnostics_monitor.run_observation,
+            ) as run_observation,
+        ):
+            response = self.client.post(
+                "/api/chat", json={"message": "Could you run a diagnostic test?"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), llm_result)
+        run_observation.assert_called_once_with()
+        system_prompt = run_llm.call_args.args[1]
+        self.assertIn("read-only diagnostics observation", system_prompt)
+        self.assertIn("llama_server.health", system_prompt)
+        self.assertIn("llama.cpp is not ready.", system_prompt)
+
+    def test_diagnostics_questions_do_not_trigger_an_observation(self):
+        llm_result = {"reply": "Use the Diagnostics panel.", "latency_ms": 5, "tokens": 6}
+        with (
+            patch.object(self.main, "run_llm", return_value=llm_result),
+            patch.object(
+                self.main.diagnostics_monitor,
+                "run_observation",
+                wraps=self.main.diagnostics_monitor.run_observation,
+            ) as run_observation,
+        ):
+            response = self.client.post(
+                "/api/chat", json={"message": "How do I run diagnostics?"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        run_observation.assert_not_called()
+
+    def test_discord_service_chat_cannot_trigger_diagnostics(self):
+        from fastapi.testclient import TestClient
+
+        service_token = "test-discord-service-token-" + "x" * 32
+        settings_patch = patch.object(
+            self.main,
+            "settings",
+            replace(self.main.settings, bot_api_token=service_token),
+        )
+        settings_patch.start()
+        self.addCleanup(settings_patch.stop)
+        service_client = TestClient(self.main.app)
+        with (
+            patch.object(
+                self.main,
+                "run_llm",
+                return_value={"reply": "No observation run.", "latency_ms": 1, "tokens": 2},
+            ),
+            patch.object(
+                self.main.diagnostics_monitor,
+                "run_observation",
+                wraps=self.main.diagnostics_monitor.run_observation,
+            ) as run_observation,
+        ):
+            response = service_client.post(
+                "/api/chat",
+                json={"message": "Run a diagnostic test."},
+                headers={"Authorization": f"Bearer {service_token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        run_observation.assert_not_called()
 
 
 if __name__ == "__main__":

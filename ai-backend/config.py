@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:8001", "http://localhost:8001")
 VALID_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
@@ -39,6 +40,24 @@ def _default_log_directory() -> Path:
     return Path.home() / "AI-Server" / "logs"
 
 
+def _default_auth_database() -> Path:
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        return Path(local_app_data) / "AI-Server" / "data" / "auth.sqlite3"
+    return Path.home() / "AI-Server" / "data" / "auth.sqlite3"
+
+
+def _boolean(name: str, default: bool) -> bool:
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in ("true", "1", "yes", "on"):
+        return True
+    if raw in ("false", "0", "no", "off"):
+        return False
+    raise ConfigError(f"{name} must be true or false, got {raw!r}.")
+
+
 def _cors_origins() -> tuple[str, ...]:
     raw = os.environ.get("AI_SERVER_CORS_ORIGINS", "").strip()
     if not raw:
@@ -64,6 +83,11 @@ class Settings:
     log_max_bytes: int
     log_backup_count: int
     max_chat_chars: int
+    auth_database_path: Path
+    memory_database_path: Path
+    auth_cookie_secure: bool
+    proxmox_api_url: str
+    bot_api_token: str
 
 
 def load_settings() -> Settings:
@@ -80,6 +104,36 @@ def load_settings() -> Settings:
         else _default_log_directory()
     )
 
+    configured_auth_database = os.environ.get("AI_SERVER_AUTH_DB_PATH", "").strip()
+    auth_database_path = (
+        Path(configured_auth_database).expanduser()
+        if configured_auth_database
+        else _default_auth_database()
+    )
+    configured_memory_database = os.environ.get("AI_SERVER_MEMORY_DB_PATH", "").strip()
+    memory_database_path = (
+        Path(configured_memory_database).expanduser()
+        if configured_memory_database
+        else auth_database_path.parent / "memory.sqlite3"
+    )
+    proxmox_api_url = os.environ.get("PROXMOX_API_URL", "").strip().rstrip("/")
+    if proxmox_api_url:
+        parsed_proxmox_url = urlsplit(proxmox_api_url)
+        if (
+            parsed_proxmox_url.scheme.lower() != "https"
+            or not parsed_proxmox_url.netloc
+            or parsed_proxmox_url.username is not None
+            or parsed_proxmox_url.password is not None
+            or parsed_proxmox_url.path not in ("", "/")
+            or parsed_proxmox_url.query
+            or parsed_proxmox_url.fragment
+        ):
+            raise ConfigError("PROXMOX_API_URL must be an HTTPS origin.")
+
+    bot_api_token = os.environ.get("AI_SERVER_BOT_API_TOKEN", "").strip()
+    if bot_api_token and len(bot_api_token) < 32:
+        raise ConfigError("AI_SERVER_BOT_API_TOKEN must contain at least 32 characters.")
+
     return Settings(
         llama_cpp_base_url=_text("LLAMA_CPP_BASE_URL", "http://127.0.0.1:8080").rstrip("/"),
         llama_cpp_timeout_seconds=_positive_int("LLAMA_CPP_TIMEOUT_SECONDS", 120),
@@ -94,6 +148,11 @@ def load_settings() -> Settings:
         log_max_bytes=_positive_int("AI_SERVER_LOG_MAX_BYTES", 5_000_000),
         log_backup_count=_positive_int("AI_SERVER_LOG_BACKUP_COUNT", 5),
         max_chat_chars=_positive_int("AI_SERVER_MAX_CHAT_CHARS", 4000),
+        auth_database_path=auth_database_path,
+        memory_database_path=memory_database_path,
+        auth_cookie_secure=_boolean("AI_SERVER_AUTH_COOKIE_SECURE", True),
+        proxmox_api_url=proxmox_api_url,
+        bot_api_token=bot_api_token,
     )
 
 
