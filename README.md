@@ -29,6 +29,8 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
   approval before file changes or command execution.
+- Authentication and user session management system (planned for Phase 2)
+- AI-powered diagnostics and self-healing system (planned for Phase 3)
 
 ## Windows quick start
 
@@ -99,6 +101,70 @@ js/               Dashboard behavior
 index.html        Dashboard interface
 ```
 
+## Development Roadmap
+
+### Phase 1 — Local Test Environment (Complete)
+- ✅ Dashboard UI with panel navigation
+- ✅ Backend API stubs and integration
+- ✅ Discord bot foundation
+- ✅ System monitor with live telemetry
+- ✅ Chat interface with message history
+- ✅ Model discovery and selection
+- ✅ Operational logging
+
+### Phase 2 — Real Backend Features
+- Linux/Proxmox deployment preparation
+- Kernel-aware host validation scripts
+- Linux GPU telemetry integration
+- Production logging system
+- Configuration management
+- WebSocket streaming support
+- **JWT-based Authentication & Session Management**
+  - Secure user login/logout
+  - Token refresh mechanism
+  - Protected API endpoints
+  - Frontend login page
+  - Rate limiting and security hardening
+  - See [Authentication Documentation](./docs/authentication.md)
+
+### Phase 3 — GPU Integration
+- llama.cpp Vulkan support (Windows testing complete)
+- ROCm/HIP stack for Proxmox
+- ONNX Runtime GPU acceleration
+- ComfyUI integration
+- Container orchestration (Podman/Quadlet)
+- NGINX reverse proxy setup
+- Vector storage (Qdrant)
+- **AI Diagnostics & Self-Healing System**
+  - Real-time health monitoring and anomaly detection
+  - Diagnostic engine for root cause analysis
+  - Auto-remediation for safe operations
+  - Error reporting and escalation workflows
+  - Knowledge base of troubleshooting procedures
+  - Audit logging and approval gates
+  - See [AI Diagnostics Documentation](./docs/ai-diagnostics-self-healing.md)
+
+### Phase 4 — Advanced Features
+- Cited web research through self-hosted SearXNG
+- Website-building agent with approval workflows
+- Multi-model routing and load balancing
+- Multi-GPU inference strategies
+- Advanced agent workflows
+- VM management integration
+- Remote server control
+- Discord bot automation
+- **Advanced AI Diagnostics**
+  - Machine learning-based anomaly detection
+  - Self-learning knowledge base updates
+  - Predictive issue detection
+  - Cross-service dependency analysis
+
+### Phase 5 — Polish
+- UI animations and transitions
+- Theme switching (dark/light modes)
+- Mobile-responsive layout
+- Collapsible sidebar navigation
+
 ## Documentation
 
 - [Windows testing environment](./docs/testing-environment.md)
@@ -110,4 +176,6 @@ index.html        Dashboard interface
 - [Frontend](./docs/frontend.md)
 - [GPU integration plan](./docs/gpu-plan.md)
 - [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)
+- [Authentication & Session Management](./docs/authentication.md)
+- [AI Diagnostics & Self-Healing System](./docs/ai-diagnostics-self-healing.md)
 - [Roadmap](./docs/roadmap.md)
