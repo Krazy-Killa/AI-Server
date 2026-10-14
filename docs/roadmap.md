@@ -2,15 +2,20 @@
 
 ## Status key
 
-- **Done** — implemented and verified in the current Windows test environment.
+- **Done** — implemented and verified in the Windows development environment
+  or with focused mocks, as applicable; this does not imply production-host
+  validation.
 - **In progress** — implementation is actively underway.
 - **Not started** — planned, but implementation has not begun.
 - **Waiting for server** — depends on the Proxmox host, its kernel, or the
   production hardware.
 
-There are currently no roadmap items in active implementation. Partially
-complete work is split between **Done** and its remaining **Not started** or
-**Waiting for server** tasks.
+There are currently no roadmap items in active implementation. The dashboard,
+Windows backend foundation, operational logging and Phase 5 interface polish
+are implemented. Proxmox authentication is groundwork only; diagnostics and
+the production Linux/Proxmox stack remain largely unimplemented. A first
+read-only diagnostics core now exists; the next recommended work is to expose
+it through a diagnostics API and dashboard view.
 
 ## Phase 1 — Local Test Environment
 
@@ -33,33 +38,39 @@ complete work is split between **Done** and its remaining **Not started** or
 - CORS and WebSocket origin restrictions for configured dashboard origins
 - Windows SearXNG test setup and dashboard web-research integration
 - Initial Proxmox host preparation script, including `--check`,
-  `--install-base`, and `--install-searxng` modes
+  `--install-base`, and `--install-searxng` modes. These modes have not been
+  validated on the target Proxmox host.
+- Proxmox authentication groundwork: HTTPS ticket-client and typed interface,
+  mocked response tests, and a disabled dashboard sign-in preview. This is not
+  production authentication.
+- Read-only `GET /api/backend/logs` endpoint and dashboard panel: configurable
+  tail bounded to 500 lines, defaults to the latest 200; manual refresh and
+  five-second auto-refresh only while open. The endpoint is currently
+  unauthenticated, so keep the backend local-only until session authentication
+  and protected routes are implemented.
 
 ### Not started
 
 - Web research: basic cited search works in the Windows setup; full-page
   fetching and streaming remain.
-- Backend log viewer: backend logs are written to files, but are not yet
-  viewable in the dashboard.
-- Proxmox-auth integration groundwork: define interfaces, mock Proxmox's
-  ticket endpoint, and prepare the login UI. Mocked auth is not production
-  authentication.
+- Complete login and session UI after the backend authentication/session
+  design is implemented. The current sign-in UI is an inert preview.
 
 ### Waiting for server
 
 - Implement and validate Proxmox-backed login and proper application session
   management against the target Proxmox VE host. The Windows test setup has no
   Proxmox identity provider; confirm ticket/session lifetime, renewal,
-  revocation, and disabled-user behavior on the actual server. Required before
-  LAN or remote access. See [authentication.md](./authentication.md).
-- Validate scheduled maintenance against the target service manager and
-  hardware: enter/exit maintenance mode, pause/drain and restart normal
-  workloads safely, keep the control plane operational, select the diagnostic
-  model, retrieve local RAG data, validate structured proposals, restore the
-  previous model, and verify updates/rollback.
+  revocation, and disabled-user behavior on the actual server; protect the
+  backend log endpoint and other non-public routes. Required before LAN or
+  remote access. See [authentication.md](./authentication.md).
 - Validate the host-preparation script modes on the eventual Proxmox host;
   `--install-searxng` has not been tested in a Proxmox environment.
-- Linux/Proxmox GPU telemetry, after the RX 6800 XT is installed in the host
+- Once the local maintenance prototype exists, validate its production
+  integration against the target service manager and hardware: safely pause
+  and restore workloads, keep the control plane available, retrieve local RAG
+  data, validate proposals, restore the normal model, and verify updates and
+  rollback.
 
 ## Phase 3 — GPU Integration and Diagnostics
 
@@ -70,12 +81,34 @@ complete work is split between **Done** and its remaining **Not started** or
   not implemented)
   ([ai-diagnostics-self-healing.md](./ai-diagnostics-self-healing.md))
 
+### Done — observe-only core, API, and dashboard groundwork
+
+- `ai-backend/diagnostics.py` provides on-demand read-only checks for the
+  backend process, llama.cpp health endpoint, SearXNG JSON search endpoint,
+  and Discord heartbeat.
+- Each observation captures CPU/RAM use, free space on the log volume, backend
+  process RSS, and per-check results as evidence.
+- Failed checks open/update warning incidents; a later healthy check resolves
+  the incident. Observation, incident-open, and incident-resolved events are
+  tracked in bounded process-local history.
+- Explicit diagnostics API (`/api/diagnostics/status`, `/observations`,
+  `/incidents`, and `POST /observe`) exposes bounded observation and incident
+  data; collecting checks requires an explicit POST.
+- Dashboard diagnostics panel shows latest check results, resource snapshot,
+  and recent incidents, with manual refresh and an explicit run button.
+- Focused tests cover observations, incident recovery, audit events, and
+  explicit propagation of unexpected probe failures.
+- This is groundwork only: no scheduler, persistent storage, automated log
+  analysis, thresholds, or remediation is enabled.
+
 ### Not started — buildable in the Windows test environment
 
-- Diagnostics Phase 1: observe-only health checks, resource sampling,
-  reactive incident records, evidence collection, reporting, and audit log
-- Diagnostics status board and incident list
-- Platform-specific knowledge-base runbooks and fault-injection tests
+- Complete Diagnostics Phase 1: persist incident/evidence/audit history,
+  implement broader health checks, threshold durations and hysteresis,
+  automated log analysis and reports, then add recurring scheduling only
+  after cadence, retention, and failure behavior are tested. Current
+  observations remain manual and process-local.
+- Curated platform-specific knowledge-base runbooks and fault-injection tests.
 - Build local RAG groundwork: reviewed diagnostics procedures and known-issue
   references, local development vector store and embeddings, metadata filtering,
   and retrieval tests. Keep diagnostic data and source knowledge local;
@@ -83,18 +116,20 @@ complete work is split between **Done** and its remaining **Not started** or
 - Define a structured repair-proposal schema and prototype independent
   backend-executor validation with mocked actions. The model must never run
   commands or authorize its own proposals.
-- Prototype the scheduled 03:00–04:00 maintenance lifecycle with a mocked
-  clock/model manager: enter maintenance mode, pause user-facing services and
-  inference while keeping the maintenance control plane alive, load a
-  diagnostic model with locally retrieved knowledge, execute validated
-  proposals, and restore normal operation. Simulation does not validate
-  production recovery.
+- After the observe-mode, RAG, and proposal foundations exist, prototype the
+  scheduled 03:00–04:00 lifecycle with a mocked clock/model manager. Simulate
+  pausing normal workloads while retaining the maintenance control plane,
+  loading the dedicated diagnostic model and local knowledge, executing only
+  validated proposals, and restoring normal operation. Simulation does not
+  validate production recovery.
 
 ### Waiting for server and compatibility verification
 
 - ROCm/HIP on the Proxmox host and ROCm-built llama.cpp / `llama-server`
 - ONNX Runtime ROCm execution provider and ComfyUI ROCm
-- Linux GPU telemetry and production inference validation
+- Implement and validate Linux/Proxmox GPU telemetry after the RX 6800 XT is
+  installed in the host; the current live provider is Windows-specific.
+- Production inference validation
 - Verify versions and compatibility against the actual Proxmox release,
   running kernel, RX 6800 XT, and pinned component versions
 
@@ -111,21 +146,19 @@ has been checked. The host-preparation script does not install this GPU stack.
   approval before file changes or command execution
 - Discord automation and diagnostics notifications
 - Additional agent workflows
-- Diagnostics Phase 2: safe auto-remediation and approval workflow. Real
-  service restart actions require the production service setup.
-- Daily 03:00–04:00 scheduled maintenance mode: safely pause normal
-  user-facing services and inference; keep the coordinator, executor,
-  monitoring, local RAG and recovery/notification path running; load the best
-  eligible dedicated diagnostic model; reactively diagnose and submit
-  structured repairs to the validated executor; run integrity checks and
-  allowlisted safe updates; then restore the normal model/services after
-  verification. Validate model/resource fit, local vector-store deployment
-  (Qdrant is a candidate), retrieval, stop/start order, update rollback, and
-  recovery on the server. The window must not force unsafe interruption at
-  04:00; if health checks fail, remain paused and alert. Proxmox, kernel, GPU
-  driver/ROCm, and firmware updates remain approval-only.
+- Diagnostics Phase 2: safe auto-remediation and approval workflow, after
+  observe mode and independent executor validation are established. Real
+  service-restart actions require the production service setup.
+- Complete the scheduled maintenance implementation after the mocked
+  lifecycle is proven. It must suspend normal workloads but keep the
+  coordinator, executor, monitoring, local RAG, and recovery/notification path
+  available; select an eligible dedicated diagnostic model; perform integrity
+  checks and allowlisted safe updates; and restore normal operation only after
+  verification. Do not force unsafe interruption at 04:00; remain paused and
+  alert on failed health checks. Proxmox, kernel, GPU driver/ROCm, and firmware
+  updates remain approval-only.
 - Diagnostics Phase 3/4: ML-based detection, predictive alerts, and
-  self-learning knowledge-base updates; effectiveness depends on collected
+  self-learning knowledge-base updates; these depend on collected and reviewed
   incident history.
 
 ### Waiting for server or deployment architecture
@@ -154,12 +187,28 @@ has been checked. The host-preparation script does not install this GPU stack.
 
 ## Suggested next work (no server required)
 
-1. Prepare the Proxmox-auth interfaces, mocked API tests, and login UI; defer
-   real session management until the Proxmox server is available.
-2. Add a dashboard backend log viewer.
-3. Build diagnostics observe mode and its dashboard view.
-4. Complete web-research page fetching and streaming.
-5. Build the website-building agent with approval controls.
+The auth groundwork, backend log viewer, and initial diagnostics API/dashboard
+are complete. Recommended implementation order:
+
+1. Complete observe mode with persistence, threshold durations/hysteresis,
+   broader health/log evidence, reports, and fault-injection tests. Keep it
+   strictly non-remediating and triggering explicit until scheduling,
+   retention, and safety behavior are designed and tested.
+2. Create reviewed diagnostic runbooks and local RAG/retrieval tests. Keep
+   incident-derived knowledge as untrusted drafts until reviewed.
+3. Define structured remediation proposals and independently validate them in
+   a mocked executor; enforce risk tiers, approval gates, and audit logging.
+4. Prototype and test scheduled maintenance with a mocked clock, model
+   manager, workload controller, update source, and recovery path. Treat this
+   as simulation only until the Proxmox host is available.
+5. Complete web-research full-page fetching and streaming, then build the
+   workspace-restricted website agent with explicit approval for changes and
+   command execution.
+
+Production authentication/session management, LAN exposure, Linux GPU
+telemetry, and maintenance/service recovery validation remain gated on the
+target Proxmox server. Keep the backend local-only until authentication,
+protected routes, TLS, and network controls are in place.
 
 ## Documentation References
 

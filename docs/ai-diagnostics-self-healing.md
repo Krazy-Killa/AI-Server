@@ -1,7 +1,11 @@
 # AI-Powered Diagnostics & Self-Healing
 
-> Status: **design specification** (not yet implemented). Endpoints, modules and
-> tables described here are proposals for review and phased implementation.
+> Status: **design specification with an initial observe-only prototype**.
+> `ai-backend/diagnostics.py` provides on-demand local health/resource
+> observations and process-local incident/audit tracking. Explicit bounded API
+> routes and a manual-run dashboard view are implemented. Persistence,
+> scheduling, automated log analysis, remediation, and the rest of the design
+> below are not implemented.
 
 This document specifies the AI Maintenance Agent: a reactive self-healing
 subsystem that monitors system telemetry and service health, retrieves relevant
@@ -657,13 +661,27 @@ never update the active package directly.
 
 ### Phase 1: Basic Monitoring and Reporting (observe mode)
 - Can be built and tested now on the Windows test setup; no GPU or server needed.
-- Health checks, resource sampling, thresholds, log tailing.
-- Reactive triggers, incident correlation, local knowledge ingestion and
-  read-only RAG retrieval using a local development store.
-- Incident model, evidence bundles, failure reports, severity levels.
-- Dashboard status board and incident list; Discord notifications.
-- Read-only API endpoints; audit log.
-- **Exit criteria**: all checks run reliably, < 1 false alert/day, reports verified accurate.
+- **Implemented prototype**: explicit, on-demand read-only health checks for
+  the backend, llama.cpp, SearXNG, and Discord; CPU/RAM, log-volume free space,
+  and backend RSS snapshots; bounded process-local observation, incident, and
+  audit histories; warning incidents open/update on failed checks and resolve
+  after a healthy check.
+- **Implemented interface**: bounded read-only API routes for status,
+  observation history, and filtered incident history, plus an explicit
+  `POST /api/diagnostics/observe` trigger. The dashboard displays the latest
+  observation and incidents and supports manual refresh/run. GET requests do
+  not run probes. Focused tests cover the observe-only core and API behavior.
+- **Remaining Phase 1 work**: durable history; broader health checks; threshold
+  durations and hysteresis; automated log analysis, failure reports, and
+  severity levels; incident correlation; curated local knowledge ingestion
+  and read-only RAG; Discord notifications; and recurring scheduling after
+  cadence, retention, and failure behavior are designed and tested.
+- The prototype does not perform scheduled or automatic observations, access
+  a RAG database, analyze logs, send notifications, execute commands, or
+  remediate failures. Its histories are lost when the backend process restarts.
+- **Exit criteria**: not yet met. Verify all checks run reliably, achieve
+  fewer than one false alert per day, and validate report accuracy after the
+  remaining Phase 1 capabilities are implemented.
 
 ### Phase 2: Auto-Remediation for Safe Operations
 - Action registry, Tier 0/1 actions, verification, rollback, rate limiting.

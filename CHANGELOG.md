@@ -8,6 +8,19 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Initial observe-only diagnostics core in `ai-backend/diagnostics.py`:
+  bounded local service health probes, CPU/RAM/disk/backend RSS sampling,
+  observation evidence, process-local incident open/update/recovery tracking,
+  and bounded audit events. Added bounded `/api/diagnostics/*` read endpoints,
+  explicit `POST /api/diagnostics/observe`, and a manual-run dashboard status
+  and incident view. No scheduler or remediation is enabled.
+- Read-only backend log viewer at `/api/backend/logs` and in the dashboard.
+  The API returns at most 500 recent lines; the panel shows the latest 200,
+  supports manual refresh, and auto-refreshes only while open.
+- Proxmox authentication groundwork: HTTPS ticket client with redirect
+  rejection, typed auth/authorization interfaces, mocked API-response tests,
+  and a disabled dashboard sign-in preview. No login endpoint or application
+  session management is enabled.
 - Phase 5 polish: persistent dark/light theme toggle, collapsible icon-only
   sidebar, panel fade-in animation, and persisted accent colour (also fixes
   accent glows not following the chosen colour). Preferences are stored in

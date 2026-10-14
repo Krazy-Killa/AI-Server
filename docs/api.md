@@ -20,6 +20,33 @@ Returns the GPU load and telemetry status fields from `/api/system`.
 
 ---
 
+## Diagnostics (Observe-only)
+
+Diagnostics are explicitly triggered and read-only. No scheduler, repair
+action, or command execution is exposed. Observation and incident history is
+held in process memory and is lost when the backend restarts. These endpoints
+are currently unauthenticated; keep the backend local-only.
+
+GET /api/diagnostics/status
+Returns `mode` (`observe_only`), `storage` (`process_local`), the latest
+observation and status (`not_run`, `healthy`, `degraded`, or `unknown`), and
+incident counts.
+
+GET /api/diagnostics/observations?limit=20
+Returns recent observations, limited to 1–100 items.
+
+GET /api/diagnostics/incidents?status=all&limit=100
+Returns recent incidents filtered by `all`, `open`, or `resolved`, limited to
+1–500 items.
+
+POST /api/diagnostics/observe
+Runs the configured health checks and resource sampling once, records the
+observation and incident transitions, and returns the observation. It does
+not perform remediation. The dashboard exposes this action through its
+Diagnostics panel's **Run observation** button.
+
+---
+
 ## Chat Endpoints
 
 POST /api/chat  

@@ -3,12 +3,24 @@
 from __future__ import annotations
 
 import logging
+from collections import deque
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from config import Settings
 
 LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 _HANDLER_TAG = "_ai_server_handler"
+MAX_LOG_LINES = 500
+
+
+def read_recent_log_lines(log_file: Path, limit: int) -> list[str]:
+    """Return the newest bounded set of lines from one configured log file."""
+    if not 1 <= limit <= MAX_LOG_LINES:
+        raise ValueError(f"limit must be between 1 and {MAX_LOG_LINES}.")
+
+    with log_file.open("r", encoding="utf-8", errors="replace") as stream:
+        return [line.rstrip("\r\n") for line in deque(stream, maxlen=limit)]
 
 
 def setup_logging(settings: Settings) -> None:

@@ -1,12 +1,14 @@
 import asyncio
 import logging
 from contextlib import suppress
+from dataclasses import asdict
 from pathlib import Path
 from time import monotonic
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -14,7 +16,11 @@ from pydantic import BaseModel, Field
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from config import settings
-from logging_config import setup_logging
+from logging_config import MAX_LOG_LINES, read_recent_log_lines, setup_logging
+from diagnostics import (
+    DiagnosticsMonitor,
+    observation_to_dict,
+)
 
 setup_logging(settings)
 
@@ -35,10 +41,20 @@ from embed_stub import embed_text_stub
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
+diagnostics_monitor = DiagnosticsMonitor()
 logger.info("Backend starting (log level %s, logs in %s).", settings.log_level, settings.log_directory)
 
 # Browsers send these polled paths constantly; log them at DEBUG only.
-QUIET_PATHS = {"/api/system", "/api/bot/status", "/api/bot/logs", "/api/bot/heartbeat"}
+QUIET_PATHS = {
+    "/api/system",
+    "/api/bot/status",
+    "/api/bot/logs",
+    "/api/bot/heartbeat",
+    "/api/backend/logs",
+    "/api/diagnostics/status",
+    "/api/diagnostics/observations",
+    "/api/diagnostics/incidents",
+}
 
 # Allow dashboard access from configured origins only
 app.add_middleware(
@@ -176,6 +192,72 @@ async def research_endpoint(req: ResearchRequest):
 @app.get("/api/system")
 async def system_endpoint():
     return get_system_stats()
+
+# ===============================
+# /api/backend/logs
+# ===============================
+@app.get("/api/backend/logs")
+async def backend_logs(limit: int = Query(default=200, ge=1, le=MAX_LOG_LINES)):
+    log_file = settings.log_directory / "backend.log"
+    try:
+        logs = await asyncio.to_thread(read_recent_log_lines, log_file, limit)
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=404, detail="Backend log file is not available."
+        ) from error
+    except OSError as error:
+        logger.exception("Could not read the backend log file.")
+        raise HTTPException(
+            status_code=500, detail="Backend log file could not be read."
+        ) from error
+    return {"logs": logs, "count": len(logs)}
+
+# ===============================
+# /api/diagnostics/*
+# ===============================
+@app.get("/api/diagnostics/status")
+async def diagnostics_status():
+    observations = diagnostics_monitor.get_observations()
+    incidents = diagnostics_monitor.get_incidents()
+    latest = observations[-1] if observations else None
+    return {
+        "mode": "observe_only",
+        "storage": "process_local",
+        "status": latest.status if latest else "not_run",
+        "latest_observation": observation_to_dict(latest) if latest else None,
+        "open_incidents": sum(incident.status == "open" for incident in incidents),
+        "total_incidents": len(incidents),
+    }
+
+
+@app.get("/api/diagnostics/observations")
+async def diagnostics_observations(limit: int = Query(default=20, ge=1, le=100)):
+    observations = diagnostics_monitor.get_observations()[-limit:]
+    return {
+        "observations": [observation_to_dict(item) for item in observations],
+        "count": len(observations),
+    }
+
+
+@app.get("/api/diagnostics/incidents")
+async def diagnostics_incidents(
+    status: Literal["all", "open", "resolved"] = Query(default="all"),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    incidents = diagnostics_monitor.get_incidents()
+    if status != "all":
+        incidents = [incident for incident in incidents if incident.status == status]
+    incidents = incidents[-limit:]
+    return {
+        "incidents": [asdict(incident) for incident in incidents],
+        "count": len(incidents),
+    }
+
+
+@app.post("/api/diagnostics/observe")
+async def diagnostics_observe():
+    observation = await asyncio.to_thread(diagnostics_monitor.run_observation)
+    return observation_to_dict(observation)
 
 # ===============================
 # /api/bot/status

@@ -28,6 +28,25 @@ const botFeedback = document.getElementById('bot-feedback');
 let botCommands = [];
 let botRestartPending = false;
 
+// Backend log viewer elements
+const backendLogsPanel = document.getElementById('backend-logs-panel');
+const backendLogsWindow = document.getElementById('backend-log-window');
+const backendLogsStatus = document.getElementById('backend-logs-status');
+const backendLogsRefreshButton = document.getElementById('backend-logs-refresh');
+let backendLogsRequestInProgress = false;
+
+// Diagnostics observe-mode elements
+const diagnosticsPanel = document.getElementById('diagnostics-panel');
+const diagnosticsStatus = document.getElementById('diagnostics-status');
+const diagnosticsNotice = document.getElementById('diagnostics-notice');
+const diagnosticsRefreshButton = document.getElementById('diagnostics-refresh');
+const diagnosticsRunButton = document.getElementById('diagnostics-run');
+const diagnosticsChecks = document.getElementById('diagnostics-checks');
+const diagnosticsIncidents = document.getElementById('diagnostics-incidents');
+const diagnosticsIncidentCount = document.getElementById('diagnostics-incident-count');
+const diagnosticsObservedAt = document.getElementById('diagnostics-observed-at');
+let diagnosticsRequestInProgress = false;
+
 // Model panel elements
 const modelList = document.getElementById('model-list');
 const modelRegistryStatus = document.getElementById('model-registry-status');
@@ -74,6 +93,8 @@ navItems.forEach(item => {
                 panel.classList.add('panel-enter');
             }
         });
+        if (item.dataset.panel === 'backend-logs-panel') refreshBackendLogs();
+        if (item.dataset.panel === 'diagnostics-panel') refreshDiagnostics();
     });
 });
 
@@ -519,6 +540,261 @@ async function pollBotLogs() {
 setInterval(pollBotLogs, 4000);
 pollBotLogs();
 
+// ===============================
+// BACKEND LOG VIEWER
+// ===============================
+async function refreshBackendLogs() {
+    if (backendLogsRequestInProgress) return;
+    backendLogsRequestInProgress = true;
+    backendLogsRefreshButton.disabled = true;
+    try {
+        const response = await fetch(`${API_BASE}/api/backend/logs?limit=200`);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || `Backend logs request failed: ${response.status}`);
+        }
+        if (!Array.isArray(data.logs)) throw new Error('Backend logs response was invalid.');
+
+        backendLogsWindow.replaceChildren();
+        if (data.logs.length === 0) {
+            const emptyLine = document.createElement('div');
+            emptyLine.classList.add('log-line');
+            emptyLine.textContent = 'No backend log entries yet.';
+            backendLogsWindow.appendChild(emptyLine);
+        } else {
+            data.logs.forEach(line => {
+                const logLine = document.createElement('div');
+                logLine.classList.add('log-line');
+                logLine.textContent = line;
+                backendLogsWindow.appendChild(logLine);
+            });
+        }
+        backendLogsStatus.textContent = `Showing ${data.count} entries`;
+        backendLogsWindow.scrollTop = backendLogsWindow.scrollHeight;
+    } catch (error) {
+        const errorLine = document.createElement('div');
+        errorLine.classList.add('log-line');
+        errorLine.textContent = error instanceof Error
+            ? `Unable to load backend logs: ${error.message}`
+            : 'Unable to load backend logs.';
+        backendLogsWindow.replaceChildren(errorLine);
+        backendLogsStatus.textContent = 'Log viewer unavailable';
+    } finally {
+        backendLogsRequestInProgress = false;
+        backendLogsRefreshButton.disabled = false;
+    }
+}
+
+backendLogsRefreshButton.addEventListener('click', refreshBackendLogs);
+setInterval(() => {
+    if (backendLogsPanel.style.display !== 'none') refreshBackendLogs();
+}, 5000);
+
+// ===============================
+// DIAGNOSTICS OBSERVE MODE
+// ===============================
+function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return 'N/A';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+    }
+    return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? 'Unknown time' : date.toLocaleString();
+}
+
+function renderDiagnosticsObservation(observation) {
+    if (!observation) {
+        diagnosticsChecks.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'diagnostics-empty';
+        empty.textContent = 'Run an observation to check local services.';
+        diagnosticsChecks.appendChild(empty);
+        diagnosticsObservedAt.textContent = 'No observations';
+        for (const id of ['diagnostics-cpu', 'diagnostics-ram', 'diagnostics-disk', 'diagnostics-rss']) {
+            document.getElementById(id).textContent = 'N/A';
+        }
+        return;
+    }
+
+    diagnosticsObservedAt.textContent = `Observed ${formatTimestamp(observation.observed_at)}`;
+    const resources = observation.resources || {};
+    document.getElementById('diagnostics-cpu').textContent =
+        Number.isFinite(resources.cpu_percent) ? `${resources.cpu_percent.toFixed(1)}%` : 'N/A';
+    document.getElementById('diagnostics-ram').textContent =
+        Number.isFinite(resources.ram_percent) ? `${resources.ram_percent.toFixed(1)}%` : 'N/A';
+    document.getElementById('diagnostics-disk').textContent =
+        Number.isFinite(resources.log_disk_free_percent)
+            ? `${resources.log_disk_free_percent.toFixed(1)}% (${formatBytes(resources.log_disk_free_bytes)})`
+            : 'N/A';
+    document.getElementById('diagnostics-rss').textContent = formatBytes(resources.backend_rss_bytes);
+
+    diagnosticsChecks.replaceChildren();
+    (Array.isArray(observation.checks) ? observation.checks : []).forEach(check => {
+        const item = document.createElement('article');
+        item.className = 'diagnostics-check';
+        const heading = document.createElement('div');
+        heading.className = 'diagnostics-check-heading';
+        const name = document.createElement('strong');
+        name.textContent = check.name;
+        const state = document.createElement('span');
+        state.className = `diagnostics-state diagnostics-state-${check.status}`;
+        state.textContent = check.status;
+        heading.append(name, state);
+        const detail = document.createElement('p');
+        detail.textContent = check.detail;
+        const duration = document.createElement('small');
+        duration.textContent = `${check.duration_ms} ms`;
+        item.append(heading, detail, duration);
+        diagnosticsChecks.appendChild(item);
+    });
+    if (!observation.checks?.length) {
+        const empty = document.createElement('div');
+        empty.className = 'diagnostics-empty';
+        empty.textContent = 'No checks were configured.';
+        diagnosticsChecks.appendChild(empty);
+    }
+}
+
+function renderDiagnosticsIncidents(incidents, openCount = null) {
+    diagnosticsIncidents.replaceChildren();
+    const actualOpenCount = Number.isFinite(openCount)
+        ? openCount
+        : incidents.filter(incident => incident.status === 'open').length;
+    diagnosticsIncidentCount.textContent = `${actualOpenCount} open / ${incidents.length} shown`;
+    if (!incidents.length) {
+        const empty = document.createElement('div');
+        empty.className = 'diagnostics-empty';
+        empty.textContent = 'No incident history in this backend session.';
+        diagnosticsIncidents.appendChild(empty);
+        return;
+    }
+
+    incidents.slice().reverse().forEach(incident => {
+        const item = document.createElement('article');
+        item.className = 'diagnostics-incident';
+        const heading = document.createElement('div');
+        heading.className = 'diagnostics-check-heading';
+        const name = document.createElement('strong');
+        name.textContent = incident.check_name;
+        const state = document.createElement('span');
+        state.className = `diagnostics-state diagnostics-state-${incident.status}`;
+        state.textContent = incident.status;
+        heading.append(name, state);
+        const detail = document.createElement('p');
+        detail.textContent = incident.detail;
+        const meta = document.createElement('small');
+        meta.textContent = `First seen ${formatTimestamp(incident.first_seen)} · Last seen ${formatTimestamp(incident.last_seen)} · ${incident.occurrence_count} observation(s)`;
+        item.append(heading, detail, meta);
+        diagnosticsIncidents.appendChild(item);
+    });
+}
+
+async function refreshDiagnostics() {
+    if (diagnosticsRequestInProgress) return;
+    diagnosticsRequestInProgress = true;
+    diagnosticsRefreshButton.disabled = true;
+    diagnosticsRunButton.disabled = true;
+    diagnosticsNotice.textContent = 'Loading observe-only diagnostics…';
+    try {
+        const [statusResponse, incidentsResponse] = await Promise.all([
+            fetch(`${API_BASE}/api/diagnostics/status`),
+            fetch(`${API_BASE}/api/diagnostics/incidents?status=all&limit=100`),
+        ]);
+        const [statusData, incidentsData] = await Promise.all([
+            statusResponse.json(),
+            incidentsResponse.json(),
+        ]);
+        if (!statusResponse.ok) {
+            throw new Error(statusData.detail || `Diagnostics status failed (${statusResponse.status}).`);
+        }
+        if (!incidentsResponse.ok) {
+            throw new Error(incidentsData.detail || `Diagnostics incidents failed (${incidentsResponse.status}).`);
+        }
+        if (!Array.isArray(incidentsData.incidents)) {
+            throw new Error('Diagnostics incidents response was invalid.');
+        }
+        diagnosticsStatus.textContent = statusData.status.replaceAll('_', ' ');
+        diagnosticsStatus.className = `pill diagnostics-pill-${statusData.status}`;
+        diagnosticsNotice.textContent = 'Read-only checks only. No repairs or commands will be run. History is held in memory and clears when the backend restarts.';
+        renderDiagnosticsObservation(statusData.latest_observation);
+        renderDiagnosticsIncidents(incidentsData.incidents, statusData.open_incidents);
+    } catch (error) {
+        diagnosticsStatus.textContent = 'Unavailable';
+        diagnosticsStatus.className = 'pill';
+        diagnosticsNotice.textContent = error instanceof Error
+            ? `Unable to load diagnostics: ${error.message}`
+            : 'Unable to load diagnostics.';
+    } finally {
+        diagnosticsRequestInProgress = false;
+        diagnosticsRefreshButton.disabled = false;
+        diagnosticsRunButton.disabled = false;
+    }
+}
+
+async function runDiagnosticsObservation() {
+    if (diagnosticsRequestInProgress) return;
+    diagnosticsRequestInProgress = true;
+    diagnosticsRefreshButton.disabled = true;
+    diagnosticsRunButton.disabled = true;
+    diagnosticsStatus.textContent = 'Running observe-only checks…';
+    diagnosticsNotice.textContent = 'Collecting read-only health checks and resource evidence. No repairs or commands will be run.';
+    try {
+        const response = await fetch(`${API_BASE}/api/diagnostics/observe`, { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || `Observation failed (${response.status}).`);
+        }
+        renderDiagnosticsObservation(data);
+        try {
+            await refreshDiagnosticsAfterObservation();
+        } catch (refreshError) {
+            diagnosticsStatus.textContent = data.status.replaceAll('_', ' ');
+            diagnosticsNotice.textContent = refreshError instanceof Error
+                ? `Observation completed, but history could not be refreshed: ${refreshError.message}`
+                : 'Observation completed, but history could not be refreshed.';
+        }
+    } catch (error) {
+        diagnosticsStatus.textContent = 'Observation failed';
+        diagnosticsNotice.textContent = error instanceof Error
+            ? `Unable to run observation: ${error.message}`
+            : 'Unable to run observation.';
+    } finally {
+        diagnosticsRequestInProgress = false;
+        diagnosticsRefreshButton.disabled = false;
+        diagnosticsRunButton.disabled = false;
+    }
+}
+
+async function refreshDiagnosticsAfterObservation() {
+    const [statusResponse, incidentsResponse] = await Promise.all([
+        fetch(`${API_BASE}/api/diagnostics/status`),
+        fetch(`${API_BASE}/api/diagnostics/incidents?status=all&limit=100`),
+    ]);
+    const [statusData, incidentsData] = await Promise.all([
+        statusResponse.json(),
+        incidentsResponse.json(),
+    ]);
+    if (!statusResponse.ok || !incidentsResponse.ok) {
+        throw new Error('Observation completed, but diagnostics history could not be refreshed.');
+    }
+    diagnosticsStatus.textContent = statusData.status.replaceAll('_', ' ');
+    diagnosticsStatus.className = `pill diagnostics-pill-${statusData.status}`;
+    diagnosticsNotice.textContent = 'Read-only checks only. No repairs or commands will be run. History is held in memory and clears when the backend restarts.';
+    renderDiagnosticsObservation(statusData.latest_observation);
+    renderDiagnosticsIncidents(incidentsData.incidents, statusData.open_incidents);
+}
+
+diagnosticsRefreshButton.addEventListener('click', refreshDiagnostics);
+diagnosticsRunButton.addEventListener('click', runDiagnosticsObservation);
+
 function renderBotCommands() {
     botCommandList.replaceChildren();
     const commands = botCommands.length
@@ -685,6 +961,12 @@ const sidebarToggle = document.getElementById('sidebar-toggle');
 const themeToggle = document.getElementById('theme-toggle');
 const themeLabel = document.getElementById('theme-label');
 const saveConfigButton = document.getElementById('save-config');
+const authPreview = document.getElementById('auth-preview');
+const authPreviewOpen = document.getElementById('auth-preview-open');
+
+if (authPreview && authPreviewOpen) {
+    authPreviewOpen.addEventListener('click', () => authPreview.showModal());
+}
 
 const ACCENTS = {
     blue: '74, 140, 255',

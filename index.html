@@ -45,6 +45,8 @@
                 <button class="nav-item" type="button" data-panel="games-panel"><span class="nav-icon" aria-hidden="true">ϟ</span>Game Servers</button>
                 <button class="nav-item" type="button" data-panel="network-panel"><span class="nav-icon" aria-hidden="true">⌘</span>Network Services</button>
                 <button class="nav-item" type="button" data-panel="bot-panel"><span class="nav-icon" aria-hidden="true">◌</span>Discord Bot</button>
+                <button class="nav-item" type="button" data-panel="backend-logs-panel"><span class="nav-icon" aria-hidden="true">≡</span>Backend Logs</button>
+                <button class="nav-item" type="button" data-panel="diagnostics-panel"><span class="nav-icon" aria-hidden="true">⌕</span>Diagnostics</button>
                 <button class="nav-item" type="button" data-panel="settings-panel"><span class="nav-icon" aria-hidden="true">⚙</span>Settings</button>
             </nav>
         </div>
@@ -272,6 +274,65 @@
             </div>
         </section>
 
+        <section class="panel" id="backend-logs-panel" aria-label="Backend logs">
+            <div class="panel-header">
+                <div class="panel-title">Backend Logs</div>
+                <div class="panel-controls">
+                    <div class="pill" id="backend-logs-status" role="status">Waiting for logs</div>
+                    <button class="btn-secondary" id="backend-logs-refresh" type="button">Refresh</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <p class="backend-logs-description" id="backend-logs-description">
+                    Showing the latest backend entries. Refreshes automatically while this panel is open.
+                </p>
+                <div class="log-window backend-log-window" id="backend-log-window"
+                     aria-label="Recent backend log entries" aria-live="polite" aria-relevant="additions text">
+                    <div class="log-line">Waiting for backend logs...</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel" id="diagnostics-panel" aria-label="Diagnostics">
+            <div class="panel-header">
+                <div class="panel-title">Diagnostics / Observe Mode</div>
+                <div class="panel-controls">
+                    <div class="pill" id="diagnostics-status" role="status">Not run</div>
+                    <button class="btn-secondary" id="diagnostics-refresh" type="button">Refresh</button>
+                    <button class="btn" id="diagnostics-run" type="button">Run observation</button>
+                </div>
+            </div>
+            <div class="panel-body diagnostics-body">
+                <p class="diagnostics-notice" id="diagnostics-notice" role="status">
+                    Read-only checks only. No repairs or commands will be run. History is held in memory and clears when the backend restarts.
+                </p>
+                <div class="diagnostics-summary" aria-label="Latest resource snapshot">
+                    <div class="diagnostic-stat"><span>CPU</span><strong id="diagnostics-cpu">N/A</strong></div>
+                    <div class="diagnostic-stat"><span>RAM</span><strong id="diagnostics-ram">N/A</strong></div>
+                    <div class="diagnostic-stat"><span>LOG DISK FREE</span><strong id="diagnostics-disk">N/A</strong></div>
+                    <div class="diagnostic-stat"><span>BACKEND RSS</span><strong id="diagnostics-rss">N/A</strong></div>
+                </div>
+                <div class="diagnostics-section">
+                    <div class="diagnostics-section-header">
+                        <h2>Latest health checks</h2>
+                        <span class="pill" id="diagnostics-observed-at">No observations</span>
+                    </div>
+                    <div class="diagnostics-checks" id="diagnostics-checks" aria-live="polite">
+                        <div class="diagnostics-empty">Run an observation to check local services.</div>
+                    </div>
+                </div>
+                <div class="diagnostics-section">
+                    <div class="diagnostics-section-header">
+                        <h2>Incidents</h2>
+                        <span class="pill" id="diagnostics-incident-count">0 open</span>
+                    </div>
+                    <div class="diagnostics-incidents" id="diagnostics-incidents" aria-live="polite">
+                        <div class="diagnostics-empty">No incident history in this backend session.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="panel" id="settings-panel" aria-label="Settings">
             <div class="panel-header">
                 <div class="panel-title">Settings</div>
@@ -283,6 +344,13 @@
                         <div class="settings-label">Interface Theme</div>
                         <div class="settings-value" id="theme-label">Dark / Command</div>
                         <button class="btn theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">Proxmox Authentication</div>
+                        <div class="settings-value">Groundwork only — sign-in is not connected</div>
+                        <button class="btn theme-toggle" id="auth-preview-open" type="button">
+                            Preview sign-in
+                        </button>
                     </div>
                     <div class="settings-item">
                         <div class="settings-label">Accent Spectrum</div>
@@ -302,6 +370,32 @@
         </section>
     </main>
 </div>
+<dialog class="auth-preview" id="auth-preview" aria-labelledby="auth-preview-title"
+        aria-describedby="auth-preview-notice">
+    <div class="auth-preview-header">
+        <div class="logo-orb" aria-hidden="true"></div>
+        <div>
+            <h2 id="auth-preview-title">Proxmox Sign-In</h2>
+            <p id="auth-preview-notice" role="status">
+                Preview only. Authentication is not connected; do not enter credentials.
+            </p>
+        </div>
+    </div>
+    <form>
+        <fieldset disabled>
+            <label for="proxmox-user">Proxmox user ID and realm</label>
+            <input id="proxmox-user" name="username" autocomplete="username"
+                   placeholder="user@realm">
+            <label for="proxmox-password">Proxmox password</label>
+            <input id="proxmox-password" name="password" type="password"
+                   autocomplete="current-password" placeholder="Not connected">
+            <button class="btn" type="submit">Sign in</button>
+        </fieldset>
+    </form>
+    <form method="dialog">
+        <button class="btn auth-preview-close" type="submit">Close preview</button>
+    </form>
+</dialog>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -2,7 +2,8 @@
 
 ## Status and scope
 
-**Status:** Design complete; not implemented.
+**Status:** Proxmox authentication groundwork implemented; production login and
+session management are not implemented.
 **Production implementation and validation:** Waiting for the Proxmox server.
 
 The AI Server will authenticate dashboard users against Proxmox VE rather than
@@ -15,6 +16,14 @@ be done before the server exists is limited to interface design, isolated
 components, and mocked tests. The real login flow, session lifetime and
 revocation behavior must be implemented and validated against the target
 Proxmox VE host before enabling LAN or remote access.
+
+Current groundwork consists of `ai-backend/proxmox_auth.py`, which provides a
+Proxmox HTTPS ticket client and typed authenticator/authorization-policy
+interfaces; `ai-backend/tests/test_proxmox_auth.py`, which tests the client
+against mocked responses; and a disabled sign-in preview in the dashboard.
+There is no login API route, session store, authorization policy
+implementation, or protected endpoint yet. The preview does not accept or
+submit credentials.
 
 ## Authentication design
 
@@ -75,6 +84,8 @@ roles must be finalized before implementation.
 
 ## Proposed application endpoints
 
+These endpoints are design targets only; none are currently implemented.
+
 - `POST /api/auth/login` — authenticate against Proxmox and set the session
   cookie.
 - `POST /api/auth/logout` — revoke the current application session and clear
@@ -108,9 +119,12 @@ Proxmox and its configured authentication realm.
 
 ### Before the Proxmox server exists
 
-- Define the Proxmox API client and application authorization interfaces.
-- Write unit tests with a mocked Proxmox ticket endpoint.
-- Prepare the login UI and unauthenticated/authorized frontend states.
+- [x] Define the Proxmox API client and authenticator/authorization-policy
+  interfaces.
+- [x] Write unit tests with a mocked Proxmox ticket endpoint.
+- [x] Prepare a disabled login UI preview; it does not collect credentials.
+- [ ] Add login UI states and wire credential submission after a secure
+  backend login/session endpoint exists.
 - Do not present mocked authentication as production-ready authentication.
 
 ### On the Proxmox server
