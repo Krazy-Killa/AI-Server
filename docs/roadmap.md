@@ -190,20 +190,36 @@ has been checked. The host-preparation script does not install this GPU stack.
 The auth groundwork, backend log viewer, and initial diagnostics API/dashboard
 are complete. Recommended implementation order:
 
+Model recommendations below are advisory and describe roles, not requirements
+for a particular editor or agent platform. Use GPT Luna for implementation and
+focused tests; use Claude Sonnet as an additional design/safety reviewer for
+changes involving diagnostics, remediation, scheduling, or security. Re-check
+the current model options when starting each task.
+
 1. Complete observe mode with persistence, threshold durations/hysteresis,
    broader health/log evidence, reports, and fault-injection tests. Keep it
    strictly non-remediating and triggering explicit until scheduling,
    retention, and safety behavior are designed and tested.
+   **Models:** GPT Luna for implementation and tests; Claude Sonnet for
+   reviewing thresholds, failure handling, and observe-only boundaries.
 2. Create reviewed diagnostic runbooks and local RAG/retrieval tests. Keep
    incident-derived knowledge as untrusted drafts until reviewed.
+   **Models:** Claude Sonnet for runbook structure and retrieval/evaluation
+   design; GPT Luna for ingestion code, tests, and integration.
 3. Define structured remediation proposals and independently validate them in
    a mocked executor; enforce risk tiers, approval gates, and audit logging.
+   **Models:** Claude Sonnet for proposal-schema and safety-boundary review;
+   GPT Luna for the mocked executor, validation, and tests.
 4. Prototype and test scheduled maintenance with a mocked clock, model
    manager, workload controller, update source, and recovery path. Treat this
    as simulation only until the Proxmox host is available.
+   **Models:** Claude Sonnet for lifecycle and failure-mode review; GPT Luna
+   for the simulation and deterministic tests.
 5. Complete web-research full-page fetching and streaming, then build the
    workspace-restricted website agent with explicit approval for changes and
    command execution.
+   **Models:** GPT Luna for implementation and tests; Claude Sonnet for
+   reviewing workspace isolation, approvals, and command-execution boundaries.
 
 Production authentication/session management, LAN exposure, Linux GPU
 telemetry, and maintenance/service recovery validation remain gated on the
