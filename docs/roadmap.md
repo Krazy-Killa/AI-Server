@@ -43,8 +43,9 @@
 - Linux GPU telemetry for the Proxmox host
 - Real inference pipeline
 - **AI Diagnostics & Self-Healing System** (design specification in
-  `docs/ai-diagnostics-self-healing.md`, not yet implemented; starts in
-  `observe` mode)
+  `docs/ai-diagnostics-self-healing.md`, not yet implemented). Its observe-mode
+  phase can be built now on Windows; auto-remediation of real services waits
+  for the server.
   - Real-time health monitoring and anomaly detection
   - Diagnostic engine for root cause analysis
   - Auto-remediation for safe operations (service restart, cache clear, config reload)
@@ -92,6 +93,23 @@ planned GPU/Proxmox combination as officially supported.
 - Collapsible sidebar (done: icon-only rail on desktop, persisted)
 - Accent colour selection now persists
 - Remaining: test on real mobile devices once the server is live
+
+## Buildable now vs. waits for the server
+
+**Buildable and testable now (Windows):** authentication; diagnostics observe
+mode with its dashboard board and Discord notifications; a backend log viewer;
+web-research streaming and page fetch; the website-building agent and its
+approval workflow; Discord automation; diagnostics KB runbooks and fault-injection
+tests; shell-script linting and a Debian VM dry run of `prepare-ai-host.sh`.
+
+**Waits for the server:** ROCm/HIP and everything built on it (llama.cpp ROCm,
+ONNX Runtime ROCm EP, ComfyUI); Linux GPU telemetry; Podman/Quadlet, NGINX,
+TLS and Qdrant on the real host; validating `--install-searxng` on Proxmox;
+diagnostics auto-remediation and ML detection (needs real incident history);
+multi-GPU/multi-model routing; VM management and remote control.
+
+Suggested order: authentication, backend log viewer, diagnostics observe mode,
+web-research streaming, website-building agent.
 
 ---
 

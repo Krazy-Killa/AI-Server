@@ -69,13 +69,14 @@ python-slowapi>=0.1.8     # Rate limiting
 Add to `.env.example`:
 ```bash
 # JWT Configuration
-JWT_SECRET_KEY=your-super-secret-key-minimum-32-characters-long
+JWT_SECRET_KEY=generate-with-python-secrets-token-hex-32
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # Security
-ALLOWED_ORIGINS=http://127.0.0.1:8001,http://localhost:8001
+# CORS origins reuse the existing AI_SERVER_CORS_ORIGINS setting (already
+# implemented in ai-backend/config.py); do not add a second origins variable.
 MAX_LOGIN_ATTEMPTS=5
 LOGIN_ATTEMPT_WINDOW_MINUTES=5
 
@@ -201,9 +202,12 @@ Keep public:
 - Checked on every request
 - For production: use Redis for persistence
 
-**CORS Restriction:**
+**CORS Restriction:** already implemented. `main.py` reads the validated
+`AI_SERVER_CORS_ORIGINS` setting through `config.settings`; authentication
+adds the `Authorization` header to the allowed headers and does not introduce
+a new origins variable.
 ```python
-allow_origins=os.getenv("ALLOWED_ORIGINS").split(",")
+allow_origins=settings.cors_origins
 allow_credentials=True
 allow_methods=["GET", "POST"]
 ```
@@ -337,21 +341,26 @@ Store hash in code during initialization.
 ## Deployment
 
 ### Windows Development
+Generate the secret instead of copying a fixed value, and keep it in the
+gitignored `.env`:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 ```env
-JWT_SECRET_KEY=dev-secret-key-minimum-32-characters
+JWT_SECRET_KEY=<generated value>
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
-ALLOWED_ORIGINS=http://127.0.0.1:8001,http://localhost:8001
+AI_SERVER_CORS_ORIGINS=http://127.0.0.1:8001,http://localhost:8001
 ```
 
 ### Linux/Proxmox Production
 ```env
-JWT_SECRET_KEY=$(openssl rand -hex 32)
+JWT_SECRET_KEY=<output of: openssl rand -hex 32>
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
-ALLOWED_ORIGINS=https://your-domain.com
+AI_SERVER_CORS_ORIGINS=https://your-domain.com
 ```
 
 **Requirements:**

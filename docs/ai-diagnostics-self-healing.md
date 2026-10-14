@@ -466,6 +466,7 @@ reject). Approved entries are versioned and tracked for effectiveness.
 ## 8. Implementation Phases
 
 ### Phase 1: Basic Monitoring and Reporting (observe mode)
+- Can be built and tested now on the Windows test setup; no GPU or server needed.
 - Health checks, resource sampling, thresholds, log tailing.
 - Incident model, evidence bundles, failure reports, severity levels.
 - Dashboard status board and incident list; Discord notifications.
@@ -614,6 +615,18 @@ blocked by guardrail (response includes the reason), 429 rate limited.
 - **Platform differences**: Windows (service control via supervisor scripts,
   AMD GPU counters) vs. Linux/Proxmox (systemd units); platform adapters hide
   the difference behind the action registry.
+
+| Check | Windows test setup | Linux/Proxmox server |
+|---|---|---|
+| llama-server health | `http://127.0.0.1:8080/health` | same, behind the Quadlet/systemd unit |
+| Backend / dashboard | ports 8000 / 8001 (`run-*.bat`) | systemd or Podman units behind NGINX |
+| SearXNG | WSL process on 8888 (`run-searxng.bat`) | `searxng.service` on 127.0.0.1:8888 |
+| GPU telemetry | Windows performance counters | `rocm-smi` / amdgpu sysfs (not yet built) |
+| Service restart | process supervisor scripts | `systemctl restart` / Podman |
+| Logs | `ai-backend` rotating log files | same files plus `journalctl` |
+
+KB entries and runbooks must declare which platform they apply to. Phase 1
+(observe mode) uses only the Windows column and needs no GPU or server.
 
 ---
 
