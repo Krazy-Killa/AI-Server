@@ -2,10 +2,10 @@
 
 > Status: **design specification with an initial observe-only prototype**.
 > `ai-backend/diagnostics.py` provides on-demand local health/resource
-> observations and process-local incident/audit tracking. Explicit bounded API
-> routes and a manual-run dashboard view are implemented. Persistence,
-> scheduling, automated log analysis, remediation, and the rest of the design
-> below are not implemented.
+> observations and persistent, bounded SQLite observation/incident/audit
+> history. Explicit bounded API routes and a manual-run dashboard view are
+> implemented. Scheduling, automated log analysis, semantic retrieval,
+> remediation, and the rest of the design below are not implemented.
 
 This document specifies the AI Maintenance Agent: a reactive self-healing
 subsystem that monitors system telemetry and service health, retrieves relevant
@@ -773,16 +773,16 @@ actions before.
 - Can be built and tested now on the Windows test setup; no GPU or server needed.
 - **Implemented prototype**: explicit, on-demand read-only health checks for
   the backend, llama.cpp, SearXNG, and Discord; CPU/RAM, log-volume free space,
-  and backend RSS snapshots; bounded process-local observation, incident, and
-  audit histories; warning incidents open/update on failed checks and resolve
-  after a healthy check.
+  and backend RSS snapshots; bounded SQLite-persisted observation, incident,
+  and audit histories; warning incidents open/update on failed checks and
+  resolve after a healthy check.
 - **Implemented interface**: bounded read-only API routes for status,
   observation history, and filtered incident history, plus an explicit
   `POST /api/diagnostics/observe` trigger. The dashboard displays the latest
   observation and incidents and supports manual refresh/run. GET requests do
   not run probes. Focused tests cover the observe-only core and API behavior.
-- **Remaining Phase 1 work**: durable history; broader health checks; threshold
-  durations and hysteresis; automated log analysis, failure reports, and
+- **Remaining Phase 1 work**: broader health checks; threshold durations and
+  hysteresis; automated log analysis, failure reports, and
   severity levels; incident correlation; curated local knowledge ingestion
   and read-only RAG; Discord notifications; and recurring scheduling after
   cadence, retention, and failure behavior are designed and tested.

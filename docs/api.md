@@ -68,13 +68,15 @@ Returns the GPU load and telemetry status fields from `/api/system`.
 ## Diagnostics (Observe-only)
 
 Diagnostics are explicitly triggered and read-only. No scheduler, repair
-action, or command execution is exposed. Observation and incident history is
-held in process memory and is lost when the backend restarts. These endpoints
-are available to the viewer role. Running an observation requires the
-operator role.
+action, or command execution is exposed. Observations, incident state, and
+audit events are stored in the local SQLite database configured by
+`AI_SERVER_MEMORY_DB_PATH` and survive backend restarts. The database retains
+the latest 200 observations, the latest 1,000 audit events, and all open
+incidents plus up to 500 resolved incidents. These endpoints are available to
+the viewer role. Running an observation requires the operator role.
 
 GET /api/diagnostics/status
-Returns `mode` (`observe_only`), `storage` (`process_local`), the latest
+Returns `mode` (`observe_only`), `storage` (`sqlite`), the latest
 observation and status (`not_run`, `healthy`, `degraded`, or `unknown`), and
 incident counts.
 

@@ -8,6 +8,29 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Persisted bounded observe-only diagnostics observations, incident state, and
+  audit events to the local SQLite memory database. Open incidents are restored
+  after restart; collection remains manually triggered, with no scheduler,
+  commands, or remediation.
+
+### In Development
+
+- Reviewed retrieval of similar incidents and diagnostic procedures.
+- Complete web-research page fetching and streaming.
+- Image-generation backend groundwork and later runtime integration.
+- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
+  validation on the target server.
+
+### Changed
+
+- Reorganized the roadmap to separate portable Windows-testable work,
+  mocked integrations, Proxmox readiness, target-host deployment, and live
+  server-dependent features.
+
+## [0.5.0] - 2026-10-14
+
+### Added
+
 - Added a separate admin-shared operational insight store. Admins explicitly
   publish and remove notes; private conversation transcripts remain isolated
   by account. Admin chat and research receive the signed-in admin identity and
@@ -66,6 +89,10 @@ principles and [Semantic Versioning](https://semver.org/).
   guest-console access focused on guest recovery; DHCPv4/DHCPv6, DNS, web
   hosting, and routing/firewall; and a family Minecraft server as a candidate
   first game-server use case. Live management remains unimplemented.
+- Reconciled project documentation to distinguish implemented Windows
+  behavior from unverified Proxmox deployment and to clarify current API
+  routing, model switching, authentication, diagnostics, and shared-memory
+  status.
 
 ## [0.4.0] - 2026-10-14
 

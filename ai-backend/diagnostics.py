@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
 import logging
+import os
+from pathlib import Path
+import sqlite3
 from threading import Lock, RLock
 from time import monotonic
-from typing import Callable, Literal
+from typing import Callable, Generator, Literal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -30,6 +34,10 @@ PROBE_TIMEOUT_SECONDS = 2.0
 
 HealthStatus = Literal["healthy", "degraded", "unknown"]
 IncidentStatus = Literal["open", "resolved"]
+
+
+class DiagnosticsStoreError(RuntimeError):
+    """Persistent diagnostics history could not be read or written safely."""
 
 
 @dataclass(frozen=True)
@@ -147,13 +155,191 @@ def _check_discord_bot() -> tuple[bool, str]:
     return False, "Discord bot is offline or its heartbeat is stale."
 
 
+class DiagnosticsStore:
+    """SQLite persistence for bounded, observe-only diagnostics history."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = Path(path).expanduser()
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            if os.name != "nt":
+                self.path.parent.chmod(0o700)
+            with self._connect() as connection:
+                connection.execute("PRAGMA journal_mode = WAL")
+                connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS diagnostic_observations (
+                        id TEXT PRIMARY KEY,
+                        observed_at TEXT NOT NULL,
+                        payload_json TEXT NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS diagnostic_observations_time
+                        ON diagnostic_observations(observed_at DESC);
+                    CREATE TABLE IF NOT EXISTS diagnostic_incidents (
+                        id TEXT PRIMARY KEY,
+                        status TEXT NOT NULL CHECK (status IN ('open', 'resolved')),
+                        last_seen TEXT NOT NULL,
+                        payload_json TEXT NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS diagnostic_incidents_status_time
+                        ON diagnostic_incidents(status, last_seen DESC);
+                    CREATE TABLE IF NOT EXISTS diagnostic_audit_events (
+                        id TEXT PRIMARY KEY,
+                        timestamp TEXT NOT NULL,
+                        payload_json TEXT NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS diagnostic_audit_events_time
+                        ON diagnostic_audit_events(timestamp DESC);
+                    """
+                )
+            if os.name != "nt":
+                self.path.chmod(0o600)
+        except (OSError, sqlite3.Error) as error:
+            raise DiagnosticsStoreError(
+                "Could not initialize persistent diagnostics history."
+            ) from error
+
+    @contextmanager
+    def _connect(self) -> Generator[sqlite3.Connection, None, None]:
+        connection = sqlite3.connect(self.path, timeout=5, isolation_level=None)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA busy_timeout = 5000")
+        try:
+            yield connection
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def load_state(
+        self,
+    ) -> tuple[
+        list[DiagnosticObservation],
+        list[DiagnosticIncident],
+        list[AuditEvent],
+    ]:
+        try:
+            with self._connect() as connection:
+                observations = connection.execute(
+                    """SELECT payload_json FROM diagnostic_observations
+                       ORDER BY rowid"""
+                ).fetchall()
+                incidents = connection.execute(
+                    """SELECT payload_json FROM diagnostic_incidents
+                       ORDER BY last_seen, id"""
+                ).fetchall()
+                audit_events = connection.execute(
+                    """SELECT payload_json FROM diagnostic_audit_events
+                       ORDER BY rowid"""
+                ).fetchall()
+            return (
+                [self._observation_from_json(row["payload_json"]) for row in observations],
+                [DiagnosticIncident(**json.loads(row["payload_json"])) for row in incidents],
+                [AuditEvent(**json.loads(row["payload_json"])) for row in audit_events],
+            )
+        except (OSError, sqlite3.Error, ValueError, TypeError, KeyError) as error:
+            raise DiagnosticsStoreError(
+                "Could not load persistent diagnostics history."
+            ) from error
+
+    @staticmethod
+    def _observation_from_json(payload: str) -> DiagnosticObservation:
+        data = json.loads(payload)
+        return DiagnosticObservation(
+            id=data["id"],
+            observed_at=data["observed_at"],
+            status=data["status"],
+            checks=tuple(HealthCheckResult(**check) for check in data["checks"]),
+            resources=ResourceSnapshot(**data["resources"]),
+        )
+
+    def save_state(
+        self,
+        observation: DiagnosticObservation | None,
+        incidents: list[DiagnosticIncident],
+        audit_events: list[AuditEvent],
+    ) -> None:
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                if observation is not None:
+                    connection.execute(
+                        """INSERT OR IGNORE INTO diagnostic_observations
+                           (id, observed_at, payload_json) VALUES (?, ?, ?)""",
+                        (
+                            observation.id,
+                            observation.observed_at,
+                            json.dumps(asdict(observation), separators=(",", ":")),
+                        ),
+                    )
+                for incident in incidents:
+                    connection.execute(
+                        """INSERT INTO diagnostic_incidents
+                           (id, status, last_seen, payload_json) VALUES (?, ?, ?, ?)
+                           ON CONFLICT(id) DO UPDATE SET
+                             status=excluded.status,
+                             last_seen=excluded.last_seen,
+                             payload_json=excluded.payload_json""",
+                        (
+                            incident.id,
+                            incident.status,
+                            incident.last_seen,
+                            json.dumps(asdict(incident), separators=(",", ":")),
+                        ),
+                    )
+                connection.executemany(
+                    """INSERT OR IGNORE INTO diagnostic_audit_events
+                       (id, timestamp, payload_json) VALUES (?, ?, ?)""",
+                    [
+                        (
+                            event.id,
+                            event.timestamp,
+                            json.dumps(asdict(event), separators=(",", ":")),
+                        )
+                        for event in audit_events
+                    ],
+                )
+                connection.execute(
+                    """DELETE FROM diagnostic_observations
+                       WHERE id NOT IN (
+                           SELECT id FROM diagnostic_observations
+                           ORDER BY rowid DESC LIMIT ?
+                       )""",
+                    (MAX_OBSERVATIONS,),
+                )
+                connection.execute(
+                    """DELETE FROM diagnostic_incidents
+                       WHERE status = 'resolved' AND id NOT IN (
+                           SELECT id FROM diagnostic_incidents
+                           WHERE status = 'resolved'
+                           ORDER BY last_seen DESC, id DESC LIMIT ?
+                       )""",
+                    (MAX_INCIDENTS,),
+                )
+                connection.execute(
+                    """DELETE FROM diagnostic_audit_events
+                       WHERE id NOT IN (
+                           SELECT id FROM diagnostic_audit_events
+                           ORDER BY rowid DESC LIMIT ?
+                       )""",
+                    (MAX_AUDIT_EVENTS,),
+                )
+                connection.commit()
+        except (OSError, sqlite3.Error) as error:
+            raise DiagnosticsStoreError(
+                "Could not persist diagnostics history."
+            ) from error
+
+
 class DiagnosticsMonitor:
-    """Collect observations and keep bounded, process-local incident history."""
+    """Collect observations and keep bounded, persistent incident history."""
 
     def __init__(
         self,
         checks: tuple[tuple[str, Callable[[], tuple[bool, str]]], ...] | None = None,
         resource_sampler: Callable[[], ResourceSnapshot] = _sample_resources,
+        store: DiagnosticsStore | None = None,
     ) -> None:
         self._checks = checks if checks is not None else (
             ("backend.process", lambda: (True, "Backend process is serving this observation.")),
@@ -162,12 +348,23 @@ class DiagnosticsMonitor:
             ("discord_bot.heartbeat", _check_discord_bot),
         )
         self._resource_sampler = resource_sampler
+        self._store = store
         self._collection_lock = Lock()
         self._lock = RLock()
         self._observations: deque[DiagnosticObservation] = deque(maxlen=MAX_OBSERVATIONS)
         self._incidents: deque[DiagnosticIncident] = deque(maxlen=MAX_INCIDENTS)
         self._audit_events: deque[AuditEvent] = deque(maxlen=MAX_AUDIT_EVENTS)
         self._active_incidents: dict[str, DiagnosticIncident] = {}
+        if self._store is not None:
+            observations, incidents, audit_events = self._store.load_state()
+            self._observations.extend(observations)
+            self._incidents.extend(incidents)
+            self._audit_events.extend(audit_events)
+            self._active_incidents = {
+                incident.check_name: incident
+                for incident in incidents
+                if incident.status == "open"
+            }
 
     def run_observation(self) -> DiagnosticObservation:
         with self._collection_lock:
@@ -205,6 +402,7 @@ class DiagnosticsMonitor:
                     observation_id,
                     f"Observation failed with {type(error).__name__}.",
                 )
+                self._persist_state(None)
             raise
         observation = DiagnosticObservation(
             id=observation_id,
@@ -220,6 +418,10 @@ class DiagnosticsMonitor:
             resources=resources,
         )
         with self._lock:
+            previous_observations = list(self._observations)
+            previous_incidents = list(self._incidents)
+            previous_audit_events = list(self._audit_events)
+            previous_active_incidents = self._active_incidents.copy()
             self._observations.append(observation)
             self._update_incidents(observation)
             self._record_audit(
@@ -227,6 +429,23 @@ class DiagnosticsMonitor:
                 observation_id,
                 f"Observation completed with status {observation.status}.",
             )
+            try:
+                self._persist_state(observation)
+            except DiagnosticsStoreError:
+                self._observations.clear()
+                self._observations.extend(previous_observations)
+                self._incidents.clear()
+                self._incidents.extend(previous_incidents)
+                self._audit_events.clear()
+                self._audit_events.extend(previous_audit_events)
+                self._active_incidents = previous_active_incidents
+                self._record_audit(
+                    "observation.failed",
+                    observation_id,
+                    "Completed observation could not be persisted.",
+                )
+                logger.exception("Could not save completed diagnostics history.")
+                raise
         logger.info(
             "Read-only diagnostics observation completed: %s (%s).",
             observation.id,
@@ -318,6 +537,14 @@ class DiagnosticsMonitor:
                 detail=detail,
             )
         )
+
+    def _persist_state(self, observation: DiagnosticObservation | None) -> None:
+        if self._store is not None:
+            self._store.save_state(
+                observation,
+                list(self._incidents),
+                list(self._audit_events),
+            )
 
 
 def observation_to_dict(observation: DiagnosticObservation) -> dict[str, object]:

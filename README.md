@@ -50,9 +50,9 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   beyond this machine until deployment validation is complete. Backend logs
   may contain operational details and are available only to authenticated
   administrators.
-- AI-powered diagnostics and self-healing are not implemented yet beyond an
-  on-demand, observe-only core prototype with an explicit API and dashboard
-  panel; there is no scheduler, persistent history, or remediation.
+- AI diagnostics currently provide manually triggered, observe-only health
+  checks with bounded SQLite-persisted observations, incidents, and audit
+  events. Scheduling, semantic retrieval, and remediation are not implemented.
 
 ## Windows quick start
 
@@ -146,62 +146,48 @@ for the documentation reference checklist.
 - ✅ Model discovery and selection
 - ✅ Operational logging
 
-### Phase 2 — Real Backend Features
-- Linux/Proxmox deployment preparation (preflight and base-tools script done)
-- SearXNG setup (Windows test setup done; Proxmox mode written, untested)
-- Linux GPU telemetry integration
-- ✅ Logging system and recent backend log viewer in the dashboard
-- ✅ Configuration management and restricted CORS/WebSocket origins
-- ✅ WebSocket streaming for local chat
-- **Dashboard authentication and application sessions** (implemented and
-  tested in Windows, including mocked Proxmox authentication)
-  - Local dashboard accounts, explicit Proxmox identity-role mappings,
-    persistent sessions, role-protected REST/WebSocket routes, CSRF/origin
-    checks, and login/logout are implemented.
-  - Real Proxmox-provider, HTTPS proxy, LAN firewall, and separate-client
-    validation remain outstanding; do not expose the backend to the network
-    until those deployment checks pass.
-  - See [Authentication Documentation](./docs/authentication.md).
+### Phase 2 — Portable Backend and Reliability
+- ✅ Configuration, logging, WebSocket chat, and account authentication
+- ✅ Private SQLite conversations and explicitly shared admin notes
+- ✅ Observe-only diagnostics with persistent bounded SQLite incident history
+- In progress: cited web research; full-page fetching and streaming remain
 
-### Phase 3 — GPU Integration
-- llama.cpp Vulkan support (Windows testing complete)
-- ROCm/HIP stack for Proxmox
-- ONNX Runtime GPU acceleration
-- ComfyUI integration
-- Container orchestration (Podman/Quadlet)
-- NGINX reverse proxy setup
-- Vector storage (Qdrant)
-- **AI Diagnostics & Self-Healing System** (design specification plus initial
-  observe-only API/dashboard prototype; persistent history, scheduling, and
-  remediation are not implemented)
-  - Real-time health monitoring and anomaly detection
-  - Diagnostic engine for root cause analysis
-  - Auto-remediation for safe operations
-  - Error reporting and escalation workflows
-  - Knowledge base of troubleshooting procedures
-  - Audit logging and approval gates
-  - See [AI Diagnostics Documentation](./docs/ai-diagnostics-self-healing.md)
+### Phase 3 — Mocked Integrations and Portable Features
+- Define typed contracts and mock providers for VM, network, and game-server
+  workflows; no live infrastructure controls
+- Build workspace-restricted agents and approval workflows
+- Implement model-agnostic image-brief/job groundwork; add reviewed diagnostic
+  retrieval, deterministic mocked repair validation, and maintenance
+  lifecycle simulations
+- See [AI Diagnostics Documentation](./docs/ai-diagnostics-self-healing.md)
 
-### Phase 4 — Advanced Features
-- Cited web research through self-hosted SearXNG
-- Website-building agent with approval workflows
-- Multi-model routing and load balancing
-- Multi-GPU inference strategies
-- Advanced agent workflows
-- VM management integration
-- Remote server control
-- Discord bot automation
-- **Advanced AI Diagnostics**
-  - Machine learning-based anomaly detection
-  - Self-learning knowledge base updates
-  - Predictive issue detection
-  - Cross-service dependency analysis
+### Phase 4 — Proxmox Readiness and Compatibility Gate
+- Finalize host, network, storage, backup, recovery, and service decisions
+- Check exact Proxmox/kernel/GPU/runtime compatibility; RX 6800 XT ROCm remains
+  experimental and is not established by Windows Vulkan results
+- Pin deployment versions and review installation, security, and rollback
+  plans before touching the host
 
-### Phase 5 — Polish
+### Phase 5 — Target-Host Deployment and Core Integration (Server required)
+- Validate Linux dependencies, services, GPU telemetry, inference, storage,
+  permissions, restart/reboot recovery, and the production proxy
+- Validate real Proxmox identity mapping, HTTPS cookies, firewall, and separate
+  LAN-client access; keep the backend private until these checks pass
+- Follow the [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)
+
+### Phase 6 — Live Server-Dependent Product Integrations
+- Integrate ONNX Runtime ROCm and ComfyUI after target-host stability
+- Add live Proxmox VM/console, network services, and game-server management
+  only after permissions, isolation, and recovery are validated
+- Evaluate multi-model/multi-GPU use against a measured stable baseline
+- Enable real maintenance actions only with tested authorization and rollback
+
+### Phase 7 — Polish
 - ✅ UI animations and transitions
 - ✅ Theme switching (dark/light modes)
 - ✅ Mobile-responsive layout (real-device testing pending)
 - ✅ Collapsible sidebar navigation
+- Keep real-device and deployed-environment interaction testing outstanding
 
 ## Documentation
 

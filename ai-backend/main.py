@@ -41,6 +41,8 @@ from proxmox_auth import (
 from logging_config import MAX_LOG_LINES, read_recent_log_lines, setup_logging
 from diagnostics import (
     DiagnosticsMonitor,
+    DiagnosticsStore,
+    DiagnosticsStoreError,
     observation_to_dict,
 )
 
@@ -63,7 +65,9 @@ from embed_stub import embed_text_stub
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
-diagnostics_monitor = DiagnosticsMonitor()
+diagnostics_monitor = DiagnosticsMonitor(
+    store=DiagnosticsStore(settings.memory_database_path)
+)
 auth_store: AuthStore | None = None
 auth_store_lock = Lock()
 conversation_store: ConversationStore | None = None
@@ -954,7 +958,7 @@ async def diagnostics_status():
     latest = observations[-1] if observations else None
     return {
         "mode": "observe_only",
-        "storage": "process_local",
+        "storage": "sqlite",
         "status": latest.status if latest else "not_run",
         "latest_observation": observation_to_dict(latest) if latest else None,
         "open_incidents": sum(incident.status == "open" for incident in incidents),
@@ -988,7 +992,14 @@ async def diagnostics_incidents(
 
 @app.post("/api/diagnostics/observe")
 async def diagnostics_observe():
-    observation = await asyncio.to_thread(diagnostics_monitor.run_observation)
+    try:
+        observation = await asyncio.to_thread(diagnostics_monitor.run_observation)
+    except DiagnosticsStoreError as error:
+        logger.exception("Could not persist the diagnostics observation.")
+        raise HTTPException(
+            status_code=503,
+            detail="Persistent diagnostics history is unavailable.",
+        ) from error
     return observation_to_dict(observation)
 
 # ===============================

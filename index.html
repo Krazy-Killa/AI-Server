@@ -405,7 +405,7 @@
             </div>
             <div class="panel-body diagnostics-body">
                 <p class="diagnostics-notice" id="diagnostics-notice" role="status">
-                    Read-only checks only. No repairs or commands will be run. History is held in memory and clears when the backend restarts.
+                    Read-only checks only. No repairs or commands will be run. History is stored locally in the configured SQLite database.
                 </p>
                 <div class="diagnostics-summary" aria-label="Latest resource snapshot">
                     <div class="diagnostic-stat"><span>CPU</span><strong id="diagnostics-cpu">N/A</strong></div>
@@ -428,7 +428,7 @@
                         <span class="pill" id="diagnostics-incident-count">0 open</span>
                     </div>
                     <div class="diagnostics-incidents" id="diagnostics-incidents" aria-live="polite">
-                        <div class="diagnostics-empty">No incident history in this backend session.</div>
+                        <div class="diagnostics-empty">No incident history has been recorded.</div>
                     </div>
                 </div>
             </div>

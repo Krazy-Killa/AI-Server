@@ -5,6 +5,7 @@
 ai-backend/
     main.py
     config.py
+    diagnostics.py
     memory_store.py
     logging_config.py
     system_stats.py
@@ -32,9 +33,16 @@ config.py
   `settings` object; invalid values stop startup with a clear message  
 - Covers llama.cpp, model-switch options, SearXNG, CORS, chat limits, and logging  
 
+diagnostics.py
+- Performs only explicitly requested, read-only health checks and resource
+  sampling
+- Persists bounded observations, incident state, and audit events in the
+  configured local SQLite memory database; reloads open incidents on startup
+- Does not schedule checks, analyze logs, execute commands, or remediate
+
 memory_store.py
-- Separate SQLite database for private account-scoped conversations and
-  admin-published shared operational notes
+- SQLite database for private account-scoped conversations, admin-published
+  shared operational notes, and observe-only diagnostic history
 - Enforces ownership on conversation reads, writes, and deletion
 - Provides bounded recent-turn context for local chat; source messages remain
   available in full for the account's history view

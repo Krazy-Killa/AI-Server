@@ -1087,7 +1087,7 @@ function renderDiagnosticsIncidents(incidents, openCount = null) {
     if (!incidents.length) {
         const empty = document.createElement('div');
         empty.className = 'diagnostics-empty';
-        empty.textContent = 'No incident history in this backend session.';
+        empty.textContent = 'No incident history has been recorded.';
         diagnosticsIncidents.appendChild(empty);
         return;
     }
@@ -1138,7 +1138,7 @@ async function refreshDiagnostics() {
         }
         diagnosticsStatus.textContent = statusData.status.replaceAll('_', ' ');
         diagnosticsStatus.className = `pill diagnostics-pill-${statusData.status}`;
-        diagnosticsNotice.textContent = 'Read-only checks only. No repairs or commands will be run. History is held in memory and clears when the backend restarts.';
+        diagnosticsNotice.textContent = 'Read-only checks only. No repairs or commands will be run. History is stored locally in the configured SQLite database.';
         renderDiagnosticsObservation(statusData.latest_observation);
         renderDiagnosticsIncidents(incidentsData.incidents, statusData.open_incidents);
     } catch (error) {
@@ -1202,7 +1202,7 @@ async function refreshDiagnosticsAfterObservation() {
     }
     diagnosticsStatus.textContent = statusData.status.replaceAll('_', ' ');
     diagnosticsStatus.className = `pill diagnostics-pill-${statusData.status}`;
-    diagnosticsNotice.textContent = 'Read-only checks only. No repairs or commands will be run. History is held in memory and clears when the backend restarts.';
+    diagnosticsNotice.textContent = 'Read-only checks only. No repairs or commands will be run. History is stored locally in the configured SQLite database.';
     renderDiagnosticsObservation(statusData.latest_observation);
     renderDiagnosticsIncidents(incidentsData.incidents, statusData.open_incidents);
 }

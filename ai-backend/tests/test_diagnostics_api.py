@@ -9,7 +9,7 @@ os.environ.setdefault(
     "AI_SERVER_LOG_DIR", tempfile.mkdtemp(prefix="ai-server-test-logs-")
 )
 
-from diagnostics import DiagnosticsMonitor, ResourceSnapshot
+from diagnostics import DiagnosticsMonitor, DiagnosticsStoreError, ResourceSnapshot
 from auth_test_helpers import authenticated_client
 
 
@@ -61,6 +61,7 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertEqual(status.status_code, 200)
         self.assertEqual(status.json()["status"], "not_run")
         self.assertEqual(status.json()["mode"], "observe_only")
+        self.assertEqual(status.json()["storage"], "sqlite")
         self.assertIsNone(status.json()["latest_observation"])
         self.assertEqual(observations.json(), {"observations": [], "count": 0})
 
@@ -92,6 +93,20 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertEqual(resolved.json()["count"], 0)
         self.assertEqual(invalid_limit.status_code, 422)
         self.assertEqual(invalid_status.status_code, 422)
+
+    def test_observation_reports_persistence_failure(self):
+        with patch.object(
+            self.main.diagnostics_monitor,
+            "run_observation",
+            side_effect=DiagnosticsStoreError("database unavailable"),
+        ):
+            response = self.client.post("/api/diagnostics/observe")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json()["detail"],
+            "Persistent diagnostics history is unavailable.",
+        )
 
     def test_explicit_chat_request_runs_read_only_diagnostics_and_shares_evidence(self):
         llm_result = {

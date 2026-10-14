@@ -1,6 +1,8 @@
+import tempfile
 import unittest
+from pathlib import Path
 
-from diagnostics import DiagnosticsMonitor, ResourceSnapshot
+from diagnostics import DiagnosticsMonitor, DiagnosticsStore, ResourceSnapshot
 
 
 def resource_sample():
@@ -97,6 +99,50 @@ class DiagnosticsMonitorTests(unittest.TestCase):
 
         self.assertEqual(observation.checks, ())
         self.assertEqual(observation.status, "unknown")
+
+    def test_observations_and_incident_state_survive_monitor_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "diagnostics.sqlite3"
+            checks = (("llama_server.health", lambda: (False, "Not ready.")),)
+            first_monitor = DiagnosticsMonitor(
+                checks=checks,
+                resource_sampler=resource_sample,
+                store=DiagnosticsStore(database_path),
+            )
+
+            first_monitor.run_observation()
+            first_incident = first_monitor.get_incidents()[0]
+            restarted_monitor = DiagnosticsMonitor(
+                checks=(("llama_server.health", lambda: (True, "Ready.")),),
+                resource_sampler=resource_sample,
+                store=DiagnosticsStore(database_path),
+            )
+
+            self.assertEqual(len(restarted_monitor.get_observations()), 1)
+            self.assertEqual(restarted_monitor.get_incidents()[0], first_incident)
+            self.assertEqual(
+                [event.event for event in restarted_monitor.get_audit_events()],
+                [
+                    "observation.started",
+                    "incident.opened",
+                    "observation.completed",
+                ],
+            )
+
+            recovered = restarted_monitor.run_observation()
+
+            self.assertEqual(recovered.status, "healthy")
+            resolved = DiagnosticsMonitor(
+                checks=checks,
+                resource_sampler=resource_sample,
+                store=DiagnosticsStore(database_path),
+            )
+            self.assertEqual(resolved.get_incidents()[0].status, "resolved")
+            self.assertEqual(len(resolved.get_observations()), 2)
+            self.assertIn(
+                "incident.resolved",
+                [event.event for event in resolved.get_audit_events()],
+            )
 
 
 if __name__ == "__main__":

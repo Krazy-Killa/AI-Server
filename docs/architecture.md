@@ -40,6 +40,9 @@ GPU / LLM / Bot / System Stats
   admin-published shared insights in a separate SQLite database. Admin chat
   and research receive current-admin identity and bounded shared notes; other
   roles and Discord service requests do not.
+- Persists bounded observe-only diagnostic observations, incident state, and
+  audit events in that local database, restoring open incidents after restart;
+  diagnostics remain manually triggered and cannot execute repairs or commands.
 
 ## Web Research
 
