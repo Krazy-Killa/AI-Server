@@ -1,16 +1,12 @@
 # AI Command Interface
 
 A local AI and homelab dashboard with a browser-based interface, FastAPI
-backend, and optional Discord bot. Windows remains the active build and
-prototype environment for shared application behavior. A second deployment and
-integration environment is now running on Proxmox VE 9.1-1 inside a nested
-Hyper-V virtual machine on the Windows PC. Use that guest to prepare and test
-Linux/Proxmox deployments; it does not replace the Windows development setup
-or validate the eventual physical server.
+backend, and optional Discord bot. This project is being developed and tested
+on Windows before deployment to a dedicated Linux/Proxmox server.
 
 ## Project status
 
-### Implemented and running in the Windows build environment
+### Working in the Windows test environment
 
 - Local chat through llama.cpp, with GPU inference on the RX 6800 XT.
 - Installed GGUF model discovery and model switching from the dashboard.
@@ -19,60 +15,27 @@ or validate the eventual physical server.
   telemetry.
 - ONNX Runtime DirectML setup and a synthetic inference smoke test.
 - Explicit web-research UI and backend integration for SearXNG.
-- Streaming local chat over WebSocket, validated configuration, and rotating
-  backend logs. Backend tests: `python -m unittest discover` in `ai-backend`
-  (the test client is installed from `ai-backend/requirements-dev.txt`).
-- Separate AI Interface and AI Chat panels. AI Interface is a single,
-  persistent admin-shared server console transcript with attributed turns;
-  private AI Chat history is never loaded into its context. AI Chat retains
-  per-account private SQLite history with automatic resume of the latest
-  conversation and bounded recent-turn context. Admins can separately publish
-  operational notes to a curated shared store; only those approved notes are
-  available across admin chat contexts. This is not transcript extraction,
-  model training, or semantic retrieval.
-- Dashboard polish: persistent dark/light theme, accent colour, collapsible
-  sidebar, and panel transitions (Settings page and header toggle).
+- User authentication with local accounts and optional Proxmox identity integration.
+- Private conversation history per user with shared admin notes.
+- Observe-only diagnostics and incident tracking with SQLite persistence.
 
-### Remaining work and target-specific validation
+### Not yet operational
 
-- Web research needs SearXNG running. On Windows it runs in WSL: install once
-  with `wsl bash scripts/searxng/install-searxng.sh`, then start it with
-  `run-searxng.bat`. A live SearXNG-to-llama.cpp smoke test of the new
-  full-page/streaming path remains outstanding (see `docs/testing-environment.md`).
+- SearXNG must be installed and configured before web research can search.
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
-- The VM panel supports read-only Proxmox VM/container inventory through a
-  backend-configured API token; no VM management or console actions are
-  exposed. The live connection and populated guest-list display are verified
-  in the nested lab; physical-host acceptance remains outstanding.
-  Network-service panels (DHCPv4/DHCPv6/DNS/web/routing/firewall) are planning
-  views, as is game-server management. The
-  Discord page reports live bot heartbeats and
-  operational logs and supports restart,
+- VM, game-server, and network-service panels are planning views. The Discord
+  page reports live bot heartbeats and operational logs and supports restart,
   command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
   approval before file changes or command execution.
-- Dashboard login supports local accounts and explicitly mapped Proxmox
-  identities, with revocable sessions and role-protected routes. Provision the
-  first admin using the local CLI; Proxmox host/proxy security validation is
-  still required before production deployment or broader LAN exposure. The
-  opt-in HTTPS launchers allow trusted private-LAN testing; do not expose the
-  backend to untrusted networks or the public internet. CORS is restricted to
-  dashboard origins. Backend logs
-  may contain operational details and are available only to authenticated
-  administrators.
-- AI diagnostics currently provide manually triggered, observe-only health
-  checks with bounded SQLite-persisted observations, incidents, audit events,
-  duration-confirmed resource thresholds with recovery hysteresis, and
-  downloadable evidence reports. Reports read recorded observations only;
-  probes are never run automatically. The sidebar shows DIAG while an
-  observation is running. Scheduling, semantic retrieval, and remediation are
-  not implemented.
+- Auto-remediation for safe operations (Phase 2 of diagnostics system).
+- Advanced diagnostics with ML-based anomaly detection (Phase 3+).
 
 ## Windows quick start
 
-The Windows build environment uses Python 3.12. Its virtual environment and
+The Windows test environment uses Python 3.12. Its virtual environment and
 llama.cpp build/model files are kept outside the OneDrive project folder,
 under `%LOCALAPPDATA%\AI-Server`.
 
@@ -93,30 +56,18 @@ The backend listens on `http://127.0.0.1:8000`; llama.cpp listens on
 switch among installed GGUFs. Switching interrupts active inference while
 llama.cpp restarts.
 
-For full dashboard testing on a phone over a trusted private Wi-Fi network,
-use the opt-in HTTPS LAN launchers and certificate/firewall instructions in
-the [testing guide](./docs/testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
-The default launchers remain loopback-only.
-
 ## Planned deployment
 
 The initial target is a Proxmox VE 9.x host with one AMD RX 6800 XT. The GPU
-is currently in the Windows build machine and is intended to move to
+is currently in the Windows development machine and is intended to move to
 the AI Server after a replacement GPU is acquired. The planned host stack is
 ROCm/HIP, ROCm-built llama.cpp with `llama-server`, ONNX Runtime ROCm EP,
 ComfyUI ROCm, Podman/Quadlet, NGINX, and Qdrant; ROCm/HIP is intended to be
 installed on the Proxmox host. These are deployment targets, not installed or
-validated target-host components. Most application and API behavior is
-developed in the Windows prototype; GPU drivers/telemetry, Linux services,
-permissions, networking, and production proxy behavior require
-platform-specific integration and verification. AMD's published support
-matrix currently does not list this GPU and Proxmox combination as officially
-supported, so GPU
-installation is experimental and requires compatibility checks and staged
-verification on the actual Proxmox release, kernel, and component versions.
-The GPU will be used directly by the Proxmox host; VM passthrough is not
-planned. Community reports are leads only; see the
-[GPU plan](./docs/gpu-plan.md#experimental-rx-6800-xt-community-evidence).
+validated server components. AMD's published support matrix currently does
+not list this GPU and Proxmox combination as officially supported, so GPU
+installation remains gated on compatibility verification for the actual
+Proxmox release, kernel, and component versions.
 
 The initial host-preparation script is a preflight and optional base-tools
 installer, not an inference-stack installer:
@@ -124,38 +75,16 @@ installer, not an inference-stack installer:
 ```bash
 bash scripts/proxmox/prepare-ai-host.sh --check
 sudo bash scripts/proxmox/prepare-ai-host.sh --install-base
-sudo bash scripts/proxmox/prepare-ai-host.sh --install-searxng
 ```
 
 `--check` inventories the host and checks AMD's live compatibility matrix
-without changing the system. Use
-`bash scripts/proxmox/prepare-ai-host.sh --report` on the server to generate a
-private, redacted Markdown reference snapshot for implementation planning;
-review it before sharing. The report stays local, though report generation
-makes the same read-only request to AMD's public compatibility matrix as
-`--check`. `--install-base` is limited to a detected Proxmox VE 9.x Debian
-host, previews its apt plan, and refuses transactions that change kernel
-packages. `--install-searxng` is also limited to that host.
-It installs SearXNG for dashboard web research as an unprivileged `searxng`
-user with a systemd service on `127.0.0.1:8888`, then verifies a JSON search.
-It does not depend on the GPU, so the ROCm gate does not block it. Review the
-plans before confirming them; run it only in the isolated nested Proxmox lab
-or on the eventual server.
-It does not install ROCm/HIP or configure the inference services. Linux GPU
-runtimes and telemetry still need
+without changing the system. `--install-base` is limited to a detected
+Proxmox VE 9.x Debian host, previews its apt plan, and refuses transactions
+that change kernel packages. Review the plan before confirming it, and use
+the script only on the eventual server. It does not install ROCm/HIP or
+configure the inference services. Linux GPU runtimes and telemetry still need
 to be selected and validated; Windows DirectML is for development tests, not
 the Linux deployment backend.
-
-Proxmox VE 9.1-1 is running as a nested Hyper-V guest on the Windows PC. The
-dashboard and backend have been copied to the guest and started manually as
-the unprivileged `ai-server` account, bound to loopback and accessed through an
-SSH tunnel; local dashboard login has been verified. This is a lab deployment,
-not a persistent or production installation: systemd/Quadlet, NGINX/TLS, LAN
-exposure, and the inference runtime are not configured. The separate
-`ai-deploy` SSH account is non-root and has no sudo access. Treat all results
-as nested-lab evidence only: they cannot validate the physical server's
-GPU/ROCm, hardware performance, network/storage topology, or recovery
-behavior. Physical-host acceptance remains required.
 
 ## Project layout
 
@@ -168,68 +97,6 @@ js/               Dashboard behavior
 index.html        Dashboard interface
 ```
 
-When implementing changes, update the relevant API, subsystem, roadmap, and
-project-status documentation in the same change. See [AGENTS.md](./AGENTS.md)
-for the documentation reference checklist.
-
-## Development Roadmap
-
-### Phase 1 — Local Test Environment (Complete)
-- ✅ Dashboard UI with panel navigation
-- ✅ Backend API stubs and integration
-- ✅ Discord bot foundation
-- ✅ System monitor with live telemetry
-- ✅ Chat interface with message history
-- ✅ Model discovery and selection
-- ✅ Operational logging
-
-### Phase 2 — Portable Backend and Reliability
-- ✅ Configuration, logging, WebSocket chat, and account authentication
-- ✅ Private SQLite conversations and explicitly shared admin notes
-- ✅ Observe-only diagnostics with persistent bounded SQLite incident history
-- ✅ Cited web research with bounded, SSRF-resistant page retrieval and
-  Server-Sent Event answer streaming; unit and API tests cover fetch controls
-
-### Phase 3 — Mocked Integrations and Portable Features
-- Pre-host work only: portable contracts, UI/provider states, reviewed
-  diagnostic retrieval, deterministic repair/maintenance simulations, and
-  approval boundaries. Mocks do not validate Proxmox behavior or enable live
-  infrastructure controls.
-- See [AI Diagnostics Documentation](./docs/ai-diagnostics-self-healing.md)
-
-### Phase 4 — Proxmox Readiness and Compatibility Gate
-- Finalize host, network, storage, backup, recovery, and service decisions
-- Check exact Proxmox/kernel/GPU/runtime compatibility; RX 6800 XT ROCm remains
-  experimental and is not established by Windows Vulkan results
-- Pin deployment versions and review installation, security, and rollback
-  plans before touching the host
-
-### Phase 5 — Target-Host Deployment and Core Integration (Server required)
-- Validate Linux dependencies, services, GPU telemetry, inference, storage,
-  permissions, restart/reboot recovery, and the production proxy
-- Validate observe-only resource thresholds and sampling-gap behavior under
-  representative Proxmox workloads; Windows and generic CI results are not
-  target-host acceptance evidence
-- Validate real Proxmox identity mapping, HTTPS cookies, firewall, and separate
-  LAN-client access; keep the backend private until these checks pass
-- Follow the [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)
-
-### Phase 6 — Live Server-Dependent Product Integrations
-- Integrate ONNX Runtime ROCm and ComfyUI after target-host stability
-- Add live Proxmox VM/console, network services, and game-server management
-  only after permissions, isolation, and recovery are validated
-- Evaluate multi-model/multi-GPU use against a measured stable baseline
-- Enable real maintenance actions only with tested authorization and rollback
-
-### Phase 7 — Polish
-- ✅ UI animations and transitions
-- ✅ Theme switching (dark/light modes)
-- ✅ Responsive layout; mobile LAN access and certificate trust verified on a
-  phone, with full real-device layout and interaction testing still pending
-- ✅ Collapsible sidebar navigation
-- Keep broader real-device and deployed-environment interaction testing
-  outstanding
-
 ## Documentation
 
 - [Windows testing environment](./docs/testing-environment.md)
@@ -241,6 +108,6 @@ for the documentation reference checklist.
 - [Frontend](./docs/frontend.md)
 - [GPU integration plan](./docs/gpu-plan.md)
 - [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)
-- [Authentication & Session Management](./docs/authentication.md)
-- [AI Diagnostics & Self-Healing System](./docs/ai-diagnostics-self-healing.md)
-- [Roadmap](./docs/roadmap.md)
+- [**Comprehensive Development Roadmap**](./docs/roadmap.md) — Detailed implementation phases, current status, and future plans
+- [Authentication & Session Management](./docs/authentication.md) — JWT-based auth system with local accounts and Proxmox integration
+- [AI Diagnostics & Self-Healing System](./docs/ai-diagnostics-self-healing.md) — Monitoring, diagnostics, and auto-remediation framework
