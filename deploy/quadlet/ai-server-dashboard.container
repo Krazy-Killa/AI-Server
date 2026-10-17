@@ -1,0 +1,30 @@
+[Unit]
+Description=AI Server static dashboard (rootless Podman)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60s
+StartLimitBurst=3
+
+[Container]
+Image=localhost/ai-server:lab
+ContainerName=ai-server-dashboard
+Exec=python -m http.server 8001 --bind 0.0.0.0 --directory /opt/ai-server/www
+WorkingDir=/opt/ai-server
+UserNS=keep-id
+User=999:990
+PublishPort=127.0.0.1:8001:8001
+Environment=HOME=/var/lib/ai-server
+Environment=AI_SERVER_HEALTH_URL=http://127.0.0.1:8001/
+HealthCmd=python /opt/ai-server/ai-backend/container_healthcheck.py
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=10s
+ReadOnly=true
+ReadOnlyTmpfs=true
+NoNewPrivileges=true
+DropCapability=all
+
+[Service]
+Restart=on-failure
+RestartSec=5s

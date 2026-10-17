@@ -28,23 +28,44 @@ were updated so the configured Proxmox API hostname resolves to the guest.
 Keep those values aligned if the lab network changes again.
 
 The guest runs the dashboard and FastAPI backend from `/opt/ai-server`, with
-runtime state under `/var/lib/ai-server`. The base deployment has no persistent
-systemd/Quadlet units and does not auto-start after a guest boot. On
-2026-10-16, transient `systemd-run` units were used to start Uvicorn and a
-Python standard-library static server for the dashboard as the unprivileged
-`ai-server` account, both bound only to `127.0.0.1`; both units were stopped
-and the ports verified closed afterward. The dashboard root and backend
-OpenAPI document returned HTTP 200, while an unauthenticated inventory request
-returned HTTP 401. Windows could not reach the loopback-only ports. This was a
-startup/stop smoke test, not a persistent service, reboot-recovery, or full
-browser-login acceptance test.
+runtime state under `/var/lib/ai-server`. The original 2026-10-16 deployment
+used transient `systemd-run` units to start Uvicorn and a Python
+standard-library static server as the unprivileged `ai-server` account, both
+bound only to `127.0.0.1`; both units were stopped and the ports verified
+closed afterward. Dashboard and backend OpenAPI requests returned HTTP 200,
+and an unauthenticated inventory request returned HTTP 401.
 
-The same-day read-only inventory check ran as `ai-server`, loaded the protected
-guest `.env` without displaying its contents, and successfully retrieved one
-guest using the configured Proxmox token. The response contained only
-`name`, `node`, `status`, `type`, and `vmid`. The lab-only missing-CA-keyUsage
-compatibility setting was enabled with the explicit CA bundle; certificate
-chain and hostname verification remained enabled.
+The guest now also has Podman 5.4.2 and rootless `ai-server` Quadlet
+definitions. The backend and dashboard containers are currently active and
+healthy, with ports 8000/8001 published only on `127.0.0.1`; they are not
+configured for boot auto-start. The dashboard and backend OpenAPI return HTTP
+200, and an unauthenticated inventory request returns HTTP 401. Windows cannot
+reach these loopback-only ports. This does not yet validate boot recovery,
+failure recovery, or full browser-login behavior.
+
+The original host-side read-only inventory check ran as `ai-server`, loaded
+the protected guest `.env` without displaying its contents, and successfully
+retrieved one guest using the configured Proxmox token. The response contained
+only `name`, `node`, `status`, `type`, and `vmid`. The lab-only
+missing-CA-keyUsage compatibility setting was enabled with the explicit CA
+bundle; certificate chain and hostname verification remained enabled.
+
+The rootless container initially resolved `pve.mshome.net` to the guest LAN
+address but received `ConnectionRefusedError` connecting to port 8006; the
+same address and hostname both connected successfully from the host, where
+`pveproxy` was listening on `*:8006`. The CA file was present and readable in
+the backend container. Inside a throwaway container, `host.containers.internal`
+resolved to `169.254.1.2` and accepted a TCP connection to port 8006.
+Additionally, a throwaway container using
+`--add-host=pve.mshome.net:host-gateway` connected through that address. The
+backend Quadlet was updated with the corresponding `AddHost` mapping and the
+backend service restarted. The configured inventory client then succeeded
+inside the backend container, returning one guest with only `name`, `node`,
+`status`, `type`, and `vmid`. Both backend and dashboard services were active
+and healthy after the restart, and host ports 8000/8001 remained bound only to
+`127.0.0.1`. This retains the configured API hostname and TLS hostname
+verification. These are nested-lab results only; boot auto-start and
+failure/reboot recovery remain unverified.
 
 Dashboard login was verified previously. The optional Discord bot and
 chat/inference remain degraded because their required services/runtime have

@@ -38,6 +38,12 @@ principles and [Semantic Versioning](https://semver.org/).
 - Documented the nested Proxmox VE 9.1-1 guest as an active, additional
   deployment/integration lab, including its loopback/SSH-tunnel deployment
   boundaries and distinction from physical-server acceptance.
+- Added a digest-pinned Python container image, Linux dependency lock, health
+  probe, and rootless Podman/Quadlet definitions for the backend and dashboard.
+  Nested-lab containers passed health, HTTP, loopback-binding, and anonymous
+  route checks. A host-gateway alias was tested in a throwaway container and
+  deployed for Proxmox API access without changing the TLS hostname; the live
+  inventory request returned one guest from inside the backend container.
 
 ### In Development
 

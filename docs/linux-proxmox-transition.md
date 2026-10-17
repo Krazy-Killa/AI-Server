@@ -10,12 +10,14 @@ testing through an SSH tunnel. This runbook identifies the platform-specific
 changes, decisions, and target-host checks needed to carry the implementation
 to Linux/Proxmox. Nested-lab results do not constitute physical-host acceptance.
 
-The current guest deployment is a lab setup, not a persistent service
-installation: no backend/dashboard unit is enabled for boot, and
-systemd/Quadlet, NGINX/TLS, LAN application exposure, and inference runtime are
-not configured. A dedicated non-root `ai-deploy` SSH account is available for
-deployment work; it has no sudo access. Keep guest application services bound
-to loopback unless a separately reviewed secure deployment is requested.
+The current guest deployment is a lab setup: rootless Podman/Quadlet backend
+and dashboard unit definitions are installed and active, but neither is
+configured for boot auto-start. The backend and dashboard are bound to
+loopback-only host ports. NGINX/TLS, LAN application exposure, and inference
+runtime are not configured. A dedicated non-root `ai-deploy` SSH account is
+available for deployment work; it has no sudo access. Keep guest application
+services bound to loopback unless a separately reviewed secure deployment is
+requested.
 
 ## Read-only VM inventory lab integration
 
@@ -67,10 +69,28 @@ library HTTP server. Both reached active state with successful exit status,
 bound only to `127.0.0.1`, and returned HTTP 200 for the dashboard root and
 backend OpenAPI document. The unauthenticated inventory route returned HTTP
 401, and Windows-side probes could not connect to ports 8000/8001. Both
-temporary units were stopped, and the ports were confirmed closed. No
-persistent unit files, boot auto-start, reboot recovery, NGINX/TLS, or LAN
-application exposure was installed or validated. These results are nested-lab
-evidence only; physical-host acceptance remains separate.
+temporary units were stopped and the ports were confirmed closed.
+
+Podman 5.4.2 was subsequently installed for rootless `ai-server` operation.
+Digest-pinned backend and static-dashboard images and Quadlet definitions were
+built and started. Both containers passed health checks; the dashboard and
+OpenAPI returned HTTP 200, the anonymous inventory request returned HTTP 401,
+and host ports remained loopback-only. The units have bounded restart
+behavior, but no boot target is configured. A direct host-side inventory read
+previously succeeded. Container DNS and CA-file readability were confirmed,
+but the container's initial connection to the guest LAN address on port 8006
+was refused. A throwaway container test verified that
+`--add-host=pve.mshome.net:host-gateway` reaches the API through Podman's
+`host.containers.internal` gateway (`169.254.1.2`). This mapping has been added
+to the backend Quadlet and deployed. After restarting the backend, the live
+inventory client inside the container returned one guest with only the
+expected `name`, `node`, `status`, `type`, and `vmid` fields. The backend and
+dashboard remained active and healthy with loopback-only host ports. The
+configured API hostname and TLS hostname verification were retained.
+
+These results are nested-lab evidence only; physical-host acceptance remains
+separate. Boot auto-start, reboot/failure recovery, NGINX/TLS, and LAN
+application exposure have not been validated.
 
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the

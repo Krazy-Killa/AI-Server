@@ -22,8 +22,11 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   simulations.
 - Read-only Proxmox VM/container inventory, verified against the nested lab's
   API token, plus proposal-only infrastructure contracts with no live mutation
-  support. Temporary loopback-only Linux service startup/stop was smoke-tested
-  there; persistent service and physical-host acceptance remain outstanding.
+  support. Rootless Podman/Quadlet backend and dashboard containers are active
+  in the nested lab with loopback-only ports and passing health checks; their
+  host-gateway mapping was verified with a live in-container Proxmox inventory
+  read. Boot auto-start, recovery behavior, and physical-host acceptance remain
+  outstanding.
 
 ### Not yet operational
 

@@ -38,13 +38,17 @@ production Linux/Proxmox stack is unvalidated.
 All remaining work is directed toward the planned Proxmox server. Proxmox VE
 9.1-1 is running as a nested Hyper-V guest on the Windows PC and is available
 as an additional Linux/Proxmox deployment and integration environment. The
-dashboard and backend have been deployed there for loopback-only testing over
-an SSH tunnel; this is a manually started lab deployment, not a persistent or
-production service setup. Use the guest to prepare and test suitable
-OS/API/deployment work before the physical server is available. It does not
-validate the physical host's hardware, GPU/ROCm, storage/network topology,
-sustained performance, or recovery behavior. Windows remains the active
-shared-application build environment, not the deployment target.
+dashboard and backend are installed there for loopback-only lab testing.
+Transient service startup and stop were verified on 2026-10-16. Rootless
+Podman/Quadlet backend and dashboard containers have since been built and are
+currently active and healthy on loopback, but are not configured for boot
+auto-start. The backend's host-gateway hostname mapping is deployed; a live
+inventory call from the backend container returned one guest with the expected
+fields. Use the guest to prepare and test suitable OS/API/deployment work
+before the physical server is available. It does not validate the physical
+host's hardware, GPU/ROCm, storage/network topology, sustained performance, or
+recovery behavior. Windows remains the active shared-application build
+environment, not the deployment target.
 
 - **Pre-physical-server work:** use portable contracts, deterministic tests,
   and the nested Proxmox lab for Proxmox API, permissions,
@@ -144,12 +148,16 @@ shared-application build environment, not the deployment target.
   provider, authenticated viewer-level API route, and refreshable UI. The
   integration is implemented, covered by mocked tests, and connected to the
   nested Proxmox lab with its dedicated inventory token. On 2026-10-16, the
-  installed client successfully retrieved one guest with only the five
-  dashboard fields; a transient Linux backend/dashboard startup and stop check
-  also passed with loopback-only listeners and rejection of an unauthenticated
-  inventory request. No persistent service or boot recovery was tested. All
-  results are nested-lab evidence, not physical-host acceptance. No VM
-  management or console controls are exposed.
+  host-installed client successfully retrieved one guest with only the five
+  dashboard fields; transient Linux backend/dashboard startup and stop checks
+  passed with loopback-only listeners and rejection of an unauthenticated
+  inventory request. A later rootless Podman deployment also passed dashboard,
+  OpenAPI, health, and anonymous-route checks. After adding a host-gateway
+  hostname mapping, the live inventory client inside the backend container
+  returned one guest with the expected five dashboard fields. Services are
+  active and healthy but not configured for boot auto-start. All results are
+  nested-lab evidence, not physical-host acceptance. No VM management or
+  console controls are exposed.
 - Network Services panel has planning-only views for DHCPv4, DHCPv6, DNS, web
   hosting, and routing/firewall. Service ownership, scopes, and configuration
   remain undecided; no backend or network changes are connected.
@@ -176,21 +184,57 @@ shared-application build environment, not the deployment target.
 
 - **Partial — nested-lab integration:** the inventory token's live read
   permission and transient loopback backend/dashboard startup and stop were
-  verified on 2026-10-16; see the lab-only results above and in the
-  [testing-environment guide](./testing-environment.md). Deployment-script
-  validation, persistent service configuration, reboot recovery, and
-  physical-host acceptance remain outstanding.
-- Build the workspace-restricted website agent with explicit approval
-  boundaries. Keep its file/command integrations disabled until permissions
-  and recovery are validated for the target deployment.
-- Define model-agnostic image job contracts and validate prompt intent,
-  revisions, approval state, and reproducibility metadata. Do not prioritize a
-  Windows-only runtime as a deployment deliverable.
-- Define portable GPU telemetry interfaces and unavailable/error behavior;
-  generic fixtures can test contracts but cannot validate the target GPU.
-- Extend Proxmox-oriented failure-state UI and validate the proposal contracts
-  against reviewed ownership, isolation, and recovery decisions. Defer live VM
-  controls until Phase 6 and until those conditions are validated.
+  verified on 2026-10-16. Rootless Podman/Quadlet units and container health
+  checks are now implemented; both containers are active, loopback-only, and
+  not configured for boot auto-start. The container's original route to the
+  guest API was refused; the backend Quadlet now maps the API hostname to
+  Podman's host gateway. The deployed mapping and live inventory request were
+  verified: the container returned one guest with the expected five fields.
+  See the [testing-environment guide](./testing-environment.md).
+  Deployment-script validation, reboot/failure recovery, and physical-host
+  acceptance remain outstanding.
+
+#### Integration-priority order
+
+1. **Linux deployment and service lifecycle — in progress.** Podman/Quadlet
+   was selected for the lab. Rootless backend and dashboard definitions now
+   use loopback-only ports, explicit environment/CA mounts, persistent runtime
+   state, health checks, and bounded restart behavior. The containers are
+   active but not configured for boot auto-start. The updated host-gateway
+   hostname mapping and live inventory request now pass in the nested lab.
+   Next exercise install/start/stop and failure recovery before considering
+   the service lifecycle complete.
+2. **Proxmox identity and dashboard authorization — next.** Exercise the live
+   Proxmox ticket login and identity-to-role mapping in the nested lab, then
+   verify cookie, CSRF/origin, viewer/operator/admin boundaries. Use a
+   least-privilege test identity; do not grant mutation permissions or treat
+   lab success as physical-host acceptance.
+3. **Linux application smoke coverage — after the service design.** Verify
+   backend startup, SQLite paths/permissions, logs, authentication,
+   read-only diagnostics, and API health as the service account. Add llama.cpp,
+   SearXNG, bot, and proxy checks only when those services are installed and
+   configured.
+4. **Deployment-script lab checks — safe, read-only modes first.** Exercise
+   `--check` and `--report` on the nested Proxmox guest, inspect their output
+   and side effects, and record version/platform limits. Do not run installer
+   modes or claim physical-target validation from the nested guest.
+5. **Portable GPU telemetry interface — useful preparation, not integration
+   acceptance.** Define typed provider outcomes and unavailable/error
+   behavior, then test with deterministic fixtures. The actual provider,
+   adapter identity, GPU readings, and thresholds remain Phase 5 server-gated.
+6. **Lower integration priority product contracts.** Define model-agnostic
+   image job contracts and build the workspace-restricted website agent only
+   after deployment permissions, workspace boundaries, and recovery behavior
+   are decided. Keep file/command integrations disabled until then; do not
+   prioritize a Windows-only image runtime.
+
+**Existing Proxmox UI status:** the VM panel already distinguishes loading,
+not-configured, connected-empty, live inventory, and unavailable states. The
+read-only API rejects unauthenticated requests and does not return cached or
+sample inventory. No VM mutation or console controls are exposed. Further UI
+guidance, such as linking a failure state to a reviewed runbook, is a
+non-blocking improvement rather than a prerequisite for the next integration
+step.
 
 ## Phase 4 — Proxmox Readiness and Compatibility Gate
 
@@ -324,13 +368,14 @@ been demonstrated on the target host.
 
 ## Forward-work summary
 
-Remaining Phase 3 work includes the workspace-restricted website agent,
-model-agnostic image job contracts, portable GPU telemetry contracts, and
-failure-state UI/provider work for infrastructure panels. Exercise suitable
-API, permissions, VM workflow, deployment-script, and Linux service work in
-the available nested Proxmox VE 9.1-1 lab. Record results as nested-lab
-validation and document limitations; do not substitute Windows-only runtimes
-for the planned Proxmox stack.
+The highest-priority eligible work is the nested-lab Linux deployment/service
+lifecycle, followed by live Proxmox identity/role checks, Linux application
+smoke coverage, and read-only deployment-script checks. The VM panel already
+has its principal failure states. Portable GPU telemetry interfaces, image
+contracts, and website-agent groundwork remain implementable but are lower
+integration priority. Record lab results as nested-lab validation and document
+limitations; do not substitute Windows-only runtimes for the planned Proxmox
+stack.
 
 Once the physical server is available, confirm the installed host inventory
 and complete the Phase 4 readiness gate, then execute Phase 5 physical-host
