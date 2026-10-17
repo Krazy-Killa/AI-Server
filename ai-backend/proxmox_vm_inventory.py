@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, Request, build_opener
 
 from proxmox_auth import create_proxmox_ssl_context
+from proxmox_contracts import PROXMOX_INVENTORY_CONTRACT
 
 
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -65,7 +66,7 @@ class ProxmoxVMInventoryClient:
     def list_guests(self) -> list[dict[str, Any]]:
         """Return only inventory fields needed by the read-only dashboard."""
         request = Request(
-            f"{self._api_base_url}/api2/json/cluster/resources?type=vm",
+            f"{self._api_base_url}{PROXMOX_INVENTORY_CONTRACT.path}",
             headers={
                 "Accept": "application/json",
                 "Authorization": self._authorization,

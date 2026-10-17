@@ -11,10 +11,21 @@ principles and [Semantic Versioning](https://semver.org/).
 - Added a read-only Proxmox VM/container inventory endpoint and dashboard view,
   with backend-only API-token credentials, authenticated viewer access, explicit
   unavailable states, and no infrastructure-changing operations. The nested
-  lab connection and populated guest-list rendering are verified; physical-host
-  acceptance remains outstanding.
+  lab token returned one guest with the expected filtered fields, and temporary
+  backend/dashboard startup, unauthenticated-route rejection, loopback binding,
+  and stop checks passed on 2026-10-16. No persistent service or physical-host
+  acceptance is implied.
 - Added an opt-in, lab-only Proxmox CA compatibility setting that retains
   certificate-chain and hostname verification.
+- Added bundled, versioned reviewed diagnostic runbooks with local lexical
+  search, platform/signal filters, viewer-authorized list/detail/search routes,
+  and no incident-history retrieval or procedure execution.
+- Added deterministic in-memory maintenance/remediation simulations for safe
+  stop, verification, rollback, and escalation paths; the simulations have no
+  live system, service, shell, network, or Proxmox adapters.
+- Added read-only Proxmox inventory and proposal-only VM, network-service, and
+  game-server contracts with admin/confirmation boundaries and no mutation
+  routes.
 - Expanded manually triggered, observe-only diagnostics with backend-process
   and read-only SQLite integrity probes, persisted CPU/RAM/disk threshold
   evidence with duration confirmation and recovery hysteresis, and a
@@ -30,7 +41,8 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### In Development
 
-- Reviewed retrieval of similar incidents and diagnostic procedures.
+- Retrieval of similar historical incidents, semantic/vector search, and
+  model-assisted diagnostics.
 - Image-generation backend groundwork and later runtime integration.
 - Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
   validation on the target server.

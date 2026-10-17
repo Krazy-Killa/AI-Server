@@ -11,11 +11,11 @@ changes, decisions, and target-host checks needed to carry the implementation
 to Linux/Proxmox. Nested-lab results do not constitute physical-host acceptance.
 
 The current guest deployment is a lab setup, not a persistent service
-installation: the processes are started manually, and systemd/Quadlet,
-NGINX/TLS, LAN exposure, and inference runtime are not configured. A dedicated
-non-root `ai-deploy` SSH account is available for deployment work; it has no
-sudo access. Keep the guest services bound to loopback unless a separately
-reviewed secure deployment is requested.
+installation: no backend/dashboard unit is enabled for boot, and
+systemd/Quadlet, NGINX/TLS, LAN application exposure, and inference runtime are
+not configured. A dedicated non-root `ai-deploy` SSH account is available for
+deployment work; it has no sudo access. Keep guest application services bound
+to loopback unless a separately reviewed secure deployment is requested.
 
 ## Read-only VM inventory lab integration
 
@@ -48,9 +48,29 @@ refresh. A successful response verifies this token can read the intended
 inventory; an HTTP 403 indicates that the token's ACL scope or audit privileges
 need review. The route makes only a read-only cluster resource request and
 returns only guest name, ID, node, type, and status. It does not expose token
-credentials, cached/sample inventory, or VM controls. The nested-lab connection
-and rendering of a live guest record have been verified. Physical-host
-acceptance remains separate.
+credentials, cached/sample inventory, or VM controls.
+
+### Nested-lab verification — 2026-10-16
+
+On the nested Proxmox VE 9.1.1 guest (kernel `6.17.2-1-pve`, Python
+`3.13.5`), the installed inventory client ran as `ai-server`, loaded its
+protected environment file without displaying credentials, and successfully
+retrieved one guest. The returned record had only `name`, `node`, `status`,
+`type`, and `vmid`, confirming the configured token can read the requested
+cluster inventory. The lab-only missing-CA-keyUsage compatibility option was
+enabled with the explicit CA bundle; TLS chain and hostname verification were
+retained.
+
+The backend and static dashboard were also started in temporary, non-persistent
+`systemd-run` units as `ai-server`; the static page used Python's standard
+library HTTP server. Both reached active state with successful exit status,
+bound only to `127.0.0.1`, and returned HTTP 200 for the dashboard root and
+backend OpenAPI document. The unauthenticated inventory route returned HTTP
+401, and Windows-side probes could not connect to ports 8000/8001. Both
+temporary units were stopped, and the ports were confirmed closed. No
+persistent unit files, boot auto-start, reboot recovery, NGINX/TLS, or LAN
+application exposure was installed or validated. These results are nested-lab
+evidence only; physical-host acceptance remains separate.
 
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the

@@ -17,7 +17,13 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Explicit web-research UI and backend integration for SearXNG.
 - User authentication with local accounts and optional Proxmox identity integration.
 - Private conversation history per user with shared admin notes.
-- Observe-only diagnostics and incident tracking with SQLite persistence.
+- Observe-only diagnostics and incident tracking with SQLite persistence,
+  reviewed local runbook search, and disconnected maintenance/remediation test
+  simulations.
+- Read-only Proxmox VM/container inventory, verified against the nested lab's
+  API token, plus proposal-only infrastructure contracts with no live mutation
+  support. Temporary loopback-only Linux service startup/stop was smoke-tested
+  there; persistent service and physical-host acceptance remain outstanding.
 
 ### Not yet operational
 
@@ -25,12 +31,13 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Linux/Proxmox GPU telemetry and the production inference stack still need
   implementation and testing.
 - Vision and image generation are not yet integrated with production models.
-- VM, game-server, and network-service panels are planning views. The Discord
+- Game-server and network-service panels remain planning views. The Discord
   page reports live bot heartbeats and operational logs and supports restart,
   command listing, and changing the active model shared with dashboard chat.
 - Website-building assistance is planned, including workspace limits and
   approval before file changes or command execution.
-- Auto-remediation for safe operations (Phase 2 of diagnostics system).
+- Live remediation and scheduled maintenance (Phase 2); only disconnected
+  deterministic simulation flows are implemented.
 - Advanced diagnostics with ML-based anomaly detection (Phase 3+).
 
 ## Windows quick start

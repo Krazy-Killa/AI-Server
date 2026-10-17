@@ -48,6 +48,7 @@ from diagnostics import (
     DiagnosticsStoreError,
     observation_to_dict,
 )
+from diagnostic_knowledge import get_runbook, list_runbooks, search_runbooks
 
 setup_logging(settings)
 
@@ -278,6 +279,9 @@ ROUTE_ROLES = {
     ("GET", "/api/diagnostics/observations"): "viewer",
     ("GET", "/api/diagnostics/incidents"): "viewer",
     ("GET", "/api/diagnostics/report"): "viewer",
+    ("GET", "/api/diagnostics/runbooks"): "viewer",
+    ("GET", "/api/diagnostics/runbook"): "viewer",
+    ("GET", "/api/diagnostics/knowledge/search"): "viewer",
     ("GET", "/api/bot/status"): "viewer",
     ("GET", "/api/bot/logs"): "admin",
     ("GET", "/api/models"): "viewer",
@@ -370,6 +374,13 @@ async def authenticate_http_requests(request: Request, call_next):
             and method == "DELETE"
         ):
             required_role = "admin"
+        if (
+            required_role is None
+            and path.startswith("/api/diagnostics/runbooks/")
+            and "/" not in path[len("/api/diagnostics/runbooks/"):]
+            and method == "GET"
+        ):
+            required_role = "viewer"
         if required_role is None:
             return _json_error(403, "This route is not enabled for dashboard sessions.")
     if not _role_allows(session.role, required_role):
@@ -1271,6 +1282,41 @@ async def diagnostics_report(observation_id: str = Query(min_length=1, max_lengt
     if report is None:
         raise HTTPException(status_code=404, detail="Diagnostic observation was not found.")
     return report
+
+
+@app.get("/api/diagnostics/runbooks")
+async def diagnostics_runbooks(
+    platform: Literal["proxmox-ve", "ai-server"] | None = None,
+    signal: str | None = Query(default=None, min_length=1, max_length=120),
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    runbooks = list_runbooks(platform=platform, signal=signal)[:limit]
+    return {
+        "runbooks": [runbook.to_dict() for runbook in runbooks],
+        "count": len(runbooks),
+    }
+
+
+@app.get("/api/diagnostics/runbooks/{runbook_id}")
+async def diagnostics_runbook(runbook_id: str):
+    runbook = get_runbook(runbook_id)
+    if runbook is None:
+        raise HTTPException(status_code=404, detail="Diagnostic runbook was not found.")
+    return runbook.to_dict()
+
+
+@app.get("/api/diagnostics/knowledge/search")
+async def diagnostics_knowledge_search(
+    query: str = Query(min_length=1, max_length=160),
+    platform: Literal["proxmox-ve", "ai-server"] | None = None,
+    limit: int = Query(default=10, ge=1, le=25),
+):
+    runbooks = search_runbooks(query, platform=platform, limit=limit)
+    return {
+        "query": query,
+        "results": [runbook.to_dict() for runbook in runbooks],
+        "count": len(runbooks),
+    }
 
 
 @app.post("/api/diagnostics/observe")

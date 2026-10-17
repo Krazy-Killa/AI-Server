@@ -1,10 +1,12 @@
 # AI-Powered Diagnostics & Self-Healing
 
-> Status: **design specification with an initial observe-only prototype**.
+> Status: **design specification with observe-only and portable Phase 3 prototypes**.
 > `ai-backend/diagnostics.py` provides on-demand local health/resource
 > observations and persistent, bounded SQLite observation/incident/audit
 > history. Explicit bounded API routes and a manual-run dashboard view are
-> implemented. Scheduling, automated log analysis, semantic retrieval,
+> implemented. A small versioned reviewed runbook set is searchable locally.
+> Maintenance/remediation flows exist only as deterministic in-memory
+> simulations. Scheduling, semantic retrieval, model-driven diagnosis, live
 > remediation, and the rest of the design below are not implemented.
 
 This document specifies the AI Maintenance Agent: a reactive self-healing
@@ -227,6 +229,18 @@ target Proxmox host and hardware. Development can test the coordinator with
 mocked clocks, model manager, and update adapters, but those tests do not prove
 production recovery.
 
+#### Portable simulation status
+
+`ai-backend/maintenance_simulation.py` tests a deterministic in-memory
+maintenance lifecycle with a fixed-start mock clock. It covers preflight,
+draining, unavailable diagnostic context, restoration, and needs-attention
+outcomes. Its separate remediation simulation validates a tiny fixed registry,
+then models verification and rollback using local scenario values. This module
+does not import or call service managers, process control, shell commands,
+Proxmox clients, application runtime modules, databases, or schedulers. It
+cannot affect actual services and does not implement a maintenance window,
+action executor, approval workflow, or live repair.
+
 ---
 
 ## 2. Knowledge Base Structure
@@ -359,6 +373,15 @@ manual_guidance: |
   Check model path in the configuration, free VRAM, and llama-server logs.
 ```
 
+The current built-in runbooks are guidance-only and contain no executable
+actions. The example above describes the future executor format, not current
+behavior. `ai-backend/diagnostic_knowledge.py` bundles versioned runbooks with
+owner, last-reviewed date, source, platform, and signal metadata. The currently
+reviewed procedures cover Proxmox API/TLS troubleshooting, empty or forbidden
+Proxmox inventory, and local diagnostic-store availability. They recommend
+read-only checks and human escalation; none authorizes permission changes,
+service restarts, or host changes.
+
 ### 2.2 Common Failure Patterns and Solutions
 
 | Pattern (symptom) | Likely cause | Standard fix | Tier |
@@ -411,6 +434,16 @@ and recovery after host reboot or GPU driver reset.
 Every entry has an `id`, `version`, `owner`, `last_reviewed` date and
 `source` (`built-in`, `learned`, `user`). Learned entries are `draft` until a
 user approves them (section 7.4).
+
+### 2.7 Implemented local retrieval subset
+
+`GET /api/diagnostics/runbooks`, `GET /api/diagnostics/runbooks/{runbook_id}`,
+and `GET /api/diagnostics/knowledge/search` expose only the bundled reviewed
+runbooks to authenticated viewers. Search uses deterministic local lexical
+matching, bounded query/limit values, and optional platform filtering. It does
+not search incidents or drafts, invoke embeddings or a model, or send data to
+an external service. Search results preserve the runbook ID, version, owner,
+review date, source, platform, and signal metadata.
 
 ---
 
@@ -573,6 +606,11 @@ size-capped and stored as an immutable bundle referenced by the incident ID.
 ---
 
 ## 5. Auto-Remediation Capabilities
+
+The executor and live actions described in this section are not implemented.
+Only the disconnected deterministic simulation described above exists;
+simulation results are never applied to a service, Proxmox resource, or
+persistent system state.
 
 ### 5.1 Risk Tiers
 
@@ -905,7 +943,10 @@ access-controlled and redact secrets; KB files are integrity-checked.
 
 ## 10. API Endpoints
 
-All under `/api/diagnostics`, JSON, authenticated. Proposed.
+All under `/api/diagnostics`, JSON, authenticated. The implemented observe-only
+and runbook endpoints are documented in [api.md](./api.md). The broader
+maintenance, remediation, approval, and KB-management endpoints below remain
+proposed; none is currently routed by the application.
 
 ### Diagnostics
 | Method | Path | Description |
@@ -1044,6 +1085,10 @@ correct severity. Snapshot tests for report templates.
   workloads, keeping the control plane available, integrity-check failures,
   missed deadlines, process restart during maintenance, and refusing
   unapproved host-level updates.
+- Portable maintenance/remediation simulation tests cover deterministic state
+  traces, preflight/drain safe stops, failed restoration, action allowlist and
+  tier rejection, verification, rollback, and escalation. Passing these tests
+  validates only in-memory fixtures, not host recovery or live actions.
 
 ### 12.6 Rollout
 Run in `observe` mode first and compare with manual observations; enable

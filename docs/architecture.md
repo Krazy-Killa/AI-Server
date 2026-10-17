@@ -49,6 +49,12 @@ GPU / LLM / Bot / System Stats
 - Persists bounded observe-only diagnostic observations, incident state, and
   audit events in that local database, restoring open incidents after restart;
   diagnostics remain manually triggered and cannot execute repairs or commands.
+- Serves bundled reviewed diagnostic runbooks through bounded local lexical
+  retrieval. Historical incidents are not included in search, and retrieval
+  does not invoke the model or execute procedure steps.
+- Contains deterministic in-memory maintenance/remediation simulations and
+  proposal-only Proxmox VM, network-service, and game-server contracts. They
+  have no live service, process, shell, Proxmox, database, or scheduler adapter.
 
 ## Web Research
 
@@ -96,7 +102,8 @@ GPU / LLM / Bot / System Stats
 - Account transcripts remain private and are never automatically extracted
   into shared notes. Shared notes are curated prompt context, not model
   training. There is no automatic fact extraction or semantic/vector
-  retrieval. Diagnostic RAG remains a separate planned Phase 3 capability.
+  retrieval. Diagnostic runbook retrieval is a separate local lexical
+  prototype; embeddings and historical-case retrieval remain unimplemented.
 - The AI Interface uses one fixed shared conversation owned by a synthetic
   system identity. Only admin-only API routes can access it. Each console user
   turn stores its authenticated admin attribution; the current admin receives
@@ -127,8 +134,11 @@ GPU / LLM / Bot / System Stats
 The VM panel can display a live read-only Proxmox VM/container inventory when a
 dedicated API token is configured on the backend. This integration reads only
 the cluster resource inventory; it does not expose credentials to browser code
-or offer management actions. Its deployment against the nested Proxmox lab
-remains to be verified. Network Services remains planning-only. The intended
+or offer management actions. In the nested Proxmox lab, the configured token
+successfully retrieved a guest record on 2026-10-16; temporary Linux backend
+and dashboard service startup/stop checks also passed with loopback-only
+bindings. These checks do not establish physical-host acceptance or persistent
+service/reboot recovery. Network Services remains planning-only. The intended
 future VM panel may add provisioning, configuration, power controls, task
 status, and a browser console for guest recovery. Any such operations require
 narrowly scoped Proxmox API permissions, explicit authorization and

@@ -28,8 +28,10 @@ Windows backend foundation, operational logging, and interface polish are
 implemented. Transcript history is separate from diagnostic incident history
 and retrieval; automatic fact extraction and model training from conversations
 are not implemented. Observe-only diagnostics and persistent incident history
-are implemented locally; reviewed retrieval and production-host integration
-remain outstanding. The production Linux/Proxmox stack is unvalidated.
+are implemented locally. A reviewed, local lexical runbook-retrieval prototype
+and disconnected maintenance/remediation simulations are also implemented;
+semantic/vector retrieval and live remediation remain outstanding. The
+production Linux/Proxmox stack is unvalidated.
 
 ## Sequencing and portability rule
 
@@ -141,28 +143,43 @@ shared-application build environment, not the deployment target.
 - Virtual Machines panel has a read-only Proxmox VM/container inventory
   provider, authenticated viewer-level API route, and refreshable UI. The
   integration is implemented, covered by mocked tests, and connected to the
-  nested Proxmox lab with its dedicated read-only token. A live query returned
-  a populated guest list, verifying rendering; physical-host acceptance remains
-  outstanding. No VM management or console controls are exposed.
+  nested Proxmox lab with its dedicated inventory token. On 2026-10-16, the
+  installed client successfully retrieved one guest with only the five
+  dashboard fields; a transient Linux backend/dashboard startup and stop check
+  also passed with loopback-only listeners and rejection of an unauthenticated
+  inventory request. No persistent service or boot recovery was tested. All
+  results are nested-lab evidence, not physical-host acceptance. No VM
+  management or console controls are exposed.
 - Network Services panel has planning-only views for DHCPv4, DHCPv6, DNS, web
   hosting, and routing/firewall. Service ownership, scopes, and configuration
   remain undecided; no backend or network changes are connected.
 
+### Done — portable diagnostics knowledge, simulation, and contracts
+
+- Added versioned, bundled diagnostic runbooks with a deterministic local
+  lexical search and viewer-authorized list, detail, and search endpoints.
+  Current procedures cover Proxmox API/TLS, empty/forbidden VM inventory, and
+  local diagnostics storage. Retrieval returns reviewed procedures only;
+  incident-derived drafts, embeddings, vector databases, and model-driven
+  diagnosis are not connected.
+- Added deterministic in-memory maintenance and remediation simulations with
+  a fixed-start mock clock. Tests cover preflight and drain skips, missing
+  diagnostic context, restoration failure, registered-action validation,
+  verification, rollback, and escalation. Simulations have no service,
+  process, shell, Proxmox, database, or network action adapter and cannot
+  execute live work.
+- Added read-only Proxmox inventory and proposal-only VM, network-service, and
+  game-server contracts. Change intents require the declared admin role and
+  exact confirmation phrase; no mutation routes or provider are implemented.
+
 ### Pre-physical-server work — portable and nested-lab eligible
 
-- Prepare reviewed diagnostic runbooks and local retrieval tests. Keep
-  incident-derived runbooks and curated knowledge as untrusted drafts until
-  reviewed; retain incident records separately as evidence.
-- Use the nested Proxmox lab to exercise Proxmox API
-  authentication/permissions, VM lifecycle contracts, deployment scripts, and
-  Linux service integration where the guest environment supports the feature.
-  Record nested virtualization and lab-specific limitations.
-- Define structured remediation proposals and validate them with a separate
-  deterministic mocked executor. Do not connect the mock to live actions or
-  grant model output authority.
-- Simulate maintenance lifecycles with mocked clocks and service providers.
-  Use simulations to test policy and failure paths only; do not enable
-  scheduling or claim host recovery.
+- **Partial — nested-lab integration:** the inventory token's live read
+  permission and transient loopback backend/dashboard startup and stop were
+  verified on 2026-10-16; see the lab-only results above and in the
+  [testing-environment guide](./testing-environment.md). Deployment-script
+  validation, persistent service configuration, reboot recovery, and
+  physical-host acceptance remain outstanding.
 - Build the workspace-restricted website agent with explicit approval
   boundaries. Keep its file/command integrations disabled until permissions
   and recovery are validated for the target deployment.
@@ -171,9 +188,9 @@ shared-application build environment, not the deployment target.
   Windows-only runtime as a deployment deliverable.
 - Define portable GPU telemetry interfaces and unavailable/error behavior;
   generic fixtures can test contracts but cannot validate the target GPU.
-- Define Proxmox-oriented VM, network-service, and game-server contracts,
-  authorization boundaries, and failure-state UI. Defer live VM controls
-  until Phase 6 and until ownership, isolation, and recovery are validated.
+- Extend Proxmox-oriented failure-state UI and validate the proposal contracts
+  against reviewed ownership, isolation, and recovery decisions. Defer live VM
+  controls until Phase 6 and until those conditions are validated.
 
 ## Phase 4 — Proxmox Readiness and Compatibility Gate
 
@@ -307,10 +324,11 @@ been demonstrated on the target host.
 
 ## Forward-work summary
 
-The next tasks are Phase 3 portable contracts, reviewed retrieval/runbooks,
-deterministic simulations, and Proxmox-oriented UI/provider work. Exercise
-suitable API, permissions, VM workflow, deployment-script, and Linux service
-work in the available nested Proxmox VE 9.1-1 lab. Record results as nested-lab
+Remaining Phase 3 work includes the workspace-restricted website agent,
+model-agnostic image job contracts, portable GPU telemetry contracts, and
+failure-state UI/provider work for infrastructure panels. Exercise suitable
+API, permissions, VM workflow, deployment-script, and Linux service work in
+the available nested Proxmox VE 9.1-1 lab. Record results as nested-lab
 validation and document limitations; do not substitute Windows-only runtimes
 for the planned Proxmox stack.
 
@@ -328,6 +346,7 @@ validated on the physical target.
 
 - [Authentication & Session Management](./authentication.md) — design and implementation guide
 - [AI Diagnostics & Self-Healing System](./ai-diagnostics-self-healing.md) — design specification
+- [Portable Infrastructure Contracts](./infrastructure-contracts.md) — read-only inventory and proposal-only infrastructure contracts
 - [Linux/Proxmox Transition Runbook](./linux-proxmox-transition.md) — deployment decisions, blockers, and acceptance criteria
 - [Architecture Overview](./architecture.md) — system components and data flow
 - [Configuration Guide](./configuration.md) — environment variables and settings

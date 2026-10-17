@@ -126,6 +126,21 @@ results to the local model for explanation. Informational questions (for
 example, "How do I run diagnostics?") do not start an observation. The Discord
 bot service credential does not gain this capability through chat.
 
+GET /api/diagnostics/runbooks?platform=proxmox-ve&signal=proxmox.inventory.empty
+Requires the viewer role. Returns bundled reviewed runbooks, optionally
+filtered by platform and signal. `limit` is 1–100 (default 50).
+
+GET /api/diagnostics/runbooks/{runbook_id}
+Requires the viewer role. Returns one bundled reviewed runbook or HTTP 404.
+Runbook steps are manual diagnostic guidance; the endpoint does not execute
+them.
+
+GET /api/diagnostics/knowledge/search?query=inventory+403&platform=proxmox-ve
+Requires the viewer role. Searches only bundled reviewed runbooks with
+deterministic local lexical matching. `query` is required (1–160 characters);
+`limit` is 1–25 (default 10). Historical incidents and drafts are not
+searched. These read-only routes do not run observations or model inference.
+
 ---
 
 ## AI Interface
@@ -351,6 +366,11 @@ extension. The explicit `PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE` compatibility
 setting relaxes OpenSSL's strict X.509 extension-policy checks but does not
 disable configured CA-chain, certificate-validity, or hostname verification.
 Do not use it for physical/production deployment.
+
+The portable read-only and proposal-only contracts for VM, network-service,
+and game-server integrations are documented in
+[infrastructure-contracts.md](./infrastructure-contracts.md). Proposal
+contracts are not HTTP routes and have no execution provider.
 
 The VM dashboard refreshes the inventory when opened and on explicit refresh.
 It has no create, power, snapshot, configuration, or console operations.

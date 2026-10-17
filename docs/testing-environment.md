@@ -22,19 +22,39 @@ files.
 
 ## Nested Proxmox deployment lab
 
-The guest runs the dashboard and FastAPI backend from `/opt/ai-server`, with
-runtime state under `/var/lib/ai-server`. Both processes are currently started
-manually as the unprivileged `ai-server` account and listen only on
-`127.0.0.1`; Windows access is through an SSH tunnel. Dashboard login has been
-verified. The optional Discord bot and chat/inference report degraded because
-they have not been configured with their required services/runtime.
+On 2026-10-16, the guest adapter was moved from Hyper-V NAT to an external
+bridge. A reserved static LAN address and the guest's `/etc/hosts` node mapping
+were updated so the configured Proxmox API hostname resolves to the guest.
+Keep those values aligned if the lab network changes again.
 
-This temporary lab setup does not include systemd/Quadlet supervision,
-NGINX/TLS, LAN exposure, or a configured inference runtime. Do not reuse its
-HTTP-only cookie setting outside the loopback SSH-tunnel test. Nested-lab
-results do not validate physical hardware, GPU/ROCm, network/storage topology,
-performance, or recovery behavior. The non-root `ai-deploy` SSH account is
-intended for deployment work and has no sudo access.
+The guest runs the dashboard and FastAPI backend from `/opt/ai-server`, with
+runtime state under `/var/lib/ai-server`. The base deployment has no persistent
+systemd/Quadlet units and does not auto-start after a guest boot. On
+2026-10-16, transient `systemd-run` units were used to start Uvicorn and a
+Python standard-library static server for the dashboard as the unprivileged
+`ai-server` account, both bound only to `127.0.0.1`; both units were stopped
+and the ports verified closed afterward. The dashboard root and backend
+OpenAPI document returned HTTP 200, while an unauthenticated inventory request
+returned HTTP 401. Windows could not reach the loopback-only ports. This was a
+startup/stop smoke test, not a persistent service, reboot-recovery, or full
+browser-login acceptance test.
+
+The same-day read-only inventory check ran as `ai-server`, loaded the protected
+guest `.env` without displaying its contents, and successfully retrieved one
+guest using the configured Proxmox token. The response contained only
+`name`, `node`, `status`, `type`, and `vmid`. The lab-only missing-CA-keyUsage
+compatibility setting was enabled with the explicit CA bundle; certificate
+chain and hostname verification remained enabled.
+
+Dashboard login was verified previously. The optional Discord bot and
+chat/inference remain degraded because their required services/runtime have
+not been configured. NGINX/TLS, LAN application exposure, persistent service
+supervision, and inference runtime are not configured. Do not reuse the
+HTTP-only cookie setting outside the loopback SSH-tunnel test. All results are
+nested-lab-only and do not validate physical hardware, GPU/ROCm,
+network/storage topology, sustained performance, or recovery behavior. The
+non-root `ai-deploy` SSH account is intended for deployment work and has no
+sudo access.
 
 ## Setup
 
@@ -42,6 +62,26 @@ Run `setup-windows.bat` from the project root. It creates the isolated Python
 environment, installs the API dependencies and ONNX Runtime DirectML, then
 checks that ONNX Runtime exposes `DmlExecutionProvider`, then runs a small ONNX
 graph through DirectML.
+
+## Portable diagnostics and infrastructure tests
+
+The runbook retrieval and maintenance/remediation simulations are local-only
+portable behavior. They do not require the nested Proxmox guest, SearXNG,
+llama.cpp, or the physical server. From PowerShell, run the focused backend
+tests with the configured project interpreter:
+
+```powershell
+Push-Location .\ai-backend
+& "$env:LOCALAPPDATA\AI-Server\venv\Scripts\python.exe" -m unittest discover -s tests -p "test_diagnostic_*.py"
+& "$env:LOCALAPPDATA\AI-Server\venv\Scripts\python.exe" -m unittest discover -s tests -p "test_maintenance_simulation.py"
+& "$env:LOCALAPPDATA\AI-Server\venv\Scripts\python.exe" -m unittest discover -s tests -p "test_proxmox_contracts.py"
+Pop-Location
+```
+
+The tests verify reviewed-runbook filtering and access, deterministic
+maintenance/remediation outcomes, proposal authorization/confirmation rules,
+and the read-only Proxmox inventory contract. Passing them does not validate
+live maintenance, Proxmox mutation, host recovery, or physical-server behavior.
 
 Start the backend with `run-backend.bat`. It listens on
 `http://127.0.0.1:8000`.
