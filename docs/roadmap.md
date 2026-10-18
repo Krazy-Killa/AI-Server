@@ -190,20 +190,40 @@ environment, not the deployment target.
   guest API was refused; the backend Quadlet now maps the API hostname to
   Podman's host gateway. The deployed mapping and live inventory request were
   verified: the container returned one guest with the expected five fields.
-  See the [testing-environment guide](./testing-environment.md).
-  Deployment-script validation, reboot/failure recovery, and physical-host
-  acceptance remain outstanding.
+  On 2026-10-17, explicit stop/start was verified: units stopped cleanly,
+  containers exited, listeners closed, then both services restarted healthy.
+  A controlled backend-container kill triggered one systemd restart; the
+  backend returned healthy, OpenAPI returned HTTP 200, anonymous inventory
+  remained HTTP 401, and the live inventory client returned the expected
+  record. The dashboard remained healthy and both ports stayed loopback-only.
+  A separate start-limit boundary check allowed three automatic restarts and
+  blocked the fourth failure within 60 seconds; resetting the failed unit and
+  starting it manually restored a healthy backend. See the
+  [testing-environment guide](./testing-environment.md). On 2026-10-17,
+  deployment rollback from an intentionally unavailable image candidate to a
+  saved pre-test Quadlet/image snapshot also passed. The candidate was prevented
+  from pulling from a registry; after the unit hit its start limit, restoring
+  the snapshot, resetting the failed unit, and starting it manually restored
+  healthy API and live inventory. The snapshot is of the current build, not a
+  previous application release. Boot auto-start, reboot recovery,
+  deployment-script validation, and physical-host acceptance remain
+  outstanding.
 
 #### Integration-priority order
 
-1. **Linux deployment and service lifecycle — in progress.** Podman/Quadlet
+1. **Linux deployment and service lifecycle — partial, nested-lab checks
+   passed.** Podman/Quadlet
    was selected for the lab. Rootless backend and dashboard definitions now
    use loopback-only ports, explicit environment/CA mounts, persistent runtime
    state, health checks, and bounded restart behavior. The containers are
    active but not configured for boot auto-start. The updated host-gateway
    hostname mapping and live inventory request now pass in the nested lab.
-   Next exercise install/start/stop and failure recovery before considering
-   the service lifecycle complete.
+   Stop/start, controlled backend failure/restart, start-limit behavior, and
+   rollback from an unavailable candidate to a saved pre-test snapshot passed.
+   The rollback baseline is the current build, not a previous application
+   release. Next validate deployment-script behavior and recovery after a
+   guest reboot. Do not enable boot auto-start until separately reviewed;
+   reboot recovery and physical-host acceptance remain unverified.
 2. **Proxmox identity and dashboard authorization — next.** Exercise the live
    Proxmox ticket login and identity-to-role mapping in the nested lab, then
    verify cookie, CSRF/origin, viewer/operator/admin boundaries. Use a

@@ -88,9 +88,38 @@ expected `name`, `node`, `status`, `type`, and `vmid` fields. The backend and
 dashboard remained active and healthy with loopback-only host ports. The
 configured API hostname and TLS hostname verification were retained.
 
+On 2026-10-17, explicit stop/start lifecycle checks passed: both services
+became inactive/dead, their containers exited and listeners closed, then both
+services returned active and healthy. Dashboard HTTP returned 200, OpenAPI
+returned 200, and unauthenticated inventory returned 401. For a single
+controlled failure test, the backend container was killed with Podman; systemd
+restarted the backend once (`NRestarts=1`). The backend returned healthy,
+OpenAPI returned 200, and the in-container inventory request again returned
+one guest with the expected five fields. The dashboard remained healthy and
+ports stayed loopback-only. A subsequent boundary test killed the backend
+four times within 60 seconds: the first three failures triggered automatic
+restarts and the fourth left the unit failed at the configured limit
+(`NRestarts=4`). `reset-failed` followed by manual start restored the backend
+to healthy; OpenAPI returned 200, anonymous inventory returned 401, and both
+ports remained loopback-only. The start-limit and manual recovery behavior
+passed in this lab.
+
+Deployment rollback was then tested using a retained copy of the backend
+Quadlet and a `localhost/ai-server:rollback-known-good-20261017` tag for the
+current image. A temporary candidate deliberately referenced a nonexistent
+local image with `Pull=never`; after systemd reached the start limit, the saved
+Quadlet was restored, the failed unit reset, and the service manually started.
+The backend returned healthy, OpenAPI returned 200, anonymous inventory
+returned 401, and live Proxmox inventory returned one guest with the expected
+five fields. The dashboard remained healthy and both ports stayed
+loopback-only. This proves recovery from an unavailable candidate to the
+pre-test snapshot, not rollback between distinct application releases; the
+known-good image tag and config snapshot remain on the guest under
+`/var/lib/ai-server/deploy-backups/rollback-test-20261017/`.
+
 These results are nested-lab evidence only; physical-host acceptance remains
-separate. Boot auto-start, reboot/failure recovery, NGINX/TLS, and LAN
-application exposure have not been validated.
+separate. Boot auto-start, reboot recovery, NGINX/TLS, and LAN application
+exposure have not been validated.
 
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the

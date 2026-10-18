@@ -40,8 +40,44 @@ definitions. The backend and dashboard containers are currently active and
 healthy, with ports 8000/8001 published only on `127.0.0.1`; they are not
 configured for boot auto-start. The dashboard and backend OpenAPI return HTTP
 200, and an unauthenticated inventory request returns HTTP 401. Windows cannot
-reach these loopback-only ports. This does not yet validate boot recovery,
-failure recovery, or full browser-login behavior.
+reach these loopback-only ports. On 2026-10-17, both units were explicitly
+stopped: systemd reported inactive/dead, no managed containers remained, and
+ports 8000/8001 had no listeners. Both units were then started again; they
+reached healthy state and passed dashboard HTTP 200, backend OpenAPI HTTP 200,
+and anonymous inventory HTTP 401 checks.
+
+A controlled `podman kill ai-server-backend` tested failure recovery. The
+backend Quadlet service restarted once (`NRestarts=1`); after recovery, the
+container was healthy, OpenAPI returned HTTP 200, and live Proxmox inventory
+still returned one guest with only `name`, `node`, `status`, `type`, and
+`vmid`. The dashboard remained healthy throughout, and both host ports
+remained bound only to `127.0.0.1`.
+
+The configured start-limit boundary was then tested with four backend
+container kills within 60 seconds. The first three failures triggered
+automatic restarts; the fourth left the unit failed at the limit
+(`NRestarts=4`). `systemctl --user reset-failed` followed by a manual start
+restored the unit and container to active/healthy. OpenAPI returned HTTP 200,
+anonymous inventory remained HTTP 401, and listeners remained loopback-only.
+This verifies the configured repeated-failure limit and manual recovery path;
+boot auto-start, reboot recovery, rollback between distinct application
+releases, and full browser-login behavior remain unverified.
+
+Deployment rollback was exercised on 2026-10-17. Before changing the active
+unit, the exact backend Quadlet was copied to
+`/var/lib/ai-server/deploy-backups/rollback-test-20261017/` and the current
+image was tagged `localhost/ai-server:rollback-known-good-20261017`. A
+temporary candidate referenced a deliberately nonexistent local image and
+used `Pull=never`, so it could not fetch an image from a registry. The backend
+unit failed after the configured start attempts; the dashboard stayed healthy
+and returned HTTP 200. Restoring the saved Quadlet, resetting the failed unit,
+and starting it manually brought the backend healthy again. OpenAPI returned
+HTTP 200, anonymous inventory returned HTTP 401, and the live inventory
+client returned one guest with the expected five fields. Both ports remained
+loopback-only. The saved baseline is the same image build that was running
+before the test; this verifies failure detection and snapshot restoration, not
+rollback between two distinct application releases. The backup and known-good
+image tag were retained on the lab guest.
 
 The original host-side read-only inventory check ran as `ai-server`, loaded
 the protected guest `.env` without displaying its contents, and successfully
@@ -64,8 +100,8 @@ inside the backend container, returning one guest with only `name`, `node`,
 `status`, `type`, and `vmid`. Both backend and dashboard services were active
 and healthy after the restart, and host ports 8000/8001 remained bound only to
 `127.0.0.1`. This retains the configured API hostname and TLS hostname
-verification. These are nested-lab results only; boot auto-start and
-failure/reboot recovery remain unverified.
+verification. These are nested-lab results only; boot auto-start and reboot
+recovery remain unverified.
 
 Dashboard login was verified previously. The optional Discord bot and
 chat/inference remain degraded because their required services/runtime have

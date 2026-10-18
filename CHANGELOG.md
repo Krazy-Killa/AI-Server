@@ -44,6 +44,13 @@ principles and [Semantic Versioning](https://semver.org/).
   route checks. A host-gateway alias was tested in a throwaway container and
   deployed for Proxmox API access without changing the TLS hostname; the live
   inventory request returned one guest from inside the backend container.
+  Stop/start checks passed, and a controlled backend-container failure
+  triggered a successful single systemd restart while the dashboard remained
+  healthy and both services stayed loopback-only. The configured limit allowed
+  three automatic restarts, blocked a fourth rapid failure, and manual reset
+  restored the backend. A failed unavailable-image candidate was rolled back
+  to a retained Quadlet/image snapshot; recovery passed, while rollback between
+  distinct releases and boot/reboot recovery remain unverified.
 
 ### In Development
 

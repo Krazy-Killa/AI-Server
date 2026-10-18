@@ -25,8 +25,10 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   support. Rootless Podman/Quadlet backend and dashboard containers are active
   in the nested lab with loopback-only ports and passing health checks; their
   host-gateway mapping was verified with a live in-container Proxmox inventory
-  read. Boot auto-start, recovery behavior, and physical-host acceptance remain
-  outstanding.
+  read. Stop/start, controlled restart/limit behavior, and recovery from an
+  unavailable deployment candidate were verified against a retained snapshot;
+  rollback between distinct releases, boot/reboot recovery, and physical-host
+  acceptance remain outstanding.
 
 ### Not yet operational
 
