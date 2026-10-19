@@ -136,16 +136,6 @@ QUIET_PATHS = {
     "/api/proxmox/vms",
 }
 
-# Allow dashboard access from configured origins only
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(settings.cors_origins),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 def get_auth_store() -> AuthStore:
     global auth_store
     if auth_store is None:
@@ -424,6 +414,17 @@ async def log_requests(request: Request, call_next):
         round((monotonic() - started_at) * 1000),
     )
     return response
+
+
+# Keep CORS outside auth so allowed dashboard origins can read authorization errors.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(settings.cors_origins),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Chat request model
 class ChatRequest(BaseModel):

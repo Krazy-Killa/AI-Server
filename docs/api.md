@@ -375,7 +375,12 @@ contracts are not HTTP routes and have no execution provider.
 The VM dashboard refreshes the inventory when opened and on explicit refresh.
 It has no create, power, snapshot, configuration, or console operations.
 DHCPv4, DHCPv6, DNS, web-hosting, and routing/firewall remain planning-only;
-no network-service management API is implemented.
+no network-service monitoring or management API is implemented. When
+implemented, the initial network-service integration is intended to be
+observe-only and may report services hosted inside VMs; VM inventory by itself
+does not verify service health. It must not expose mutation endpoints or
+automatic remediation in that initial scope. Any later action-capable API
+requires a separately reviewed and explicitly authorized autonomy phase.
 
 ---
 

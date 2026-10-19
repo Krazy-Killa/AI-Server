@@ -51,7 +51,9 @@ ai-dashboard/
 - Inventory scope is explicit; VM management and guest-console controls are not
   exposed
 - Network-service planning views for DHCPv4, DHCPv6, DNS, web hosting, and
-  routing/firewall, including undecided configuration and safety boundaries
+  routing/firewall, including undecided configuration and safety boundaries.
+  Future service monitoring may cover daemons hosted inside VMs, but its first
+  integration is observe-only and must not expose service or network changes.
 - Backend online/offline indicator
 - Sidebar host name and detected GPU adapter from `/api/system`; shows DIAG
   during an active observation, MAINT when the API reports active maintenance,

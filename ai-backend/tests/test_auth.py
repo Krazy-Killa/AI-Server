@@ -168,6 +168,32 @@ class AuthApiTests(unittest.TestCase):
         self.assertEqual(self.login().status_code, 200)
         self.assertEqual(self.client.get("/api/not-enabled").status_code, 403)
 
+    def test_role_denial_includes_cors_headers_for_allowed_dashboard_origin(self):
+        allowed_origin = self.main.settings.cors_origins[0]
+        login = self.client.post(
+            "/api/auth/login",
+            json={
+                "provider": "local",
+                "username": "viewer",
+                "password": ADMIN_PASSWORD,
+            },
+            headers={"origin": allowed_origin},
+        )
+        self.assertEqual(login.status_code, 200)
+
+        denied = self.client.get(
+            "/api/memory/conversations",
+            headers={"origin": allowed_origin},
+        )
+
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(
+            denied.headers.get("access-control-allow-origin"), allowed_origin
+        )
+        self.assertEqual(
+            denied.headers.get("access-control-allow-credentials"), "true"
+        )
+
     def test_local_login_sets_httponly_strict_cookie_and_status(self):
         response = self.login()
 

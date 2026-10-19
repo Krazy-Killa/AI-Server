@@ -103,15 +103,29 @@ and healthy after the restart, and host ports 8000/8001 remained bound only to
 verification. These are nested-lab results only; boot auto-start and reboot
 recovery remain unverified.
 
-Dashboard login was verified previously. The optional Discord bot and
-chat/inference remain degraded because their required services/runtime have
-not been configured. NGINX/TLS, LAN application exposure, persistent service
-supervision, and inference runtime are not configured. Do not reuse the
-HTTP-only cookie setting outside the loopback SSH-tunnel test. All results are
-nested-lab-only and do not validate physical hardware, GPU/ROCm,
-network/storage topology, sustained performance, or recovery behavior. The
-non-root `ai-deploy` SSH account is intended for deployment work and has no
-sudo access.
+On 2026-10-19, live dashboard authentication was tested with the Proxmox
+identity `ai-dashboard@pve`, explicitly mapped to dashboard role `viewer`.
+Login succeeded, remained active after reload, and viewer reads of system
+status and VM inventory succeeded. A viewer request to a higher-role route
+was denied with HTTP 403, but browser JavaScript could not read the denial
+because the deployed backend did not add CORS headers to early auth responses.
+The middleware ordering fix and an allowed-origin 403 regression test are
+present in the Windows worktree. A subsequent image-build/deployment attempt
+did not leave the backend reachable; restoring the retained source and image
+snapshot returned the backend API to HTTP 200. The rollback is verified, but
+the failed attempt's cause was not isolated, and the CORS fix is not currently
+deployed. The live session used HTTP only over a loopback SSH tunnel with
+`Secure` disabled; do not reuse that cookie setting for LAN/production.
+Higher-role identities, HTTPS proxy behavior, and the deployed fix remain
+unverified.
+
+The optional Discord bot and chat/inference remain degraded because their
+required services/runtime have not been configured. NGINX/TLS, LAN application
+exposure, persistent service supervision, and inference runtime are not
+configured. All results are nested-lab-only and do not validate physical
+hardware, GPU/ROCm, network/storage topology, sustained performance, or
+recovery behavior. The non-root `ai-deploy` SSH account is intended for
+deployment work and has no sudo access.
 
 ## Setup
 

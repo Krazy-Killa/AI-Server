@@ -87,8 +87,15 @@ environment, not the deployment target.
 - Dashboard-owned authentication: local and mapped Proxmox login, persistent
   revocable sessions, role authorization, protected REST/WebSocket routes,
   CSRF and origin checks, login throttling, CLI account/mapping management,
-  and browser login/logout flow. Windows and mocked-provider tests pass;
-  actual Proxmox/proxy validation is server-gated.
+  and browser login/logout flow. Windows and mocked-provider tests pass. A
+  real Proxmox identity was mapped to the viewer role and authenticated in the
+  nested lab; viewer reads succeeded and higher-role access was denied.
+  Middleware ordering was corrected so allowed dashboard origins can read
+  authorization errors, and the backend suite passes. A lab image update
+  attempt was rolled back after the backend did not remain reachable; API
+  health recovered, but the cause was not isolated and the fix is not
+  currently deployed. Physical-server and HTTPS-proxy validation remain
+  outstanding.
 - Proxmox authentication interface and HTTPS ticket client with mocked
   responses. These tests establish client behavior, not real-provider
   integration.
@@ -127,6 +134,15 @@ environment, not the deployment target.
   not the admin UI. Keep scheduling disabled and do not execute maintenance
   until the setting, scheduler, and target lifecycle are separately validated.
   See the [AI Diagnostics & Self-Healing design](./ai-diagnostics-self-healing.md).
+- **Network services autonomy policy:** keep future DHCP/DNS/web/routing and
+  firewall integrations observe-only by default, whether services run on the
+  Proxmox host or inside VMs. Do not expose mutation endpoints or automated
+  remediation in the initial monitoring integration. Any later move to
+  limited AI-assisted action must be a separate admin-authorized phase with
+  explicit per-action boundaries, audit evidence, verification, and tested
+  rollback/out-of-band recovery. Full autonomy is a distinct later gate; the
+  AI must never promote its own authority or infer permission from successful
+  monitoring.
 - Optional HTTPS launchers for whole-dashboard testing from a mobile device
   on a trusted private LAN. They bind to one configured private IPv4 address
   and serve only public UI assets. Phone certificate trust and dashboard access
@@ -167,8 +183,12 @@ environment, not the deployment target.
   nested-lab evidence, not physical-host acceptance. No VM management or
   console controls are exposed.
 - Network Services panel has planning-only views for DHCPv4, DHCPv6, DNS, web
-  hosting, and routing/firewall. Service ownership, scopes, and configuration
-  remain undecided; no backend or network changes are connected.
+  hosting, and routing/firewall. The intended initial integration is
+  **observe-only**, including services hosted inside VMs: discover their
+  owning guest and report approved service health/metrics without changing
+  guest services or network configuration. Service ownership, scopes,
+  monitoring interfaces, and configuration remain undecided; no backend or
+  network-service monitoring API is connected.
 
 ### Done — portable diagnostics knowledge, simulation, and contracts
 
@@ -375,10 +395,14 @@ been demonstrated on the target host.
   permissions, server-side authorization, bounded operations, explicit
   confirmation for destructive actions, task/audit history, and tested guest
   recovery.
-- Connect DHCPv4/DHCPv6, DNS, web hosting, and routing/firewall only after
-  service ownership, scopes, segmentation, and out-of-band recovery are
-  defined. Network changes must not make the AI host the sole unprotected
-  network edge or strand the dashboard.
+- Connect DHCPv4/DHCPv6, DNS, web hosting, and routing/firewall in observe-only
+  mode first, including discovery and health reporting for services hosted in
+  VMs. Decide ownership, scopes, segmentation, supported read-only telemetry,
+  and out-of-band recovery before integration. Keep mutation and automated
+  remediation unavailable until a separately reviewed limited-autonomy phase;
+  full autonomy requires a later explicit readiness and authorization gate.
+  Network changes must not make the AI host the sole unprotected network edge
+  or strand the dashboard.
 - Integrate the selected game-server manager; start with the family Minecraft
   use case only after edition/version, isolation, resource limits, allowlists,
   backups, world restore, and family-safety requirements are settled.

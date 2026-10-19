@@ -150,10 +150,23 @@ around Proxmox console access, authenticated sessions, correct terminal
 rendering/input, and reliable reconnect/error handling.
 
 The Network Services panel has UI planning views for DHCPv4, DHCPv6, DNS, web
-hosting, and routing/firewall; nothing is configured or connected. Final
-service placement, address scopes, segmentation, and edge-router ownership
-remain undecided. DHCP and routing/firewall operations can sever management
-access; keep safeguards and an independent recovery path.
+hosting, and routing/firewall; nothing is configured or connected. Services
+may be hosted inside dedicated VMs rather than on the Proxmox host. The initial
+integration target is observe-only discovery and health/approved metrics for a
+service and its owning VM, with no guest-service or network changes. The
+eventual telemetry interface (for example, a restricted guest agent/API or
+standard exporter) and its permissions must be selected and reviewed; Proxmox
+inventory alone does not establish service health. Final service placement,
+address scopes, segmentation, and edge-router ownership remain undecided.
+DHCP and routing/firewall operations can sever management access; keep
+safeguards and an independent recovery path.
+
+Any later capability to act on observed network services requires a separate
+admin-authorized maturity phase, explicit per-action limits, audit evidence,
+independent verification, and tested rollback/out-of-band recovery. Full
+autonomy is a distinct later gate and must never be enabled or expanded by the
+AI itself. No network-service mutation API or autonomous action path is
+currently implemented.
 
 The Game Servers panel is planned to manage isolated game-server workloads.
 A family Minecraft server is a candidate first use case, not a selected

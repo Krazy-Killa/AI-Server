@@ -60,6 +60,17 @@ principles and [Semantic Versioning](https://semver.org/).
   scheduled-maintenance setting for enablement, recurrence, start/end, and
   IANA timezone. Proposed environment values are defaults only; neither the
   setting nor live scheduled execution is implemented.
+- Clarified the Network Services direction: future monitoring may include
+  DHCP/DNS/routing services inside VMs, with an observe-only initial scope and
+  no mutation or autonomous remediation until separate, explicit maturity and
+  safety gates are met. No monitoring integration has been implemented.
+
+### Fixed
+
+- Ensured allowed dashboard origins receive CORS headers on early
+  authentication and authorization errors, allowing the browser to read the
+  server's 401/403 response. Added regression coverage; deployment to the
+  nested Proxmox lab remains pending.
 
 ### In Development
 

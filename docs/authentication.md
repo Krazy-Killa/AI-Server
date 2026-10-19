@@ -3,8 +3,9 @@
 ## Status and scope
 
 **Status:** Windows implementation complete and verified by the backend test
-suite, including mocked Proxmox responses. No production/Proxmox-host or
-HTTPS-proxy validation has been performed.
+suite, including mocked Proxmox responses. A real Proxmox identity and
+dashboard role mapping have also been exercised in the nested lab; physical
+server and HTTPS-proxy validation have not been performed.
 
 The dashboard supports two identity providers:
 
@@ -93,6 +94,10 @@ additional protection, not authentication.
   `X-CSRF-Token` and an allowed `Origin`. Login is origin-checked and
   rate-limited. WebSocket handshakes require both a valid session and an
   allowed dashboard origin.
+- CORS wraps authentication middleware so the configured dashboard origin can
+  read authorization errors such as 401/403 instead of seeing a misleading
+  browser CORS failure. Unconfigured origins still receive no permission to
+  read credentialed responses.
 - Login attempts are throttled per identity and source address. Do not trust
   forwarded client IP headers unless a specifically trusted proxy is later
   configured.
@@ -169,11 +174,29 @@ is mapped, or whether its password alone was valid.
   session persistence/expiry/revocation, CSRF, login throttling, role
   authorization, mocked Proxmox ticket login and explicit mappings, and
   authenticated REST/WebSocket behavior.
+- The CORS regression test verifies that an allowed dashboard origin can read
+  a role-denial 403. The full backend suite passes with its loopback test origin
+  configured; a local `.env` origin may differ from that test origin.
 - The dashboard sign-in/status/logout flow and role-aware controls are wired
   to the protected API.
 - Machine routes require a scoped bot credential, passed by the Discord bot.
 - `node --check js/app.js` and `git diff --check` pass in the Windows
   development environment.
+
+### Nested Proxmox lab — partial validation
+
+- A live login using `ai-dashboard@pve` succeeded after the exact Proxmox
+  identity was explicitly mapped to the dashboard `viewer` role. The
+  authenticated viewer could read system status and VM inventory, and the
+  login remained active after a dashboard reload.
+- Viewer requests to higher-role routes were denied with HTTP 403. Browser
+  JavaScript initially could not read those errors because auth middleware
+  returned before CORS added response headers. The middleware ordering fix is
+  covered by the regression test, but has not yet been deployed to the lab.
+- The lab browser used HTTP only through a loopback SSH tunnel, so its session
+  cookie had `Secure` disabled. This is not acceptable for LAN or production
+  access. These results do not verify higher-role user behavior, HTTPS proxy
+  cookies, disabled Proxmox users, or physical-server acceptance.
 
 ### Before LAN or remote access
 
