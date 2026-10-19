@@ -130,11 +130,23 @@ Otherwise: request approval (understood but not authorized) or escalate
 
 ### 1.7 Scheduled Maintenance Windows
 
-The target schedule is a recurring daily maintenance window from **03:00 to
-04:00 server-local time**, using an explicitly configured IANA timezone rather
-than the browser's timezone. Daylight-saving transitions must be handled
-deterministically. The feature remains disabled until it has been configured
-and validated on the target server.
+The proposed default is a recurring daily maintenance window from **03:00 to
+04:00 server-local time**. This is a default proposal, not a fixed schedule:
+an authenticated admin must be able to configure whether scheduling is
+enabled, the recurrence days, start and end times, and an explicit IANA
+timezone. The admin-facing setting belongs in the Diagnostics/Maintenance
+controls; it must not silently follow the browser timezone. Validate the
+schedule before saving, show the configured timezone and next window, and
+audit schedule changes with the admin identity and before/after values.
+Daylight-saving transitions must be handled deterministically. Scheduling and
+maintenance execution remain disabled until configuration and the full
+lifecycle have been validated on the target server.
+
+The proposed `DIAG_MAINTENANCE_*` environment variables below may supply
+deployment defaults, but are not a substitute for the planned admin-editable
+schedule. Persistence, configuration API shape, and whether changes apply to
+the next window or require an explicit activation are implementation decisions
+to settle before building the setting.
 
 The Maintenance Coordinator owns a persisted state machine:
 `scheduled -> entering -> maintenance -> restoring -> complete` (or
@@ -728,7 +740,10 @@ New "Diagnostics" panel in the existing dashboard:
 - **Incident detail**: timeline, evidence viewer, attempts, report.
 - **Pending approvals**: action, risk, rationale, rollback plan; Approve / Deny.
 - **History**: resolved incidents and auto-fix success rates.
-- **Controls**: mode switch, maintenance window, pause auto-remediation.
+- **Controls**: mode switch, admin-configurable maintenance schedule
+  (enabled state, recurrence days, start/end, IANA timezone), pause
+  auto-remediation. Schedule editing is a planned admin-only capability, not
+  implemented behavior.
 - **Maintenance status**: configured timezone and next window, normal/diagnostic
   model, traffic gate, progress, update results, and restore/health-check status.
 - **Maintenance controls**: enable/disable future windows and request a safe
@@ -1117,3 +1132,9 @@ precision, false positives) and review weekly.
 | `DIAG_MAINTENANCE_DRAIN_TIMEOUT_S` | `300` | Maximum wait for in-flight work before skipping disruptive work |
 | `DIAG_DIAGNOSTIC_MODEL` | unset | Preferred eligible installed model; selection policy may choose another |
 | `DIAG_UPDATE_ALLOWLIST` | empty | Explicit update targets eligible for automation |
+
+The maintenance schedule environment variables describe proposed
+deployment-level defaults only. The planned admin setting must allow an
+authorized admin to change the recurrence, times, timezone, and enabled state
+without editing the environment file; no such setting or live scheduler is
+currently implemented.

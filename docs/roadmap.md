@@ -119,6 +119,14 @@ environment, not the deployment target.
   and recovery hysteresis. Viewer-readable evidence reports summarize the
   selected saved observation, including incident state/evidence at that time,
   without running probes.
+- **Planned — admin-configurable scheduled maintenance window:** add an
+  admin-only Diagnostics/Maintenance setting for enablement, recurrence days,
+  start/end time, and explicit IANA timezone. Show the configured timezone and
+  next scheduled window, validate and audit changes, and define persistence
+  and activation semantics. The proposed environment values are defaults,
+  not the admin UI. Keep scheduling disabled and do not execute maintenance
+  until the setting, scheduler, and target lifecycle are separately validated.
+  See the [AI Diagnostics & Self-Healing design](./ai-diagnostics-self-healing.md).
 - Optional HTTPS launchers for whole-dashboard testing from a mobile device
   on a trusted private LAN. They bind to one configured private IPv4 address
   and serve only public UI assets. Phone certificate trust and dashboard access
@@ -237,7 +245,15 @@ environment, not the deployment target.
 4. **Deployment-script lab checks — safe, read-only modes first.** Exercise
    `--check` and `--report` on the nested Proxmox guest, inspect their output
    and side effects, and record version/platform limits. Do not run installer
-   modes or claim physical-target validation from the nested guest.
+   modes or claim physical-target validation from the nested guest. A separate
+   application deployment installer is **planned, not started**: explore it
+   after the lab checks, keeping it distinct from `prepare-ai-host.sh`. Initial
+   scope is only the existing rootless backend/dashboard image and Quadlet
+   deployment, with read-only preflight, explicit confirmation, protected
+   secret/config handling, pinned versions, health checks, and rollback that
+   preserves persistent data. Keep SearXNG optional; exclude ROCm and the
+   inference stack until their separate compatibility/version gates are met.
+   See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).
 5. **Portable GPU telemetry interface — useful preparation, not integration
    acceptance.** Define typed provider outcomes and unavailable/error
    behavior, then test with deterministic fixtures. The actual provider,
@@ -293,6 +309,11 @@ until checked against the actual machine.
 - Planned hardware, intended Proxmox release, and recovery method are
   documented; actual host inventory and recovery access must be confirmed
   before deployment on the delivered server.
+- A separate app-deployment installer contract has been documented for later
+  exploration; no such installer is implemented. The existing host-preparation
+  script remains separate, and the initial planned installer scope excludes
+  GPU/inference components and defaults to non-persistent, loopback-only
+  deployment.
 - Storage, backup/restore, service, and network plans are reviewed.
 - Experimental GPU risk is explicitly accepted or GPU-dependent features are
   deferred.

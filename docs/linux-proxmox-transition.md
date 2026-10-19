@@ -347,6 +347,46 @@ ComfyUI, Qdrant, or production Quadlet/NGINX configuration. Those steps need
 version pins and an install method verified for the actual host; do not
 silently install floating latest releases on a Proxmox hypervisor.
 
+### Planned application deployment installer — not implemented
+
+Keep host preparation separate from application deployment. The existing
+`prepare-ai-host.sh` is for host inventory, carefully reviewed prerequisites,
+and the separately gated SearXNG setup; do not turn it into an all-components
+installer. Explore a distinct, staged deployment script for the parts already
+implemented and exercised in the nested guest: the backend and static
+dashboard container image, rootless `ai-server` account/runtime requirements,
+and their Podman/Quadlet units.
+
+Before implementing the installer, define and test the following behavior:
+
+- A read-only preflight/plan mode that identifies the supported OS/Proxmox and
+  architecture, required commands and files, disk needs, existing units/images,
+  service account, and intended loopback ports. It must not mutate the host.
+- An explicit install/deploy mode that shows its actions and requires
+  confirmation before package, account, file, image, or service changes.
+  Install only pinned, reviewed app prerequisites; do not upgrade the host or
+  alter Proxmox kernel packages.
+- Safe secret/config handling: accept protected environment and CA files from
+  an operator-managed path, validate their presence and permissions without
+  printing their contents, and never bake secrets into the image, source
+  bundle, command line, or generated report.
+- Versioned image and unit deployment with a retained previous image/config
+  snapshot, health/API checks, and a tested rollback path. Do not remove or
+  overwrite persistent application data as part of rollback.
+- Loopback-only service bindings by default and no boot auto-start unless a
+  separately reviewed option is explicitly selected. Report exact versions,
+  paths, unit names, bindings, results, and remaining manual steps.
+
+Treat backend/dashboard deployment as the initial scope. SearXNG should remain
+an optional, separately reviewed component; NGINX/TLS, Qdrant, llama.cpp,
+ROCm, ONNX Runtime, and ComfyUI are not ready to be included as automatic
+install targets. In particular, do not bypass the documented GPU
+compatibility gate. The nested-lab rollback test restored the same image build
+it started with; rollback between distinct application versions still needs
+testing. Until the deployment contract, pinned artifacts, and recovery path
+are verified in the lab, keep the installer planned and perform deployment
+steps manually.
+
 The backend and Discord bot load project-root `.env` values with
 `python-dotenv` when they start; shell-provided environment values take
 precedence. The Windows `.bat` launchers do not source `.env` for their

@@ -51,6 +51,15 @@ principles and [Semantic Versioning](https://semver.org/).
   restored the backend. A failed unavailable-image candidate was rolled back
   to a retained Quadlet/image snapshot; recovery passed, while rollback between
   distinct releases and boot/reboot recovery remain unverified.
+- Documented a future, separate application deployment-installer scope for the
+  existing rootless backend/dashboard stack, including read-only preflight,
+  explicit confirmation, pinned artifacts, secret/config boundaries, health
+  checks, and rollback. This is a plan only; no installer or automatic
+  deployment behavior has been implemented.
+- Clarified the diagnostics design to require a future admin-editable
+  scheduled-maintenance setting for enablement, recurrence, start/end, and
+  IANA timezone. Proposed environment values are defaults only; neither the
+  setting nor live scheduled execution is implemented.
 
 ### In Development
 
