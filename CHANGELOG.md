@@ -8,6 +8,31 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added a household network and future infrastructure reference covering the
+  reported network topology, possible read-only telemetry, household voice
+  concepts, managed-Wi-Fi evaluation, and a potential multi-GPU workload split.
+  Current-state details are unverified; no related integrations or hardware
+  changes are implied.
+- Documented network-aware household diagnostics as an unscheduled concept,
+  including infrastructure telemetry, WAN/LAN/Wi-Fi correlation, example
+  connectivity reports, history, and observe-only/authorization boundaries.
+  No network diagnostic workflow or telemetry provider is implemented.
+- Documented a conversational household interface as an unscheduled concept,
+  covering local speech-to-text/text-to-speech, maintenance and diagnostic
+  updates, optional proactive notifications, and identity, privacy, and
+  authorization boundaries. No voice interface is implemented.
+- Documented a planned admin-driven, signed `.tar.gz` update flow for the
+  backend/dashboard application, using prebuilt OCI images, a separate
+  rootless updater, validation before explicit apply, health checks, and
+  rollback. No updater or update UI/API has been implemented.
+- Added a Linux AMD GPU telemetry provider using `amdgpu` sysfs utilization
+  and VRAM counters, optional unambiguous hwmon sensors, and a platform
+  dispatcher behind the existing API. Deterministic fixture tests cover
+  missing/invalid counters and ambiguous adapters. This does not install or
+  validate ROCm/HIP, and live Linux/physical-GPU readings remain unverified.
+- Added portable tests for backend/dashboard Containerfile and Quadlet
+  lifecycle/security contracts, plus coverage for container health-check
+  outcomes. These tests do not execute Podman, systemd, or reboot recovery.
 - Added a read-only Proxmox VM/container inventory endpoint and dashboard view,
   with backend-only API-token credentials, authenticated viewer access, explicit
   unavailable states, and no infrastructure-changing operations. The nested

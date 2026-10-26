@@ -2,7 +2,7 @@ import platform
 
 import psutil
 
-from gpu.windows_gpu import get_gpu_load
+from gpu.provider import get_gpu_load
 
 
 def get_system_stats():

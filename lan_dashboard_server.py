@@ -11,6 +11,22 @@ ASSETS = {
     "/index.html": (PROJECT_ROOT / "index.html", "text/html; charset=utf-8"),
     "/css/style.css": (PROJECT_ROOT / "css" / "style.css", "text/css; charset=utf-8"),
     "/js/app.js": (PROJECT_ROOT / "js" / "app.js", "text/javascript; charset=utf-8"),
+    "/js/backend-logs.js": (
+        PROJECT_ROOT / "js" / "backend-logs.js",
+        "text/javascript; charset=utf-8",
+    ),
+    "/js/operations.js": (
+        PROJECT_ROOT / "js" / "operations.js",
+        "text/javascript; charset=utf-8",
+    ),
+    "/js/system-monitor.js": (
+        PROJECT_ROOT / "js" / "system-monitor.js",
+        "text/javascript; charset=utf-8",
+    ),
+    "/js/ui-preferences.js": (
+        PROJECT_ROOT / "js" / "ui-preferences.js",
+        "text/javascript; charset=utf-8",
+    ),
 }
 
 

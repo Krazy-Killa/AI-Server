@@ -153,7 +153,7 @@ does not list this GPU/OS combination. Community reports cover related
 `gfx1030` cards on other Linux distributions, but do not prove native ROCm
 operation on this host. The GPU is intended for direct host use; assigning it
 to a VM via passthrough is not part of this design. See the
-[experimental community evidence and limitations](./gpu-plan.md#experimental-rx-6800-xt-community-evidence).
+[experimental community evidence and limitations](../gpu/gpu-plan.md#experimental-rx-6800-xt-community-evidence).
 Do not assume the Windows Vulkan results establish ROCm, HIP, or ROCm telemetry
 compatibility.
 
@@ -197,6 +197,12 @@ design before creating production VM disks or file shares.
   Linux llama.cpp device name of `ROCm0`. This is not proof that the eventual
   llama.cpp build exposes that device name or that ROCm supports the chosen
   OS/kernel/GPU combination.
+- Backend/dashboard Containerfile and Quadlet source contracts have portable
+  tests for loopback-only port publication, fixed non-root identity, read-only
+  secret/CA mounts, persistent backend state, health probes, bounded restart
+  settings, and a digest-pinned base image. The HTTP health probe also has
+  success/failure tests. These tests do not execute Podman, systemd, Quadlet
+  generation, or reboot recovery.
 
 The Windows build is the working prototype for shared application behavior;
 these portability points are not merely mocks. However, Windows verification
@@ -221,14 +227,12 @@ acceptance below.
    Then build llama.cpp with the ROCm backend and record its pinned revision,
    build flags, device name, and smoke-test results. Windows Vulkan test
    results do not certify this build.
-3. **Implement a Linux telemetry provider.** `system_stats.py` currently
-   imports `gpu.windows_gpu`; that provider intentionally returns unavailable
-   on non-Windows systems. `gpu/gpu_rocm.py` is only a stub. Implement a Linux
-   provider for the same API fields, with truthful adapter identity, GPU
-   utilization, VRAM used/total, status, and diagnostic error. Report `null`
-   and `unavailable` if the selected telemetry source cannot provide a live
-   measurement; do not substitute simulated values. Verify idle and
-   inference readings against an independent host tool.
+3. **Validate the Linux telemetry provider.** A Linux AMD provider is wired
+   through the platform dispatcher and reads `amdgpu` DRM utilization and
+   VRAM counters, with optional hwmon sensors. Fixture tests cover valid,
+   missing, malformed, and ambiguous readings. Validate actual adapter
+   identity, permissions, and idle/inference readings against an independent
+   host tool; this does not assert ROCm/HIP support.
 4. **Decide and verify how browsers reach the API.** `js/app.js` uses
    `http://127.0.0.1:8000` when opened as a local file, uses the dashboard
    host's port 8000 when the local dashboard is served on port 8001, and uses
@@ -302,7 +306,7 @@ tracked in the repository.
 
 ## Host preparation script
 
-[`scripts/proxmox/prepare-ai-host.sh`](../scripts/proxmox/prepare-ai-host.sh)
+[`scripts/proxmox/prepare-ai-host.sh`](../../scripts/proxmox/prepare-ai-host.sh)
 is an initial, deliberately conservative bootstrap:
 
 - Run `bash scripts/proxmox/prepare-ai-host.sh --check` for a read-only
@@ -352,10 +356,9 @@ silently install floating latest releases on a Proxmox hypervisor.
 Keep host preparation separate from application deployment. The existing
 `prepare-ai-host.sh` is for host inventory, carefully reviewed prerequisites,
 and the separately gated SearXNG setup; do not turn it into an all-components
-installer. Explore a distinct, staged deployment script for the parts already
-implemented and exercised in the nested guest: the backend and static
-dashboard container image, rootless `ai-server` account/runtime requirements,
-and their Podman/Quadlet units.
+installer. Explore a distinct application deployment/update workflow for the
+backend and static dashboard container image, rootless `ai-server`
+account/runtime requirements, and their Podman/Quadlet units.
 
 Before implementing the installer, define and test the following behavior:
 
@@ -387,10 +390,69 @@ testing. Until the deployment contract, pinned artifacts, and recovery path
 are verified in the lab, keep the installer planned and perform deployment
 steps manually.
 
+### Planned one-click application updates — not implemented
+
+The desired operator flow is to upload a release `.tar.gz` in an
+admin-authenticated dashboard, inspect its verified version/compatibility
+plan, then click **Apply** and confirm. Scope is the AI Server backend and
+static dashboard application only. It must not update Proxmox, Debian
+packages, kernel, ROCm/HIP, inference runtimes, SearXNG, or operator-managed
+configuration and secrets.
+
+The proposed release bundle contains a signed manifest and a prebuilt,
+architecture-specific OCI image archive. It contains no source build
+instructions, environment files, CA/private keys, runtime databases, user
+data, or host package changes. The manifest identifies the release, target
+architecture, image digest, and data-schema compatibility. A detached
+Ed25519 signature authenticates the canonical manifest and image digest; the
+verification public key is provisioned and rotated separately by an operator.
+The bundle must not be able to add or replace trusted keys.
+
+Treat every uploaded archive as hostile until verified. Enforce a configured
+upload-size limit; ignore the supplied filename; reject absolute paths,
+traversal, duplicate entries, links, special files, unexpected members, and
+decompression-size overflow. Verify the signature, manifest schema, target,
+and image digest before loading an image or writing deployment files. Stage
+uploads outside the dashboard web root with restrictive permissions, expire
+unused uploads, and do not expose archive contents or secrets in logs/errors.
+Validation and Apply require an authenticated admin, allowed Origin, and
+CSRF token. The UI shows the exact release, image digest, target, disk
+requirements, current version, and rollback plan before confirmation.
+
+Applying an update must be handled by a separate, narrowly scoped rootless
+updater because the API process will be restarted during deployment. Its
+fixed operations are limited to validating a staged release, loading/tagging
+its image, coordinating only the backend/dashboard Quadlet user services,
+checking their health, and restoring the retained prior image on failure. It
+must not execute bundle-provided scripts or arbitrary commands, obtain root
+privileges, change host packages, modify unit bindings, enable boot
+auto-start, or delete persistent application data. Its status channel must
+not be able to request unrestricted shell execution.
+
+Before restart, retain the prior image and deployment metadata and create a
+consistent backup of application databases. Keep the live `.env`, CA bundle,
+and persistent state outside the image and release bundle. Releases must
+preserve backward compatibility with the previous application/data schema;
+destructive migrations are excluded until a separately tested data-restore
+contract exists. Restart the backend and dashboard, verify container health
+and HTTP endpoints, and only report success after all checks pass. On failure,
+restore the previous image, restart both services, and verify recovery.
+Retain a bounded number of verified releases/backups according to an explicit
+disk policy; never remove the only known-good version or the most recent
+database backup. If rollback or recovery checks fail, report an actionable
+failed state and require out-of-band operator recovery.
+
+This is a design, not an implemented feature. Release signing/key rotation,
+the updater's host integration and permissions, upload/staging boundaries,
+archive parser limits, disk retention, database backup/compatibility behavior,
+and user-visible status/error contract require implementation and adversarial
+tests before any production use. Do not claim atomicity or successful rollback
+until tested on the nested lab and then the physical host.
+
 The backend and Discord bot load project-root `.env` values with
 `python-dotenv` when they start; shell-provided environment values take
 precedence. The Windows `.bat` launchers do not source `.env` for their
-llama.cpp command-line flags. See [configuration documentation](./configuration.md)
+llama.cpp command-line flags. See [configuration documentation](../operations/configuration.md)
 for the template and limitations.
 
 ## Recommended transition sequence
@@ -474,7 +536,7 @@ for the template and limitations.
 
 ## Related documentation
 
-- [GPU integration plan](./gpu-plan.md)
-- [Windows testing environment](./testing-environment.md)
-- [Architecture](./architecture.md)
-- [Backend API](./api.md)
+- [GPU integration plan](../gpu/gpu-plan.md)
+- [Windows testing environment](../operations/testing-environment.md)
+- [Architecture](../architecture/architecture.md)
+- [Backend API](../backend/api.md)

@@ -66,6 +66,9 @@ environment, not the deployment target.
 **Status: Done**
 
 - Dashboard UI and panel navigation
+- Dashboard behavior is organized into native browser modules without a build
+  step; browser loading and focused module ownership are documented in the
+  frontend guide.
 - FastAPI backend foundation
 - Discord bot foundation
 - System monitoring in the Windows test environment
@@ -133,7 +136,7 @@ environment, not the deployment target.
   and activation semantics. The proposed environment values are defaults,
   not the admin UI. Keep scheduling disabled and do not execute maintenance
   until the setting, scheduler, and target lifecycle are separately validated.
-  See the [AI Diagnostics & Self-Healing design](./ai-diagnostics-self-healing.md).
+  See the [AI Diagnostics & Self-Healing design](../diagnostics/ai-diagnostics-self-healing.md).
 - **Network services autonomy policy:** keep future DHCP/DNS/web/routing and
   firewall integrations observe-only by default, whether services run on the
   Proxmox host or inside VMs. Do not expose mutation endpoints or automated
@@ -227,7 +230,7 @@ environment, not the deployment target.
   A separate start-limit boundary check allowed three automatic restarts and
   blocked the fourth failure within 60 seconds; resetting the failed unit and
   starting it manually restored a healthy backend. See the
-  [testing-environment guide](./testing-environment.md). On 2026-10-17,
+  [testing-environment guide](../operations/testing-environment.md). On 2026-10-17,
   deployment rollback from an intentionally unavailable image candidate to a
   saved pre-test Quadlet/image snapshot also passed. The candidate was prevented
   from pulling from a registry; after the unit hit its start limit, restoring
@@ -249,9 +252,12 @@ environment, not the deployment target.
    Stop/start, controlled backend failure/restart, start-limit behavior, and
    rollback from an unavailable candidate to a saved pre-test snapshot passed.
    The rollback baseline is the current build, not a previous application
-   release. Next validate deployment-script behavior and recovery after a
-   guest reboot. Do not enable boot auto-start until separately reviewed;
-   reboot recovery and physical-host acceptance remain unverified.
+   release. Portable tests now guard the checked-in Containerfile and Quadlet
+   lifecycle/security contract and exercise the HTTP health probe. These tests
+   do not invoke Podman/systemd. Next validate deployment-script behavior and
+   recovery after a guest reboot. Do not enable boot auto-start until
+   separately reviewed; reboot recovery and physical-host acceptance remain
+   unverified.
 2. **Proxmox identity and dashboard authorization — next.** Exercise the live
    Proxmox ticket login and identity-to-role mapping in the nested lab, then
    verify cookie, CSRF/origin, viewer/operator/admin boundaries. Use a
@@ -262,7 +268,7 @@ environment, not the deployment target.
    read-only diagnostics, and API health as the service account. Add llama.cpp,
    SearXNG, bot, and proxy checks only when those services are installed and
    configured.
-4. **Deployment-script lab checks — safe, read-only modes first.** Exercise
+4. **Deployment-script lab checks — not yet run.** Exercise
    `--check` and `--report` on the nested Proxmox guest, inspect their output
    and side effects, and record version/platform limits. Do not run installer
    modes or claim physical-target validation from the nested guest. A separate
@@ -273,11 +279,21 @@ environment, not the deployment target.
    secret/config handling, pinned versions, health checks, and rollback that
    preserves persistent data. Keep SearXNG optional; exclude ROCm and the
    inference stack until their separate compatibility/version gates are met.
-   See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).
-5. **Portable GPU telemetry interface — useful preparation, not integration
-   acceptance.** Define typed provider outcomes and unavailable/error
-   behavior, then test with deterministic fixtures. The actual provider,
-   adapter identity, GPU readings, and thresholds remain Phase 5 server-gated.
+   See the [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
+   The planned deployment workflow now includes an admin-uploaded signed
+   `.tar.gz` release containing a prebuilt architecture-specific OCI image and
+   manifest, verified before apply. A separate rootless updater is required to
+   survive backend restarts, coordinate only backend/dashboard services, run
+   health checks, and restore the prior image on failure. This is a design
+   only; signing, trust-key rotation, archive hardening, database backup/schema
+   compatibility, and updater permissions/status remain unimplemented.
+5. **Linux AMD GPU telemetry — provider implemented; target validation
+   pending.** A platform dispatcher now selects the Windows provider or Linux
+   `amdgpu` sysfs provider. Deterministic fixtures cover utilization, VRAM,
+   optional hwmon sensors, invalid/missing counters, and ambiguous adapters.
+   No ROCm/HIP runtime is installed or implied. Verify driver-exposed counters,
+   service permissions, adapter identity, and idle/inference readings on the
+   target Linux host before treating telemetry as operational.
 6. **Lower integration priority product contracts.** Define model-agnostic
    image job contracts and build the workspace-restricted website agent only
    after deployment permissions, workspace boundaries, and recovery behavior
@@ -319,7 +335,7 @@ until checked against the actual machine.
   not list the planned GPU/Proxmox combination as officially supported;
   community reports are leads, not proof. GPU passthrough is not planned.
   Follow the staged recovery and acceptance requirements in the
-  [GPU plan](./gpu-plan.md).
+  [GPU plan](../gpu/gpu-plan.md).
 - Select pinned versions, host-vs-container boundaries, persistent paths,
   service accounts, least-privilege GPU access, firewall policy, TLS/proxy
   design, secrets handling, and rollback procedures before installation.
@@ -373,12 +389,12 @@ complete from Windows runs, mocks, or nested-lab results.
 - Validate dashboard-owned and real Proxmox login, role mapping, cookies,
   CSRF/origin checks, HTTPS reverse proxy, firewall rules, and browser access
   from a separate LAN client. Keep the API and inference service private until
-  this gate passes. See [authentication.md](./authentication.md).
+  this gate passes. See [authentication.md](../security/authentication.md).
 - Integrate the existing dashboard, backend, model discovery/switching, chat
   and streaming, SQLite history, logging, optional research/bot, and
   observe-only diagnostics. Verify Linux dependencies, permissions, service
   recovery, proxy/WebSocket routing, and host reboot using the
-  [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).
+  [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
 - Validate real maintenance pause/restore/recovery against deployed services
   only after the mocked lifecycle is complete. Keep the control plane and
   recovery path available; fault-inject every gate. Host, kernel, firmware,
@@ -433,12 +449,12 @@ been demonstrated on the target host.
 
 ## Forward-work summary
 
-The highest-priority eligible work is the nested-lab Linux deployment/service
-lifecycle, followed by live Proxmox identity/role checks, Linux application
-smoke coverage, and read-only deployment-script checks. The VM panel already
-has its principal failure states. Portable GPU telemetry interfaces, image
-contracts, and website-agent groundwork remain implementable but are lower
-integration priority. Record lab results as nested-lab validation and document
+The highest-priority eligible work remains the Linux deployment/service
+lifecycle and portable integration checks. A Linux AMD GPU telemetry provider
+is now implemented and fixture-tested, but live kernel/GPU readings remain
+target-host validation. The VM panel already has its principal failure
+states. Image contracts and website-agent groundwork remain lower integration
+priority. Record lab results as nested-lab validation and document
 limitations; do not substitute Windows-only runtimes for the planned Proxmox
 stack.
 
@@ -452,13 +468,82 @@ control, and recovery. Keep the production backend local-only until
 HTTPS/proxy behavior, firewall/network controls, and deployment have been
 validated on the physical target.
 
+## Candidate backlog — not scheduled
+
+- **Future capability — network-aware diagnostics (Concept):** extend the
+  maintenance subsystem from server health into household network diagnostics
+  and infrastructure awareness. Potential scope includes integrating
+  read-only telemetry from supported access points (including TP-Link and
+  future managed Wi-Fi platforms), routers, and switches; correlating WAN,
+  LAN, wireless, and service-health observations into incidents; and
+  distinguishing likely ISP outages, local routing faults, wireless
+  congestion, access-point failures, and client-specific issues. The system
+  could provide evidence-based diagnostics, incident reports, and remediation
+  recommendations, while retaining historical observations for trend and
+  recurring-issue analysis.
+
+  Example requests include “The internet is down,” “The Wi-Fi is slow,” “The
+  Quest headset is lagging,” and “Can you diagnose the network?” The long-term
+  vision is for household members to report connectivity problems through a
+  single interface while the maintenance subsystem performs
+  infrastructure-aware diagnostics and guided remediation.
+
+  This is a concept only: it is not assigned to a phase or selected as the
+  next priority, and no network telemetry providers or end-to-end network
+  diagnostic workflow are implemented. Initial integrations must remain
+  observe-only, use explicitly configured least-privilege read access, and
+  distinguish unavailable telemetry from healthy results. Recommendations
+  must remain separate from actions. Any later guided or automated recovery
+  requires a separately reviewed authorization, confirmation, audit,
+  verification, and recovery design; the AI must not change network
+  configuration or promote its own authority. See the
+  [diagnostics design](../diagnostics/ai-diagnostics-self-healing.md) and
+  [infrastructure contracts](../operations/infrastructure-contracts.md). The
+  reported home topology and possible integration points are recorded in the
+  [household network reference](../operations/home-network-topology.md).
+
+- **Future capability — conversational household interface (Concept):** add
+  household voice interaction using locally processed speech-to-text (STT) and
+  text-to-speech (TTS). Potential scope includes voice input for general
+  household and maintenance requests; spoken status updates, diagnostic
+  results, and maintenance summaries; and integration with maintenance,
+  diagnostics, incident tracking, and future infrastructure-awareness
+  capabilities. Optional proactive notifications for critical incidents and
+  maintenance events could be considered.
+
+  The long-term vision is to let household members interact naturally with
+  diagnostics, maintenance, and household services without requiring direct
+  dashboard access. This is a concept only: local STT/TTS technology,
+  supported microphones/speakers, household identity and access controls,
+  notification channels, and deployment topology have not been selected or
+  implemented. Before implementation, define explicit enrollment and
+  authorization for household members, consent and audio-retention behavior,
+  and safeguards against unintended or overheard requests. Voice recognition
+  must not itself grant identity or privileges; requests must remain within
+  the caller's authorized role, and operational changes must follow the
+  separately reviewed approval and recovery policy. Proactive notifications
+  must be opt-in and avoid exposing sensitive household or infrastructure
+  details to unauthorized listeners. Network-aware diagnostics remains a
+  separate concept described above. The reported home topology and potential
+  components are summarized in the
+  [household network reference](../operations/home-network-topology.md).
+
+- **Future capability — multi-GPU workload separation (Concept):** evaluate
+  assigning a primary GPU to user-facing AI and a second GPU to maintenance
+  and diagnostics workloads, so those workloads can operate independently
+  without model switching on a shared runtime. Workload roles are illustrative;
+  GPU hardware, memory sizing, power/cooling, host compatibility, runtime
+  support, and isolation requirements remain unselected and unvalidated. This
+  does not replace the current single-GPU deployment plan. See the
+  [household network and infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
+
 ## Documentation References
 
-- [Authentication & Session Management](./authentication.md) — design and implementation guide
-- [AI Diagnostics & Self-Healing System](./ai-diagnostics-self-healing.md) — design specification
-- [Portable Infrastructure Contracts](./infrastructure-contracts.md) — read-only inventory and proposal-only infrastructure contracts
-- [Linux/Proxmox Transition Runbook](./linux-proxmox-transition.md) — deployment decisions, blockers, and acceptance criteria
-- [Architecture Overview](./architecture.md) — system components and data flow
-- [Configuration Guide](./configuration.md) — environment variables and settings
-- [Backend Documentation](./backend.md) — FastAPI endpoints and modules
-- [Frontend Documentation](./frontend.md) — dashboard UI and JavaScript structure
+- [Authentication & Session Management](../security/authentication.md) — design and implementation guide
+- [AI Diagnostics & Self-Healing System](../diagnostics/ai-diagnostics-self-healing.md) — design specification
+- [Portable Infrastructure Contracts](../operations/infrastructure-contracts.md) — read-only inventory and proposal-only infrastructure contracts
+- [Linux/Proxmox Transition Runbook](../deployment/linux-proxmox-transition.md) — deployment decisions, blockers, and acceptance criteria
+- [Architecture Overview](../architecture/architecture.md) — system components and data flow
+- [Configuration Guide](../operations/configuration.md) — environment variables and settings
+- [Backend Documentation](../backend/backend.md) — FastAPI endpoints and modules
+- [Frontend Documentation](../frontend/frontend.md) — dashboard UI and JavaScript structure

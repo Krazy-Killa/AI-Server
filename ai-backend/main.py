@@ -53,7 +53,7 @@ from diagnostic_knowledge import get_runbook, list_runbooks, search_runbooks
 setup_logging(settings)
 
 from system_stats import get_system_stats
-from gpu.windows_gpu import get_gpu_load
+from gpu.provider import get_gpu_load
 from gpu.gpu_llm import LLMRuntimeError, run_llm, stream_llm
 from web_research import (
     ResearchRuntimeError,

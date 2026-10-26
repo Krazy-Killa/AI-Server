@@ -55,6 +55,11 @@ GPU / LLM / Bot / System Stats
 - Contains deterministic in-memory maintenance/remediation simulations and
   proposal-only Proxmox VM, network-service, and game-server contracts. They
   have no live service, process, shell, Proxmox, database, or scheduler adapter.
+- Application updates are planned, not implemented. The target design is an
+  admin-uploaded, signed prebuilt image bundle with validation before apply,
+  orchestrated by a separate rootless updater so the API can restart safely.
+  The updater is limited to the backend/dashboard services; host packages,
+  Proxmox, GPU runtimes, secrets, and persistent user data are out of scope.
 
 ## Web Research
 
@@ -114,20 +119,23 @@ GPU / LLM / Bot / System Stats
 
 - Windows testing uses llama.cpp Vulkan for local Qwen2.5 1.5B chat and reads
   RX 6800 XT load and dedicated-memory usage from live Windows counters.
-- The Proxmox host will run its AI runtime directly and read GPU telemetry
-  from its host GPU; Linux provider implementation remains future work.
+- Linux AMD GPU telemetry is implemented using the `amdgpu` DRM sysfs
+  utilization and VRAM counters, with optional hwmon sensors. This is
+  independent of ROCm/HIP inference and still requires target-host validation.
 
 ## Proxmox Deployment
 
 - The dashboard web server, FastAPI backend, and AI runtime are planned to run
   directly on the Proxmox host.
-- Host GPU telemetry will read the RX 6800 XT used by the host AI runtime.
+- Host GPU telemetry is intended to read the RX 6800 XT used by the host AI
+  runtime; the Linux provider's device identity and readings remain unverified
+  on the physical target.
 - The RX 6800 XT is intended for direct Proxmox host use; GPU passthrough to a
   VM is not part of the deployment plan. Host workloads may share GPU
   resources.
 - Linux runtime, GPU telemetry, service management, and safe remote UI/API
   access remain to be validated. See the
-  [Linux/Proxmox transition runbook](./linux-proxmox-transition.md).
+  [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
 
 ## Planned Infrastructure Management
 

@@ -38,8 +38,8 @@ The normal development backend is loopback-only. Optional Windows mobile
 testing uses the dedicated LAN launcher with HTTPS on a single configured
 private IPv4 address, an exact configured CORS origin, and Secure cookies;
 this does not replace production HTTPS proxy and firewall validation. See
-[Authentication & Session Management](./authentication.md) and the
-[mobile LAN testing guide](./testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
+[Authentication & Session Management](../security/authentication.md) and the
+[mobile LAN testing guide](../operations/testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
 
 ## Authorization roles
 
@@ -52,6 +52,26 @@ this does not replace production HTTPS proxy and firewall validation. See
 The local CLI manages accounts and explicit Proxmox identity-to-role mappings.
 The API does not expose account administration.
 
+### Planned application update API — not implemented
+
+The planned update workflow is admin-only and requires the normal session,
+allowed Origin, and CSRF protections:
+
+- `POST /api/admin/updates` — stream a bounded `.tar.gz` to a private staging
+  area, verify the signed manifest and image digest, and return a staged
+  release identifier and compatibility/preflight result. It does not apply
+  the release.
+- `GET /api/admin/updates/{release_id}` — read the staged release's validation
+  and apply/rollback status.
+- `POST /api/admin/updates/{release_id}/apply` — request the one-click apply
+  operation after a separate explicit confirmation in the UI. The API hands
+  the fixed update job to a separate rootless updater; it does not execute
+  archive-provided code or shell commands.
+
+These routes, request/response shapes, size limits, signing-key management,
+status persistence, and updater communication are design targets only; no
+update endpoint or upload is currently available.
+
 ## System Endpoints
 
 GET /api/system  
@@ -62,7 +82,12 @@ utilization of the busiest engine on the detected AMD discrete GPU. The
 response includes `gpu_adapter`, `gpu_engine`, `gpu_status`, and `gpu_error`;
 `gpu` is `null` when the live reading is unavailable. `vram_used` and
 `vram_total` report live dedicated-memory usage and device-local capacity in
-GiB; they are `null` if GPU telemetry is unavailable. `activity_mode` is
+GiB; they are `null` if GPU telemetry is unavailable. On Linux with readable
+AMD `amdgpu` sysfs counters, `gpu` is whole-device utilization and
+`gpu_engine` is `"overall"`; utilization and VRAM are `null` with an explicit
+unavailable status if the required counters cannot be read or adapter
+selection is ambiguous. This telemetry does not assert ROCm/HIP availability.
+`activity_mode` is
 `diagnostics` while a read-only observation is running, or `null` while idle.
 The dashboard gives this active work precedence over its local/research chat
 selection. `maintenance` is recognized by the dashboard but is not currently
@@ -369,7 +394,7 @@ Do not use it for physical/production deployment.
 
 The portable read-only and proposal-only contracts for VM, network-service,
 and game-server integrations are documented in
-[infrastructure-contracts.md](./infrastructure-contracts.md). Proposal
+[infrastructure-contracts.md](../operations/infrastructure-contracts.md). Proposal
 contracts are not HTTP routes and have no execution provider.
 
 The VM dashboard refreshes the inventory when opened and on explicit refresh.

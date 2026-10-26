@@ -64,12 +64,19 @@ logging_config.py
 
 system_stats.py  
 - CPU and RAM telemetry on supported systems  
-- Currently obtains live GPU telemetry through the Windows-only provider  
-- Live dedicated VRAM usage and device-local capacity on Windows  
+- Obtains GPU readings through the platform provider
+- Linux AMD telemetry reads `amdgpu` sysfs utilization and VRAM counters;
+  Windows uses GPU Engine and dedicated-memory counters
 
-gpu/windows_gpu.py  
+gpu/windows_gpu.py
 - Reads Windows GPU Engine and dedicated-memory counters for the AMD adapter  
 - Uses a background worker to keep API telemetry requests responsive  
+
+gpu/gpu_rocm.py
+- Reads Linux `amdgpu` sysfs utilization and VRAM counters, with optional
+  unambiguous hwmon temperature, power, and fan readings
+- Does not require or validate ROCm/HIP; physical-host and service-permission
+  checks remain outstanding
 
 model_manager.py  
 - Discovers installed GGUF files and reports their disk size and load status  
@@ -88,17 +95,17 @@ gpu_stub.py
 gpu_llm.py  
 - OpenAI-compatible chat requests to the local llama.cpp server, including streaming  
 
-gpu_rocm.py  
-- Placeholder only; Linux GPU telemetry/inference integration is not implemented  
-
 ## Linux/Proxmox portability
 
 The backend's common Python dependencies are listed in
 `requirements.txt`; Windows DirectML packages are isolated in
-`requirements-windows.txt`. Linux GPU telemetry is not implemented: the
-current provider returns unavailable off Windows, and `gpu_rocm.py` is a
-stub. See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
-before deploying the backend or exposing it to other devices.
+`requirements-windows.txt`. Linux AMD GPU telemetry is implemented through
+the kernel `amdgpu` sysfs interface and returns unavailable when required
+counters cannot be read. It has deterministic fixture coverage, but has not
+been validated on a Linux host or physical GPU. This telemetry does not
+establish ROCm/HIP compute support. See the
+[Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md) before
+deploying the backend or exposing it to other devices.
 
 ## Testing
 
@@ -109,5 +116,5 @@ production runtime dependencies remain in `requirements.txt`.
 
 ## Future Additions
 
-- Linux/Proxmox GPU telemetry and inference integration
+- Live Linux/Proxmox GPU telemetry validation and inference integration
 - Log shipping to a centralized destination

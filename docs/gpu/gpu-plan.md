@@ -24,8 +24,8 @@
 - **Image generation:** DirectML is the intended Windows testing direction;
   the compatible framework and isolated dependencies still need to be chosen.
 
-See [the Windows test setup](./testing-environment.md) for exact environment
-details. See the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
+See [the Windows test setup](../operations/testing-environment.md) for exact environment
+details. See the [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md)
 for deployment blockers, decisions, and acceptance checks.
 
 ## Linux/Proxmox deployment
@@ -101,26 +101,31 @@ use: host graphics, monitoring, or other GPU workloads can still consume
 resources. A future decision to use a guest would require a separate
 architecture and validation plan; it is outside the current deployment scope.
 
-### Linux GPU telemetry — required after the GPU is moved
+### Linux AMD GPU telemetry — implemented, host validation pending
 
-The current telemetry reader is Windows-only. Once the RX 6800 XT is installed
-in the Linux/Proxmox server, implement and validate a Linux telemetry provider
-that reads the host GPU used by the host AI runtime.
+The Linux provider reads the AMD `amdgpu` kernel driver's DRM sysfs counters:
+overall utilization (`gpu_busy_percent`) and dedicated VRAM used/total
+(`mem_info_vram_used` / `mem_info_vram_total`). It is wired into the existing
+GPU API and reports `gpu_engine: "overall"` because this source does not
+provide the per-engine breakdown used by the Windows provider. It uses the
+kernel driver's reported product name where available and otherwise reports
+the PCI identity; it does not guess a marketing model from the PCI ID.
 
-The Linux provider must return the same GPU load and status fields used by the
-dashboard, report the correct adapter, and show `N/A` when a live reading is
-unavailable rather than falling back to simulated utilization. Verify its
-load readings under idle and real inference workloads, along with device
-identity and VRAM reporting, before treating telemetry as operational. Proxmox
-host and guest workload attribution should be considered separately if GPU
-sharing with VMs is added later. Until Linux telemetry is implemented,
-non-Windows systems report live GPU load as unavailable.
+The telemetry reader does not depend on `rocm-smi` and does not install or
+require ROCm/HIP. Optional temperature, power, and fan readings are read from
+unambiguous Linux hwmon sensors when present; absent or ambiguous optional
+sensors remain `null`. Missing core counters, unreadable or invalid values,
+and multiple supported AMD adapters return explicit `unavailable` status and
+no fabricated readings. Multiple adapters are not silently selected.
 
-For the planned ROCm/HIP setup, choose the telemetry interface only after
-checking which tools and counters are supported by the installed ROCm version
-and RX 6800 XT. Validate whether host-level telemetry can be collected
-reliably when inference runs in Podman containers and with the service
-account's device permissions.
+Deterministic fixture tests verify counter parsing, units, adapter identity,
+missing/invalid counters, optional hwmon data, and ambiguous devices. This
+establishes provider behavior only; no Linux kernel, physical GPU, or ROCm
+runtime was available in this environment. On the target host, verify the
+actual `amdgpu` sysfs files and service-account permissions, adapter identity,
+idle and inference load/VRAM readings, optional sensor behavior, and reads
+from the chosen container/service arrangement. This telemetry path does not
+establish that ROCm/HIP inference works on the RX 6800 XT or Proxmox.
 
 ### Potential future: multi-GPU inference
 
@@ -135,6 +140,11 @@ implemented or assumed to improve performance. Compare supported hardware and
 runtime combinations, VRAM use, throughput, latency, power, and stability
 against the single-GPU setup before deciding.
 
+A separate future concept assigns GPUs different workload roles (user-facing
+AI versus maintenance/diagnostics) rather than splitting or replicating the
+same model. This is also unselected and unvalidated; see the
+[household infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
+
 ## Strategy
 
 1. Validate the dashboard and API with live llama.cpp chat and Windows GPU
@@ -146,7 +156,8 @@ against the single-GPU setup before deciding.
    combination against current upstream support information.
 6. Install and smoke-test ROCm/HIP, llama.cpp `llama-server`, ONNX Runtime
    ROCm EP, and ComfyUI against the selected Linux host.
-7. Implement Linux GPU telemetry behind the existing dashboard API contract.
+7. Validate the implemented Linux `amdgpu` telemetry provider against the
+   target GPU and kernel through the existing dashboard API contract.
 8. Deploy NGINX, Qdrant, and supported application services with Podman/
    Quadlet where appropriate; validate host inference and telemetry,
    model-switch recovery, and remote dashboard access.

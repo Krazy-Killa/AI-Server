@@ -33,8 +33,11 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 ### Not yet operational
 
 - SearXNG must be installed and configured before web research can search.
-- Linux/Proxmox GPU telemetry and the production inference stack still need
-  implementation and testing.
+- Linux AMD GPU telemetry has a sysfs-backed provider with deterministic
+  fixture tests; live Linux/Proxmox readings and the production inference
+  stack still need target-host implementation/validation.
+- A signed tar.gz one-click application update workflow is planned, but no
+  archive uploader, verifier, updater service, or update UI is implemented.
 - Vision and image generation are not yet integrated with production models.
 - Game-server and network-service panels remain planning views. The Discord
   page reports live bot heartbeats and operational logs and supports restart,
@@ -56,7 +59,7 @@ under `%LOCALAPPDATA%\AI-Server`.
    file is ignored by Git. Never add credentials to `.env.example`.
 2. Run `setup-windows.bat` from the project root.
 3. Download the Qwen2.5 1.5B Instruct GGUF as described in
-   [the testing guide](./docs/testing-environment.md).
+   [the testing guide](./docs/operations/testing-environment.md).
 4. Start `run-llama-server.bat` and leave it running.
 5. In separate terminals, run `run-backend.bat` and `run-dashboard.bat`.
 6. To start the optional Discord bot, run `run-discord-bot.bat` after
@@ -104,22 +107,16 @@ the Linux deployment backend.
 ai-backend/       FastAPI API, local chat, telemetry, and research integration
 ai-discord-bot/   Optional Discord bot client
 css/              Dashboard styles
-docs/             Setup, API, architecture, and project plans
-js/               Dashboard behavior
+docs/             Topic-organized project documentation
+js/               Dashboard entry point and focused browser modules
 index.html        Dashboard interface
 ```
 
 ## Documentation
 
-- [Windows testing environment](./docs/testing-environment.md)
-- [Configuration and secrets](./docs/configuration.md)
-- [Project overview](./docs/overview.md)
-- [Architecture](./docs/architecture.md)
-- [Backend API](./docs/api.md)
-- [Backend](./docs/backend.md)
-- [Frontend](./docs/frontend.md)
-- [GPU integration plan](./docs/gpu-plan.md)
-- [Linux/Proxmox transition runbook](./docs/linux-proxmox-transition.md)
-- [**Comprehensive Development Roadmap**](./docs/roadmap.md) — Detailed implementation phases, current status, and future plans
-- [Authentication & Session Management](./docs/authentication.md) — JWT-based auth system with local accounts and Proxmox integration
-- [AI Diagnostics & Self-Healing System](./docs/ai-diagnostics-self-healing.md) — Monitoring, diagnostics, and auto-remediation framework
+- [Documentation index](./docs/README.md) — Browse the guides by topic.
+- [Development roadmap](./docs/roadmap/roadmap.md) — Current status, phases,
+  and future plans.
+- [Project overview](./docs/architecture/overview.md)
+- [Windows testing environment](./docs/operations/testing-environment.md)
+- [Linux/Proxmox transition runbook](./docs/deployment/linux-proxmox-transition.md)

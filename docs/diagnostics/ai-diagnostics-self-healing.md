@@ -926,7 +926,7 @@ actions before.
 
 ### 9.2 Action Approval
 Tiered approvals (section 7.2). Approvals are authenticated (see
-`docs/authentication.md`), attributed to a user, and tamper-evident.
+`docs/security/authentication.md`), attributed to a user, and tamper-evident.
 
 ### 9.3 Audit Logging
 Every signal, hypothesis, decision, approval, action, verification and rollback
@@ -959,7 +959,7 @@ access-controlled and redact secrets; KB files are integrity-checked.
 ## 10. API Endpoints
 
 All under `/api/diagnostics`, JSON, authenticated. The implemented observe-only
-and runbook endpoints are documented in [api.md](./api.md). The broader
+and runbook endpoints are documented in [api.md](../backend/api.md). The broader
 maintenance, remediation, approval, and KB-management endpoints below remain
 proposed; none is currently routed by the application.
 

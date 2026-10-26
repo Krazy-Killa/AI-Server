@@ -118,13 +118,13 @@ channels where it should respond.
 
 The dashboard connects to the backend on port 8000 when served from port 8001,
 and otherwise uses its own origin by default. A deployment can set
-`window.AI_SERVER_API_BASE` before `js/app.js` loads when it needs a different
-API origin. The server-side variables do not set this browser value. For
+`window.AI_SERVER_API_BASE` before the `js/app.js` module loads when it needs a
+different API origin. The server-side variables do not set this browser value. For
 private-LAN mobile testing, use the dedicated HTTPS-only launchers and follow
 the [mobile LAN testing guide](./testing-environment.md#test-the-dashboard-from-a-mobile-device-on-the-lan).
 This opt-in test path is not a production deployment; keep the production
 backend loopback-bound until the HTTPS proxy, firewall, and access-control
-checks in the [Linux/Proxmox transition runbook](./linux-proxmox-transition.md)
+checks in the [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md)
 pass.
 
 ## `.gitignore` coverage

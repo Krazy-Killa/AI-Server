@@ -5,7 +5,21 @@
 ai-dashboard/
     index.html
     css/style.css
-    js/app.js
+    js/
+        app.js
+        backend-logs.js
+        operations.js
+        system-monitor.js
+        ui-preferences.js
+
+`index.html` loads `js/app.js` as a native ES-module entry point; the dashboard
+uses browser modules directly and does not require a bundler. The entry point
+owns authentication, navigation, chat/research, model selection, and bot
+controls. Focused modules own backend logs, observe-only diagnostics and
+Proxmox inventory, system telemetry, and persisted UI preferences. Modules
+exchange shared API/auth and UI state through explicit imports or initializer
+arguments rather than classic-script globals. Serve the dashboard over HTTP or
+HTTPS so browsers can load its module imports.
 
 ## Panels
 
@@ -17,6 +31,9 @@ ai-dashboard/
 - Network Services
 - Discord Bot
 - Settings
+- Planned admin-only application updates; no updater UI is implemented
+- A conversational household voice interface is a future concept; local STT/TTS
+  and voice-driven requests are not implemented
 
 ## Key Features
 
@@ -71,6 +88,7 @@ ai-dashboard/
 ## JavaScript Responsibilities
 
 - Poll backend for telemetry
+- Load the dashboard entry point and its focused native ES modules
 - Send server-interface requests through the admin-only shared console API;
   render persisted shared messages with administrator attribution
 - Send AI Chat messages and optional research requests; keep their saved
@@ -101,3 +119,18 @@ ai-dashboard/
 - Use the local `:8000` backend when the development dashboard is on `:8001`,
   same-origin API/WebSocket URLs behind a production proxy, and an optional
   `window.AI_SERVER_API_BASE` override
+- Network-service UI remains a planning view. Network-aware diagnostics are
+  an unscheduled concept; no network telemetry integration or diagnostic
+  workflow is implemented. See the
+  [roadmap candidate](../roadmap/roadmap.md#candidate-backlog--not-scheduled).
+- The conversational household interface is also an unscheduled concept.
+  Local speech recognition/synthesis, household-member authorization, and
+  proactive incident notifications are not implemented. Voice must not bypass
+  the existing role and approval boundaries; see the
+  [roadmap candidate](../roadmap/roadmap.md#candidate-backlog--not-scheduled).
+- Planned update UI: upload a signed prebuilt application `.tar.gz`, display
+  validated release/target/digest and compatibility, then require an explicit
+  admin confirmation before Apply. Show updater progress, health-check result,
+  rollback result, and recovery-needed failures. Never imply success before
+  the updater confirms both services healthy. This UI and its endpoints are
+  not implemented.

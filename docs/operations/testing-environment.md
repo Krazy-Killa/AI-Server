@@ -154,6 +154,27 @@ maintenance/remediation outcomes, proposal authorization/confirmation rules,
 and the read-only Proxmox inventory contract. Passing them does not validate
 live maintenance, Proxmox mutation, host recovery, or physical-server behavior.
 
+### Linux deployment and service lifecycle contract tests
+
+The backend test suite also checks the checked-in Containerfile and Quadlet
+definitions without invoking Podman or systemd. It verifies the shared image
+and non-root container identity, loopback-only published ports, persistent
+backend state, read-only secret/CA mounts, health endpoints, bounded restart
+settings, and container hardening fields. The existing health-probe tests
+exercise successful, unavailable, and non-200 responses. Run from PowerShell:
+
+```powershell
+Push-Location .\ai-backend
+& "$env:LOCALAPPDATA\AI-Server\venv\Scripts\python.exe" -m unittest tests.test_quadlet_contracts tests.test_container_healthcheck
+Pop-Location
+```
+
+These are portable source-contract tests, not Linux integration tests. They do
+not validate Quadlet parsing/generation, service-account permissions, Podman
+runtime behavior, service enablement, or reboot recovery. The host preparation
+script's `--check` and `--report` modes also remain unvalidated on the nested
+guest or physical server.
+
 Start the backend with `run-backend.bat`. It listens on
 `http://127.0.0.1:8000`.
 
@@ -204,8 +225,9 @@ configure router port forwarding.
 4. Start `run-lan-backend.bat` and `run-lan-dashboard.bat` in separate
    terminals. They bind only to the configured private address and serve HTTPS
    on ports 8000 (API) and 8001 (dashboard). The dashboard server serves only
-   `index.html`, `css/style.css`, and `js/app.js`; it does not expose the
-   repository or `.env`. Open `https://192.168.1.50:8001` on the phone.
+   the HTML, CSS, and explicitly allowlisted JavaScript modules; it does not
+   expose the repository or `.env`. Open `https://192.168.1.50:8001` on the
+   phone.
    To use the optional Discord bot while the LAN backend is running, set
    `AI_SERVER_API_BASE=https://192.168.1.50:8000` in `.env` and restart the
    bot. Its default `http://127.0.0.1:8000` points to loopback, where the
@@ -243,6 +265,14 @@ device-local capacity reported by Vulkan. Counters are sampled in a background
 worker because Windows exposes many per-process engine counters; readings
 refresh about every six seconds on this machine. If the adapter or counters
 are unavailable, the UI shows `N/A` instead of simulated load or VRAM usage.
+
+The Linux provider is tested on Windows using temporary sysfs fixtures. It
+parses the standard AMD `amdgpu` utilization and VRAM counter files, returns
+explicit unavailable results for missing, invalid, or ambiguous data, and
+reads optional hwmon values only when the sensor is unambiguous. No live Linux
+kernel or GPU is available in this test environment, so driver exposure,
+permissions, device identity, and readings under inference remain unverified.
+This is telemetry support, not ROCm/HIP runtime validation.
 
 ## llama.cpp Vulkan chat test
 
@@ -398,5 +428,6 @@ coherent chat and latency checks, not as a production model benchmark.
 - Image generation still needs a selected DirectML-compatible framework and
   its own compatible dependency environment.
 - GPU backend choices for Linux/Proxmox are separate from this Windows setup.
-- Linux/Proxmox GPU telemetry and VRAM reporting are not implemented yet.
+- Linux AMD GPU telemetry parsing is implemented and fixture-tested; live
+  Linux/Proxmox GPU telemetry and VRAM reporting remain unverified.
 - Vision, image generation, and other unconnected workloads still use stubs.

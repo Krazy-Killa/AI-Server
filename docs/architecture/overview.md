@@ -24,8 +24,10 @@ Discord heartbeat/status, operational logs, restart, command listing, and
 model selection are connected to the optional bot service. Vision and image
 generation still use placeholders. The VM panel has a backend-provided,
 read-only Proxmox VM/container inventory when configured; VM management,
-game-server, and network-service integrations remain unimplemented. Linux
-GPU telemetry and runtime support remain to be implemented.
+game-server, and network-service integrations remain unimplemented. Linux AMD
+GPU telemetry has a kernel-sysfs provider with deterministic tests; readings
+still need validation on Linux hardware. ROCm runtime support remains
+unverified.
 Windows remains the active build environment for shared application behavior.
 An additional Proxmox VE 9.1-1 deployment/integration lab is running inside a
 nested Hyper-V virtual machine on the Windows PC; the dashboard and backend

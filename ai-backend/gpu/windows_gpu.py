@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 import json
 import logging
-import os
+import platform
 from pathlib import Path
 import re
 import shutil
@@ -15,10 +15,12 @@ from threading import Lock, Thread
 from time import sleep
 from typing import Any
 
+from gpu.telemetry import GpuTelemetry
+
 logger = logging.getLogger(__name__)
 _GPU_LOAD_REFRESH_SECONDS = 1
 _GPU_LOAD_LOCK = Lock()
-_GPU_LOAD_CACHE: dict[str, int | float | str | None] = {
+_GPU_LOAD_CACHE: GpuTelemetry = {
     "gpu_load": None,
     "gpu_adapter": None,
     "gpu_engine": None,
@@ -180,7 +182,7 @@ def _refresh_gpu_load() -> None:
             ValueError,
         ) as error:
             logger.exception("Unable to read AMD GPU telemetry.")
-            snapshot: dict[str, int | float | str | None] = {
+            snapshot: GpuTelemetry = {
                 "gpu_load": None,
                 "gpu_adapter": None,
                 "gpu_engine": None,
@@ -206,10 +208,10 @@ def _refresh_gpu_load() -> None:
         sleep(_GPU_LOAD_REFRESH_SECONDS)
 
 
-def get_gpu_load() -> dict[str, int | float | str | None]:
+def get_gpu_load() -> GpuTelemetry:
     global _GPU_LOAD_WORKER
 
-    if os.name != "nt":
+    if platform.system().lower() != "windows":
         return {
                 "gpu_load": None,
             "gpu_adapter": None,

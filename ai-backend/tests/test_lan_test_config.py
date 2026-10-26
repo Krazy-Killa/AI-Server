@@ -28,7 +28,24 @@ class LanTestConfigTests(unittest.TestCase):
                 self.assertIn("text/html", response.headers["Content-Type"])
                 self.assertIn(b"AI Server", response.read())
 
-            for path in ("/.env", "/ai-backend/main.py", "/docs/api.md", "/%2e%2e/.env"):
+            for path in (
+                "/js/app.js",
+                "/js/backend-logs.js",
+                "/js/operations.js",
+                "/js/system-monitor.js",
+                "/js/ui-preferences.js",
+            ):
+                with self.subTest(asset=path), urlopen(f"{base_url}{path}") as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertIn("javascript", response.headers["Content-Type"])
+                    self.assertTrue(response.read())
+
+            for path in (
+                "/.env",
+                "/ai-backend/main.py",
+                "/docs/backend/api.md",
+                "/%2e%2e/.env",
+            ):
                 with self.subTest(path=path), self.assertRaises(HTTPError) as error:
                     urlopen(f"{base_url}{path}")
                 error.exception.close()
