@@ -20,17 +20,16 @@ class BackendLogsEndpointTests(unittest.TestCase):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
         log_directory = Path(self.temporary_directory.name)
-        self.settings_patch = patch.object(
-            main,
+        self.settings_patch = patch.object(main.runtime,
             "settings",
-            replace(main.settings, log_directory=log_directory),
+            replace(main.runtime.settings, log_directory=log_directory),
         )
         self.settings_patch.start()
         self.addCleanup(self.settings_patch.stop)
         self.client, self.auth_store = authenticated_client(self, main)
 
     def test_returns_only_the_requested_most_recent_lines(self):
-        log_file = self.main.settings.log_directory / "backend.log"
+        log_file = self.main.runtime.settings.log_directory / "backend.log"
         log_file.write_text("first\nsecond\nthird\nfourth\n", encoding="utf-8")
 
         response = self.client.get("/api/backend/logs?limit=2")

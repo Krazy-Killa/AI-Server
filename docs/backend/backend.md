@@ -4,6 +4,15 @@
 
 ai-backend/
     main.py
+    api/
+        runtime.py
+        middleware.py
+        routes/
+            auth.py
+            chat.py
+            memory.py
+            research.py
+            operations.py
     config.py
     diagnostics.py
     memory_store.py
@@ -20,14 +29,42 @@ ai-backend/
 
 ## Modules
 
-main.py  
-- FastAPI app  
-- Route definitions, including `/ws/chat` and `/api/research/stream`
-- Protected conversation create/list/read/delete routes and turn persistence
-- Admin-only shared-insight routes and signed-in identity/shared-context
-  injection for dashboard chat and research
-- CORS limited to configured origins, plus WebSocket origin checks  
-- Request logging middleware (polled status endpoints log at DEBUG only)  
+main.py
+- Creates the FastAPI app and includes the routers.
+- Preserves the `main:app` import path used by Uvicorn and the container.
+
+api/runtime.py
+- Loads `.env` and validated configuration before modules consume settings.
+- Initializes shared service clients and stores; provides common chat-context,
+  identity, and error helpers.
+
+api/middleware.py
+- Registers request authentication, authorization, CSRF/origin validation,
+  request logging, and configured CORS handling.
+
+api/routes/auth.py
+- Login, session status, and logout endpoints.
+
+api/routes/chat.py
+- Local chat endpoints, including `/ws/chat`.
+
+api/routes/memory.py
+- Private conversation history, shared insights, and the admin-shared
+  AI Interface conversation.
+
+api/routes/research.py
+- Complete and streamed `/api/research` endpoints.
+
+api/routes/operations.py
+- System/GPU telemetry, Proxmox inventory, backend logs, diagnostics,
+  Discord-bot status, model selection, and placeholder endpoints.
+
+The API routers share the runtime module's initialized services and settings;
+the module split preserves the existing paths and authorization policy.
+Protected conversation operations, shared-insight access, and signed-in
+identity/shared-context handling are grouped with their corresponding chat or
+memory router. WebSocket origin checks remain in the chat router; request
+logging retains DEBUG-level handling for frequently polled paths.
 
 config.py  
 - Reads and validates environment settings once at import into a frozen

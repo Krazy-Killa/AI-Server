@@ -6,12 +6,27 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### In Development
+
+- Retrieval of similar historical incidents, semantic/vector search, and
+  model-assisted diagnostics.
+- Image-generation backend groundwork and later runtime integration.
+- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
+  validation on the target server.
+
+## [0.7.0] - 2026-10-26
+
 ### Added
 
 - Added `docs/project-context.md` as the primary project onboarding and AI
   session briefing, with current architecture, environment evidence,
-  infrastructure, priorities, and explicit unresolved hardware-plan
-  discrepancy.
+  infrastructure, priorities, and validation boundaries.
+- Updated the roadmap, deployment runbook, and project context to record the
+  planned Z590 + Intel Core i9-11900KF server platform. The exact motherboard
+  model and delivered physical hardware still require confirmation.
+- Split the FastAPI routes into auth, chat, memory, research, and operations
+  modules under `ai-backend/api/`, while preserving the `main:app` Uvicorn
+  entry point. Updated backend and architecture documentation.
 - Added Playwright browser regressions for dashboard module loading,
   authentication gating and failed sign-in, viewer/operator/admin controls,
   panel navigation, and persisted UI preferences. The tests exposed and fixed
@@ -106,14 +121,6 @@ principles and [Semantic Versioning](https://semver.org/).
   authentication and authorization errors, allowing the browser to read the
   server's 401/403 response. Added regression coverage; deployment to the
   nested Proxmox lab remains pending.
-
-### In Development
-
-- Retrieval of similar historical incidents, semantic/vector search, and
-  model-assisted diagnostics.
-- Image-generation backend groundwork and later runtime integration.
-- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
-  validation on the target server.
 
 ## [0.6.0] - 2026-10-14
 

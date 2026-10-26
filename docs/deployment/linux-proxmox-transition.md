@@ -159,10 +159,12 @@ compatibility.
 
 ## Provisional host hardware and storage plan
 
-This planning outline is not a finalized bill of materials. The exact AMD CPU
-and core count remain open; choose them against the intended VM count and
-concurrent workloads, including Proxmox overhead and host services. Start with
-32 GB system RAM, with a possible upgrade to 64 GB after measuring actual
+This planning outline is not a finalized bill of materials. The planned
+platform is a Z590 motherboard with an Intel Core i9-11900KF; the exact board
+model and delivered hardware still need confirmation. Validate firmware/boot
+configuration and the CPU's available resources against the intended VM count
+and concurrent workloads, including Proxmox overhead and host services. Start
+with 32 GB system RAM, with a possible upgrade to 64 GB after measuring actual
 headroom. System RAM does not replace or add to the RX 6800 XT's 16 GB VRAM.
 
 The initial storage target is a 2 TB NVMe drive for Proxmox/application

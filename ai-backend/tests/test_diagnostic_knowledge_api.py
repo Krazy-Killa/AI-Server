@@ -10,10 +10,9 @@ class DiagnosticKnowledgeApiTests(unittest.TestCase):
         import main
 
         self.main = main
-        cors_patch = patch.object(
-            main,
+        cors_patch = patch.object(main.runtime,
             "settings",
-            replace(main.settings, cors_origins=(TEST_ORIGIN,)),
+            replace(main.runtime.settings, cors_origins=(TEST_ORIGIN,)),
         )
         cors_patch.start()
         self.addCleanup(cors_patch.stop)
@@ -70,7 +69,7 @@ class DiagnosticKnowledgeApiTests(unittest.TestCase):
 
     def test_search_and_runbook_reads_do_not_run_diagnostics(self):
         with patch.object(
-            self.main.diagnostics_monitor,
+            self.main.runtime.diagnostics_monitor,
             "run_observation",
         ) as run_observation:
             response = self.client.get(

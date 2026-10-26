@@ -83,6 +83,9 @@ environment, not the deployment target.
 ### Done
 
 - Validated configuration loader
+- FastAPI routes organized into auth, chat, memory, research, and operations
+  modules while retaining the `main:app` deployment entry point. Full backend
+  regression suite passes against the modular app.
 - Console and rotating-file backend logging
 - WebSocket streaming for local chat
 - CORS and WebSocket origin restrictions for configured dashboard origins
@@ -323,10 +326,12 @@ until checked against the actual machine.
   Proxmox point release, CPU/GPU, boot mode, network topology, storage layout,
   recovery method, and service placement. Confirm these against the delivered
   server and installed OS in Phase 5; do not treat plans as verified inventory.
-- Current provisional sizing: AMD CPU not yet selected, 32 GB system RAM with
-  a possible 64 GB upgrade, 2 TB initial NVMe, and HDD-backed bulk/lower-I/O
-  workloads. Confirm CPU/core count and actual memory needs against Proxmox,
-  planned VMs, inference, and concurrent services before purchase.
+- Current planned platform: Z590 motherboard with Intel Core i9-11900KF and
+  RX 6800 XT. Start with 32 GB system RAM, with a possible 64 GB upgrade,
+  2 TB initial NVMe, and HDD-backed bulk/lower-I/O workloads. Confirm the
+  exact board model, delivered hardware, firmware/boot configuration, and
+  actual memory needs against Proxmox, planned VMs, inference, and concurrent
+  services before deployment.
 - Select the storage topology: HDD count, RAID/ZFS layout, controller mode,
   usable capacity, and expansion plan are undecided. Redundancy is not a
   backup; plan a separate backup and test restoration. Consider NVMe for

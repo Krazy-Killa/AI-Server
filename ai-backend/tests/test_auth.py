@@ -123,17 +123,16 @@ class AuthApiTests(unittest.TestCase):
         self.store.create_local_user("admin", ADMIN_PASSWORD, "admin")
         self.store.create_local_user("operator", ADMIN_PASSWORD, "operator")
         self.store.create_local_user("viewer", ADMIN_PASSWORD, "viewer")
-        settings_patch = patch.object(
-            main,
+        settings_patch = patch.object(main.runtime,
             "settings",
             replace(
-                main.settings,
+                main.runtime.settings,
                 auth_database_path=database_path,
                 auth_cookie_secure=False,
                 bot_api_token="",
             ),
         )
-        auth_patch = patch.object(main, "auth_store", self.store)
+        auth_patch = patch.object(main.runtime, "auth_store", self.store)
         settings_patch.start()
         auth_patch.start()
         self.addCleanup(auth_patch.stop)
@@ -169,7 +168,7 @@ class AuthApiTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/not-enabled").status_code, 403)
 
     def test_role_denial_includes_cors_headers_for_allowed_dashboard_origin(self):
-        allowed_origin = self.main.settings.cors_origins[0]
+        allowed_origin = self.main.runtime.settings.cors_origins[0]
         login = self.client.post(
             "/api/auth/login",
             json={
@@ -266,8 +265,7 @@ class AuthApiTests(unittest.TestCase):
 
     def test_proxmox_login_requires_an_explicit_role_mapping(self):
         self.store.map_proxmox_user("mapped@pve", "operator")
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "proxmox_authenticator",
             SimpleNamespace(
                 authenticate=lambda username, password: SimpleNamespace(
@@ -302,10 +300,9 @@ class AuthApiTests(unittest.TestCase):
         )
 
     def test_discord_bot_routes_require_scoped_service_credential(self):
-        settings_patch = patch.object(
-            self.main,
+        settings_patch = patch.object(self.main.runtime,
             "settings",
-            replace(self.main.settings, bot_api_token="b" * 40),
+            replace(self.main.runtime.settings, bot_api_token="b" * 40),
         )
         settings_patch.start()
         self.addCleanup(settings_patch.stop)

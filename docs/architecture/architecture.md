@@ -25,13 +25,16 @@ GPU / LLM / Bot / System Stats
 
 - FastAPI application
 - Modular design:
-  - system_stats.py
-  - model_manager.py
-  - bot_manager.py
-  - gpu/windows_gpu.py
-  - gpu/gpu_stub.py
-  - gpu/gpu_llm.py
-  - gpu/gpu_rocm.py
+  - `main.py` assembles the FastAPI app and keeps the `main:app` server entry
+    point stable.
+  - `api/runtime.py` initializes shared configuration, clients, stores, and
+    common request helpers.
+  - `api/middleware.py` applies authentication, authorization, CSRF/origin
+    checks, CORS, and request logging.
+  - `api/routes/` groups authentication, chat, memory, research, and
+    operations endpoints by responsibility.
+  - `system_stats.py`, `model_manager.py`, `bot_manager.py`, and
+    `gpu/` provide focused service and platform modules.
 - Provides REST endpoints for the implemented dashboard features. The VM
   panel has a read-only Proxmox inventory endpoint using a backend-only,
   least-privilege API token; there are no VM management operations. Network

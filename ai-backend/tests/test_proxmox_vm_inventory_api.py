@@ -11,17 +11,16 @@ class ProxmoxVMInventoryApiTests(unittest.TestCase):
         import main
 
         self.main = main
-        cors_patch = patch.object(
-            main,
+        cors_patch = patch.object(main.runtime,
             "settings",
-            replace(main.settings, cors_origins=(TEST_ORIGIN,)),
+            replace(main.runtime.settings, cors_origins=(TEST_ORIGIN,)),
         )
         cors_patch.start()
         self.addCleanup(cors_patch.stop)
         self.client, self.auth_store = authenticated_client(self, main)
 
     def test_reports_unconfigured_provider_explicitly(self):
-        with patch.object(self.main, "proxmox_inventory_client", None):
+        with patch.object(self.main.runtime, "proxmox_inventory_client", None):
             response = self.client.get("/api/proxmox/vms")
 
         self.assertEqual(response.status_code, 200)
@@ -46,8 +45,7 @@ class ProxmoxVMInventoryApiTests(unittest.TestCase):
                 "status": "running",
             }
         ]
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "proxmox_inventory_client",
             SimpleNamespace(list_guests=lambda: guests),
         ):
@@ -81,8 +79,7 @@ class ProxmoxVMInventoryApiTests(unittest.TestCase):
         def fail():
             raise ProxmoxInventoryError("Proxmox API inventory request returned HTTP 403.")
 
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "proxmox_inventory_client",
             SimpleNamespace(list_guests=fail),
         ):

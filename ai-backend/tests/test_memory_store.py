@@ -188,7 +188,7 @@ class ConversationApiTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="conversation-api-test-")
         self.addCleanup(self.directory.cleanup)
         self.store = ConversationStore(Path(self.directory.name) / "memory.sqlite3")
-        self.store_patch = patch.object(main, "conversation_store", self.store)
+        self.store_patch = patch.object(main.runtime, "conversation_store", self.store)
         self.store_patch.start()
         self.addCleanup(self.store_patch.stop)
 
@@ -211,8 +211,7 @@ class ConversationApiTests(unittest.TestCase):
         self.assertEqual(created.status_code, 201, created.text)
         conversation_id = created.json()["conversation_id"]
 
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "run_llm",
             return_value={"reply": "Hello back", "tokens": 2, "latency_ms": 10},
         ) as run_llm:
@@ -286,8 +285,7 @@ class ConversationApiTests(unittest.TestCase):
             "search_latency_ms": 5,
             "tokens": 8,
         }
-        with patch.object(
-            self.main, "run_research", return_value=research_result
+        with patch.object(self.main.runtime, "run_research", return_value=research_result
         ) as run_research:
             response = self.client.post(
                 "/api/research",
@@ -322,8 +320,8 @@ class ConversationApiTests(unittest.TestCase):
             "search_latency_ms": 5,
         }
         with (
-            patch.object(self.main, "prepare_research", return_value=prepared) as prepare,
-            patch.object(self.main, "stream_research", return_value=iter(["A cited ", "answer [1]."])),
+            patch.object(self.main.runtime, "prepare_research", return_value=prepared) as prepare,
+            patch.object(self.main.runtime, "stream_research", return_value=iter(["A cited ", "answer [1]."])),
         ):
             response = self.client.post(
                 "/api/research/stream",
@@ -360,8 +358,7 @@ class ConversationApiTests(unittest.TestCase):
 
         other_client = self._login_local_user("other-admin", "admin")
         other_conversation = other_client.post("/api/memory/conversations").json()
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "run_llm",
             return_value={"reply": "Ready.", "tokens": 1, "latency_ms": 10},
         ) as run_llm:
@@ -398,8 +395,7 @@ class ConversationApiTests(unittest.TestCase):
             ).status_code,
             403,
         )
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "run_llm",
             return_value={"reply": "Hi.", "tokens": 1, "latency_ms": 10},
         ) as run_llm:
@@ -417,7 +413,7 @@ class ConversationApiTests(unittest.TestCase):
             "PRIVATE_CHAT_MESSAGE_47f2",
         )
         first_reply = {"reply": "The backend is healthy.", "latency_ms": 2, "tokens": 4}
-        with patch.object(self.main, "run_llm", return_value=first_reply):
+        with patch.object(self.main.runtime, "run_llm", return_value=first_reply):
             first = self.client.post(
                 "/api/interface/chat",
                 json={"message": "Check backend health."},
@@ -430,7 +426,7 @@ class ConversationApiTests(unittest.TestCase):
         self.assertEqual(shared.json()["messages"][0]["author"], "test-admin (local)")
 
         next_reply = {"reply": "The previous check succeeded.", "latency_ms": 2, "tokens": 5}
-        with patch.object(self.main, "run_llm", return_value=next_reply) as run_llm:
+        with patch.object(self.main.runtime, "run_llm", return_value=next_reply) as run_llm:
             second = other_admin.post(
                 "/api/interface/chat",
                 json={"message": "What was the previous result?"},
@@ -466,8 +462,7 @@ class ConversationApiTests(unittest.TestCase):
                 label + ("x" * (2000 - len(label))),
                 "local:publisher",
             )
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "run_llm",
             return_value={"reply": "Ready.", "tokens": 1, "latency_ms": 10},
         ) as run_llm:
@@ -484,15 +479,13 @@ class ConversationApiTests(unittest.TestCase):
         from dataclasses import replace
 
         self.store.add_shared_insight("Admin-only note", "local:admin")
-        settings_patch = patch.object(
-            self.main,
+        settings_patch = patch.object(self.main.runtime,
             "settings",
-            replace(self.main.settings, bot_api_token="test-bot-token"),
+            replace(self.main.runtime.settings, bot_api_token="test-bot-token"),
         )
         settings_patch.start()
         self.addCleanup(settings_patch.stop)
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "run_llm",
             return_value={"reply": "Hi.", "tokens": 1, "latency_ms": 10},
         ) as run_llm:

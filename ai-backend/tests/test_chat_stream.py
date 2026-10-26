@@ -99,13 +99,12 @@ class ChatWebSocketTests(unittest.TestCase):
         self.memory_store = ConversationStore(
             Path(self.memory_directory.name) / "memory.sqlite3"
         )
-        memory_patch = patch.object(main, "conversation_store", self.memory_store)
+        memory_patch = patch.object(main.runtime, "conversation_store", self.memory_store)
         memory_patch.start()
         self.addCleanup(memory_patch.stop)
 
     def test_streams_tokens_then_done(self):
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "stream_llm",
             side_effect=lambda _message, **_kwargs: chunks("Hel", "lo"),
         ):
@@ -122,8 +121,7 @@ class ChatWebSocketTests(unittest.TestCase):
     def test_stream_persists_user_and_assistant_turn(self):
         owner_id = f"local:{self.auth_store.list_local_users()[0]['username']}"
         conversation = self.memory_store.create_conversation(owner_id)
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "stream_llm",
             side_effect=lambda _message, **_kwargs: chunks("Saved", " reply"),
         ):
@@ -153,8 +151,7 @@ class ChatWebSocketTests(unittest.TestCase):
         self.memory_store.add_shared_insight(
             "Published operational note.", "local:another-admin"
         )
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "stream_llm",
             side_effect=lambda _message, **_kwargs: chunks("Context applied."),
         ) as stream_llm:
@@ -184,9 +181,8 @@ class ChatWebSocketTests(unittest.TestCase):
             ),
         )
         with (
-            patch.object(self.main, "diagnostics_monitor", monitor),
-            patch.object(
-                self.main,
+            patch.object(self.main.runtime, "diagnostics_monitor", monitor),
+            patch.object(self.main.runtime,
                 "stream_llm",
                 side_effect=lambda _message, **_kwargs: chunks("Diagnostics complete."),
             ) as stream_llm,
@@ -208,7 +204,7 @@ class ChatWebSocketTests(unittest.TestCase):
             raise LLMRuntimeError("llama.cpp is down")
             yield
 
-        with patch.object(self.main, "stream_llm", side_effect=failing_stream):
+        with patch.object(self.main.runtime, "stream_llm", side_effect=failing_stream):
             with self.client.websocket_connect(
                 "/ws/chat", headers={"origin": TEST_ORIGIN}
             ) as socket:
@@ -225,7 +221,7 @@ class ChatWebSocketTests(unittest.TestCase):
             self.assertEqual(socket.receive_json()["type"], "error")
             socket.send_json({"message": "   "})
             self.assertEqual(socket.receive_json()["type"], "error")
-            socket.send_json({"message": "x" * (self.main.settings.max_chat_chars + 1)})
+            socket.send_json({"message": "x" * (self.main.runtime.settings.max_chat_chars + 1)})
             self.assertIn("exceeds", socket.receive_json()["detail"])
 
     def test_rejects_disallowed_origin(self):
@@ -244,8 +240,7 @@ class ChatWebSocketTests(unittest.TestCase):
                 pass
 
     def test_allows_dashboard_origin(self):
-        with patch.object(
-            self.main,
+        with patch.object(self.main.runtime,
             "stream_llm",
             side_effect=lambda _message, **_kwargs: chunks("ok"),
         ):

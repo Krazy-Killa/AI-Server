@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 os.environ.setdefault(
     "AI_SERVER_LOG_DIR", tempfile.mkdtemp(prefix="ai-server-test-logs-")
@@ -32,15 +32,13 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.main = main
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
-        self.settings_patch = patch.object(
-            main,
+        self.settings_patch = patch.object(main.runtime,
             "settings",
-            replace(main.settings, log_directory=Path(self.temporary_directory.name)),
+            replace(main.runtime.settings, log_directory=Path(self.temporary_directory.name)),
         )
         self.settings_patch.start()
         self.addCleanup(self.settings_patch.stop)
-        self.monitor_patch = patch.object(
-            main,
+        self.monitor_patch = patch.object(main.runtime,
             "diagnostics_monitor",
             DiagnosticsMonitor(
                 checks=(
@@ -56,9 +54,9 @@ class DiagnosticsApiTests(unittest.TestCase):
 
     def test_system_status_reports_active_diagnostics_mode(self):
         with (
-            patch.object(self.main, "get_system_stats", return_value={"cpu": 12.5}),
+            patch.object(self.main.runtime, "get_system_stats", return_value={"cpu": 12.5}),
             patch.object(
-                type(self.main.diagnostics_monitor),
+                type(self.main.runtime.diagnostics_monitor),
                 "is_running",
                 new_callable=PropertyMock,
                 return_value=True,
@@ -71,9 +69,9 @@ class DiagnosticsApiTests(unittest.TestCase):
 
     def test_system_status_reports_no_activity_mode_when_idle(self):
         with (
-            patch.object(self.main, "get_system_stats", return_value={"cpu": 12.5}),
+            patch.object(self.main.runtime, "get_system_stats", return_value={"cpu": 12.5}),
             patch.object(
-                type(self.main.diagnostics_monitor),
+                type(self.main.runtime.diagnostics_monitor),
                 "is_running",
                 new_callable=PropertyMock,
                 return_value=False,
@@ -130,9 +128,9 @@ class DiagnosticsApiTests(unittest.TestCase):
         observation_response = self.client.post("/api/diagnostics/observe")
         observation = observation_response.json()
         with patch.object(
-            self.main.diagnostics_monitor,
+            self.main.runtime.diagnostics_monitor,
             "run_observation",
-            wraps=self.main.diagnostics_monitor.run_observation,
+            wraps=self.main.runtime.diagnostics_monitor.run_observation,
         ) as run_observation:
             report_response = self.client.get(
                 "/api/diagnostics/report",
@@ -175,7 +173,7 @@ class DiagnosticsApiTests(unittest.TestCase):
 
     def test_observation_reports_persistence_failure(self):
         with patch.object(
-            self.main.diagnostics_monitor,
+            self.main.runtime.diagnostics_monitor,
             "run_observation",
             side_effect=DiagnosticsStoreError("database unavailable"),
         ):
@@ -194,11 +192,11 @@ class DiagnosticsApiTests(unittest.TestCase):
             "tokens": 9,
         }
         with (
-            patch.object(self.main, "run_llm", return_value=llm_result) as run_llm,
+            patch.object(self.main.runtime, "run_llm", return_value=llm_result) as run_llm,
             patch.object(
-                self.main.diagnostics_monitor,
+                self.main.runtime.diagnostics_monitor,
                 "run_observation",
-                wraps=self.main.diagnostics_monitor.run_observation,
+                wraps=self.main.runtime.diagnostics_monitor.run_observation,
             ) as run_observation,
         ):
             response = self.client.post(
@@ -220,11 +218,11 @@ class DiagnosticsApiTests(unittest.TestCase):
             "tokens": 9,
         }
         with (
-            patch.object(self.main, "run_llm", return_value=llm_result) as run_llm,
+            patch.object(self.main.runtime, "run_llm", return_value=llm_result) as run_llm,
             patch.object(
-                self.main.diagnostics_monitor,
+                self.main.runtime.diagnostics_monitor,
                 "run_observation",
-                wraps=self.main.diagnostics_monitor.run_observation,
+                wraps=self.main.runtime.diagnostics_monitor.run_observation,
             ) as run_observation,
         ):
             response = self.client.post(
@@ -240,11 +238,11 @@ class DiagnosticsApiTests(unittest.TestCase):
     def test_diagnostics_questions_do_not_trigger_an_observation(self):
         llm_result = {"reply": "Use the Diagnostics panel.", "latency_ms": 5, "tokens": 6}
         with (
-            patch.object(self.main, "run_llm", return_value=llm_result),
+            patch.object(self.main.runtime, "run_llm", return_value=llm_result),
             patch.object(
-                self.main.diagnostics_monitor,
+                self.main.runtime.diagnostics_monitor,
                 "run_observation",
-                wraps=self.main.diagnostics_monitor.run_observation,
+                wraps=self.main.runtime.diagnostics_monitor.run_observation,
             ) as run_observation,
         ):
             response = self.client.post(
@@ -254,28 +252,39 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         run_observation.assert_not_called()
 
+    def test_legacy_llm_route_uses_the_chat_handler(self):
+        llm_result = {"reply": "Local reply.", "latency_ms": 5, "tokens": 2}
+        with (
+            patch.object(self.main.runtime, "run_llm", return_value=llm_result),
+            patch.object(
+                self.main.runtime, "_admin_memory_prompt", new=AsyncMock(return_value=None)
+            ),
+        ):
+            response = self.client.post("/api/llm", json={"message": "Hello"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), llm_result)
+
     def test_discord_service_chat_cannot_trigger_diagnostics(self):
         from fastapi.testclient import TestClient
 
         service_token = "test-discord-service-token-" + "x" * 32
-        settings_patch = patch.object(
-            self.main,
+        settings_patch = patch.object(self.main.runtime,
             "settings",
-            replace(self.main.settings, bot_api_token=service_token),
+            replace(self.main.runtime.settings, bot_api_token=service_token),
         )
         settings_patch.start()
         self.addCleanup(settings_patch.stop)
         service_client = TestClient(self.main.app)
         with (
-            patch.object(
-                self.main,
+            patch.object(self.main.runtime,
                 "run_llm",
                 return_value={"reply": "No observation run.", "latency_ms": 1, "tokens": 2},
             ),
             patch.object(
-                self.main.diagnostics_monitor,
+                self.main.runtime.diagnostics_monitor,
                 "run_observation",
-                wraps=self.main.diagnostics_monitor.run_observation,
+                wraps=self.main.runtime.diagnostics_monitor.run_observation,
             ) as run_observation,
         ):
             response = service_client.post(

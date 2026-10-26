@@ -16,16 +16,15 @@ def authenticated_client(test_case, main):
     test_case.addCleanup(directory.cleanup)
     store = AuthStore(Path(directory.name) / "auth.sqlite3")
     store.create_local_user(TEST_USERNAME, TEST_PASSWORD, "admin")
-    settings_patch = patch.object(
-        main,
+    settings_patch = patch.object(main.runtime,
         "settings",
         replace(
-            main.settings,
+            main.runtime.settings,
             auth_database_path=Path(directory.name) / "auth.sqlite3",
             auth_cookie_secure=False,
         ),
     )
-    store_patch = patch.object(main, "auth_store", store)
+    store_patch = patch.object(main.runtime, "auth_store", store)
     settings_patch.start()
     store_patch.start()
     test_case.addCleanup(store_patch.stop)

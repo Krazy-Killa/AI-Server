@@ -97,13 +97,14 @@ preferences. They are not backend authorization or deployment tests.
 
 ### Backend
 
-`ai-backend/main.py` provides the FastAPI API, protected REST endpoints,
-WebSocket chat, and streamed web research. Related modules handle
-configuration, authentication, SQLite memory, diagnostics, model lifecycle,
-system statistics, Proxmox authentication/inventory, and SearXNG research.
-llama.cpp is a separate local HTTP service. Backend settings are validated at
-startup; logs use console and rotating-file handlers, and chat message text is
-not logged.
+`ai-backend/main.py` assembles the FastAPI app and preserves the `main:app`
+server entry point. `ai-backend/api/` contains shared runtime setup,
+authentication/logging/CORS middleware, and routers grouped into auth, chat,
+memory, research, and operations. Related modules handle configuration,
+SQLite memory, diagnostics, model lifecycle, system statistics, Proxmox
+authentication/inventory, and SearXNG research. llama.cpp is a separate local
+HTTP service. Backend settings are validated at startup; logs use console and
+rotating-file handlers, and chat message text is not logged.
 
 ### Authentication
 
@@ -292,18 +293,17 @@ telemetry. The repository does not establish its motherboard or CPU model.
 
 ### Planned server platform and GPU
 
-The requested potential platform is **Z590 + Intel Core i9-11900KF**, with an
-RX 6800 XT as the initial AI GPU. However, the existing roadmap and deployment
-runbook still state that the exact AMD CPU/core count is undecided. Treat the
-Z590/i9-11900KF as a proposed plan that needs reconciliation with the roadmap
-and final bill of materials, not as verified or finalized hardware.
+The planned platform is a **Z590 motherboard + Intel Core i9-11900KF**, with
+an RX 6800 XT as the initial AI GPU. The exact motherboard model and delivered
+physical hardware still need confirmation; this is a plan, not verified
+inventory.
 
 The RX 6800 XT has 16 GB VRAM according to the deployment planning guide. The
 host is planned for 32 GB system RAM initially, with a possible 64 GB upgrade;
 storage plans include a 2 TB initial NVMe and HDD-backed bulk/lower-I/O
 workloads. These are provisional plans, not a finalized bill of materials.
-The storage layout, redundancy, backup strategy, exact CPU, and physical
-inventory must be confirmed.
+The storage layout, redundancy, backup strategy, exact motherboard model, and
+physical inventory must be confirmed.
 
 ### Possible future dual-GPU architecture
 
@@ -416,9 +416,11 @@ and [household infrastructure reference](./operations/home-network-topology.md).
 
 ### Major directories and files
 
-- `ai-backend/` — FastAPI app, auth, configuration, memory, diagnostics,
-  telemetry, model management, Proxmox clients/contracts, research, maintenance
-  simulations, and backend unit tests.
+- `ai-backend/` — FastAPI app assembly, auth, configuration, memory,
+  diagnostics, telemetry, model management, Proxmox clients/contracts,
+  research, maintenance simulations, and backend unit tests.
+- `ai-backend/api/` — Shared runtime/middleware and responsibility-focused
+  FastAPI route modules.
 - `ai-backend/gpu/` — platform telemetry providers, llama.cpp client, GPU
   placeholders, and DirectML smoke test.
 - `ai-backend/tests/` — Python `unittest` suites for auth, API behavior,
@@ -485,11 +487,9 @@ Important guides include the [roadmap](./roadmap/roadmap.md),
   do not turn model output into action authority; do not claim a mock or
   nested-lab result as physical-host acceptance; preserve recovery access and
   persistent data.
-- **Hardware discrepancy to resolve:** this briefing records the requested
-  Z590/i9-11900KF as proposed, while the current roadmap/runbook still says
-  exact CPU is undecided and describes an AMD CPU. Confirm the intended
-  platform and update the source-of-truth hardware plan before procurement or
-  host-specific deployment.
+- **Hardware plan:** the current plan is a Z590 motherboard with an Intel
+  Core i9-11900KF and RX 6800 XT. Confirm the exact motherboard model and
+  delivered hardware before host-specific deployment.
 
 For current status, read the [roadmap](./roadmap/roadmap.md) and the focused
 guide for the requested subsystem before editing code.
