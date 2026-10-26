@@ -396,16 +396,37 @@ workload separation—are not the current implementation priority.
 
 These are plans or concepts, not implemented behavior:
 
-- **Network-Aware Diagnostics:** observe-only correlation of WAN, LAN, Wi-Fi,
-  service, and client evidence; distinguish possible ISP/router/AP/congestion/
-  client issues; produce evidence-based reports and history before considering
-  separately gated remediation.
-- **Conversational Household Interface:** a future household-facing natural
-  interaction layer for diagnostics, maintenance, and services. A symptom
-  request is planned to temporarily gate household inference, hand the single
-  llama.cpp runtime to the approved maintenance model, then restore the
-  previous household model after checks. This is not implemented; identity
-  and authorization must be designed and must not be inferred from voice.
+- **Household AI ↔ Maintenance AI Delegation Model:** Household AI is planned
+  as the user-facing layer for chat, research, voice, and explanations;
+  Maintenance AI is planned as the authoritative engine for diagnostics,
+  incident analysis, infrastructure awareness, maintenance workflows, and
+  runbook execution. Maintenance AI would primarily communicate through the
+  AI Interface/Dashboard, while Household AI could request diagnostics for a
+  user and translate persisted findings into audience-appropriate responses.
+  This delegated workflow and runbook execution are not implemented.
+- **Network-Aware Diagnostics (Concept):** extend Maintenance AI from server
+  health to configured, read-only network and infrastructure evidence.
+  Maintenance AI would correlate WAN, LAN, wireless, service, and client
+  observations and produce findings; Household AI could request checks on a
+  user's behalf and explain results. Least-privilege access, unavailable-data
+  handling, evidence history, and separately gated remediation are design
+  constraints. No network telemetry provider or end-to-end workflow is
+  implemented.
+- **Conversational Household Interface (Concept):** Household AI would handle
+  chat, research, future voice requests, and user-facing explanations, while
+  routing authorized operational questions to Maintenance AI. Local STT/TTS,
+  household enrollment and authorization, consent, audio retention, and
+  notification safeguards must be designed; voice must not establish
+  identity or privileges. A bounded diagnostic model handoff is planned but
+  not implemented. No household voice interface or STT/TTS integration is
+  selected or implemented.
+- **Shared Incident Reporting and Administrative Visibility:** extend the
+  current bounded diagnostics incident history to attribute household-
+  initiated reports, provide authorized administrators a shared operational
+  timeline with findings and resolution updates, and let Household AI explain
+  findings without duplicating the operational record. This is a concept;
+  household attribution and the shared Maintenance AI event workflow are not
+  implemented.
 - **Voice STT/TTS:** local speech-to-text input and text-to-speech responses
   are candidate components; models, devices, consent, and audio retention are
   undecided.
@@ -413,9 +434,12 @@ These are plans or concepts, not implemented behavior:
   candidates, not selected products. Desired capabilities include device
   inventory, client statistics, events, and supported least-privilege
   telemetry.
-- **Multi-GPU AI Operations:** evaluate separate user-AI and maintenance-AI
-  GPU roles only after the host hardware and a measured single-GPU baseline
-  are established.
+- **Multi-GPU Workload Separation (Concept):** dedicate the planned RX 6800
+  XT to Maintenance AI and evaluate a possible second GPU for household-facing
+  User AI. The RX 7900 XT/XTX and RX 9070 XT remain unselected candidates.
+  Until hardware and runtime support are validated, the interim design is
+  single-GPU/single-runtime model handoff; concurrent operation is not
+  implemented or validated.
 - **Infrastructure Awareness:** add verified read-only inventory and health
   sources for network and household services, starting with explicit scope
   and no configuration changes.

@@ -8,6 +8,13 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Restructured the Network-Aware Diagnostics and Conversational Household
+  Interface roadmap concepts to match the delegation-model format, clarifying
+  objectives, AI responsibilities, design constraints, and unimplemented
+  status.
+- Restructured the Multi-GPU Workload Separation roadmap concept to match the
+  same format, documenting the intended RX 6800 XT Maintenance AI role, the
+  possible second User AI GPU, candidate tradeoffs, and validation status.
 - Clarified workload roles: the RX 6800 XT is intended strictly for
   maintenance AI, while a possible second GPU would serve household-facing AI.
   Until a second card is selected and validated, the interim design remains
@@ -21,6 +28,19 @@ principles and [Semantic Versioning](https://semver.org/).
   maintenance model on the single llama.cpp runtime, then restore the prior
   model after health checks. This is a design requirement only; no such
   household workflow is implemented.
+
+### Added
+
+- Added the **Household AI ↔ Maintenance AI Delegation Model** as a roadmap
+  concept, defining the planned user-facing and operational-analysis roles,
+  diagnostics requests, persisted findings, and audience-appropriate
+  explanations. Delegated operation and runbook execution are not implemented.
+- Added the **Shared Incident Reporting and Administrative Visibility**
+  concept to the roadmap: attribute household-initiated diagnostics, expose
+  findings and resolution history to authorized administrators, and keep
+  Household AI explanations linked to shared operational records. This
+  extends existing bounded incident history; the proposed household workflow
+  and attribution are not implemented.
 
 ### In Development
 
