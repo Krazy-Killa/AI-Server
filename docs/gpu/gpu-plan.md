@@ -140,9 +140,16 @@ implemented or assumed to improve performance. Compare supported hardware and
 runtime combinations, VRAM use, throughput, latency, power, and stability
 against the single-GPU setup before deciding.
 
-A separate future concept assigns GPUs different workload roles (user-facing
-AI versus maintenance/diagnostics) rather than splitting or replicating the
-same model. This is also unselected and unvalidated; see the
+The intended workload-role design is to dedicate the RX 6800 XT strictly to
+maintenance AI (diagnostics, incident analysis, runbooks, and scheduled
+maintenance), and use a possible second GPU for household-facing AI. Candidate
+second-GPU choices are the Radeon RX 7900 XT/XTX, if greater VRAM capacity is
+the priority, or the RX 9070 XT, for its RDNA 4 architecture and potential
+speed/efficiency advantages. The exact 7900 variant is undecided, and these
+tradeoffs have not been benchmarked with the intended workloads. The second
+GPU is not selected or acquired. Until it is validated, the interim design is
+single-GPU/single-runtime model handoff, not concurrent operation of both
+roles. Power/cooling, compatibility, and performance are unvalidated. See the
 [household infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
 
 ## Strategy

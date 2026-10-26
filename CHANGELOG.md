@@ -6,6 +6,22 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Clarified workload roles: the RX 6800 XT is intended strictly for
+  maintenance AI, while a possible second GPU would serve household-facing AI.
+  Until a second card is selected and validated, the interim design remains
+  single-GPU/single-runtime model handoff.
+- Recorded the Radeon RX 7900 XT/XTX and RX 9070 XT as unselected second-GPU
+  candidates, noting the VRAM-capacity versus RDNA 4 speed/efficiency tradeoff.
+  The current one-GPU deployment plan is unchanged; no workload benchmark has
+  selected or validated either candidate.
+- Clarified the planned exclusive on-demand diagnostic handoff for household
+  symptom reports: gate household inference, use an approved installed
+  maintenance model on the single llama.cpp runtime, then restore the prior
+  model after health checks. This is a design requirement only; no such
+  household workflow is implemented.
+
 ### In Development
 
 - Retrieval of similar historical incidents, semantic/vector search, and

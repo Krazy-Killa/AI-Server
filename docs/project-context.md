@@ -294,9 +294,10 @@ telemetry. The repository does not establish its motherboard or CPU model.
 ### Planned server platform and GPU
 
 The planned platform is a **Z590 motherboard + Intel Core i9-11900KF**, with
-an RX 6800 XT as the initial AI GPU. The exact motherboard model and delivered
-physical hardware still need confirmation; this is a plan, not verified
-inventory.
+an RX 6800 XT as the initial GPU. The RX 6800 XT is intended to be dedicated
+strictly to maintenance AI, where its 16 GB VRAM is more important than
+inference speed. The exact motherboard model and delivered physical hardware
+still need confirmation; this is a plan, not verified inventory.
 
 The RX 6800 XT has 16 GB VRAM according to the deployment planning guide. The
 host is planned for 32 GB system RAM initially, with a possible 64 GB upgrade;
@@ -305,18 +306,25 @@ workloads. These are provisional plans, not a finalized bill of materials.
 The storage layout, redundancy, backup strategy, exact motherboard model, and
 physical inventory must be confirmed.
 
-### Possible future dual-GPU architecture
+### Planned AI workload roles and possible second GPU
 
-An unselected future design could assign:
+The intended role for the RX 6800 XT is **Maintenance AI GPU**: diagnostics,
+incident analysis, runbook workflows, system-health and network diagnostics,
+and scheduled maintenance. It is not intended for household-facing AI.
 
-- **User AI GPU:** chat, research, Discord integrations, vision, and household
-  interactions.
-- **Maintenance AI GPU:** diagnostics, incident analysis, runbook workflows,
-  system-health and network diagnostics, and scheduled maintenance.
+If a second GPU is added, it would be dedicated to **User AI**: household chat,
+research, Discord integrations, vision, and conversational interaction. The
+possible second-GPU candidates are the **Radeon RX 7900 XT/XTX** or **Radeon
+RX 9070 XT**. The 7900 XT/XTX is favored if additional VRAM capacity is the
+main requirement; the 9070 XT is a candidate for its newer RDNA 4 architecture
+and potential speed/efficiency advantages. The exact 7900 model and
+comparative workload performance are not established.
 
-This may avoid model switching on a shared runtime, but GPU count, models,
-VRAM sizing, power/cooling, compatibility, isolation, and performance have
-not been established. The current deployment plan remains one GPU. See the
+The second card is not selected or acquired. Until a second GPU and runtime
+arrangement are validated, the existing single-GPU, single-llama.cpp model
+handoff remains the interim design; the intended dedicated roles do not
+establish that both AIs can operate concurrently. Power/cooling, compatibility,
+isolation, and performance remain unvalidated. See the
 [GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference) and
 [household infrastructure reference](./operations/home-network-topology.md#possible-multi-gpu-role-separation).
 
@@ -393,8 +401,11 @@ These are plans or concepts, not implemented behavior:
   client issues; produce evidence-based reports and history before considering
   separately gated remediation.
 - **Conversational Household Interface:** a future household-facing natural
-  interaction layer for diagnostics, maintenance, and services; identity and
-  authorization must be designed and must not be inferred from voice.
+  interaction layer for diagnostics, maintenance, and services. A symptom
+  request is planned to temporarily gate household inference, hand the single
+  llama.cpp runtime to the approved maintenance model, then restore the
+  previous household model after checks. This is not implemented; identity
+  and authorization must be designed and must not be inferred from voice.
 - **Voice STT/TTS:** local speech-to-text input and text-to-speech responses
   are candidate components; models, devices, consent, and audio retention are
   undecided.

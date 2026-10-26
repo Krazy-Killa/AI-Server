@@ -494,7 +494,13 @@ validated on the physical target.
   Quest headset is lagging,” and “Can you diagnose the network?” The long-term
   vision is for household members to report connectivity problems through a
   single interface while the maintenance subsystem performs
-  infrastructure-aware diagnostics and guided remediation.
+  infrastructure-aware diagnostics. A household request for explanation is
+  planned to trigger an on-demand, bounded diagnostic handoff: temporarily
+  gate household-facing inference, switch the single llama.cpp runtime to an
+  approved installed maintenance model, return an evidence-based diagnosis,
+  restore the prior household model, and reopen service after health checks.
+  This is distinct from scheduled maintenance and does not itself authorize
+  remediation; any action remains subject to separate policy and approval.
 
   This is a concept only: it is not assigned to a phase or selected as the
   next priority, and no network telemetry providers or end-to-end network
@@ -537,12 +543,18 @@ validated on the physical target.
   [household network reference](../operations/home-network-topology.md).
 
 - **Future capability — multi-GPU workload separation (Concept):** evaluate
-  assigning a primary GPU to user-facing AI and a second GPU to maintenance
-  and diagnostics workloads, so those workloads can operate independently
-  without model switching on a shared runtime. Workload roles are illustrative;
-  GPU hardware, memory sizing, power/cooling, host compatibility, runtime
-  support, and isolation requirements remain unselected and unvalidated. This
-  does not replace the current single-GPU deployment plan. See the
+  dedicating the planned RX 6800 XT strictly to maintenance AI and using a
+  possible second GPU for household-facing AI, so the workloads can operate
+  independently without switching models on one shared runtime. Candidate
+  second-GPU choices are Radeon RX 7900 XT/XTX (if greater VRAM capacity is
+  the priority) or RX 9070 XT (newer RDNA 4 architecture with potential
+  speed/efficiency advantages). The exact 7900 variant and comparative
+  workload performance remain unresolved; these are not benchmark results or
+  a hardware selection. The second GPU is not selected or acquired. Until it
+  is validated, the interim design remains single-GPU/single-runtime model
+  handoff, not concurrent operation of both roles. Power/cooling, host
+  compatibility, runtime support, and isolation requirements remain
+  unvalidated. The current deployment plan remains one RX 6800 XT. See the
   [household network and infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
 
 ## Documentation References

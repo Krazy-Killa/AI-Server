@@ -124,17 +124,21 @@ and least-privilege access before choosing a platform.
 
 ## Possible multi-GPU role separation
 
-An eventual multi-GPU design could separate user-facing AI from maintenance
-workloads:
+The planned role split is to keep the RX 6800 XT dedicated to Maintenance AI
+and add a second GPU for household-facing User AI:
 
 | Candidate GPU role | Possible workloads |
 | --- | --- |
-| GPU 0 — primary user AI | Chat, research, Discord integrations, vision, and household interactions |
-| GPU 1 — maintenance AI | Diagnostics, incident analysis, runbook workflows, system-health monitoring, network diagnostics, and scheduled maintenance |
+| RX 6800 XT — maintenance AI | Diagnostics, incident analysis, runbook workflows, system-health monitoring, network diagnostics, and scheduled maintenance |
+| Possible second GPU — user AI | Chat, research, Discord integrations, vision, and household interactions |
 
-The long-term objective would be to run maintenance and diagnostics
-independently of user-facing AI without switching models on a shared runtime.
-This is an architectural goal only. GPU count, models, VRAM requirements,
-power/cooling, host compatibility, workload isolation, and runtime support have
-not been established. It does not change the current single-GPU deployment
-plan, and must not be treated as validated hardware sizing.
+Possible second-GPU candidates are the Radeon RX 7900 XT/XTX or RX 9070 XT.
+The current tradeoff is greater VRAM capacity as a reason to consider the
+7900 XT/XTX, versus the 9070 XT's newer RDNA 4 architecture and potential
+speed/efficiency advantages. This is a candidate comparison, not a measured
+workload benchmark; the exact 7900 variant is undecided. The second GPU is not
+selected or acquired. Until it is validated, single-GPU/single-runtime model
+handoff remains the interim design, not concurrent operation of both roles.
+Power/cooling, host compatibility, workload isolation, runtime support, and
+performance have not been established. This does not change the current
+one-GPU deployment plan or represent validated hardware sizing.

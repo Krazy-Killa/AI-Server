@@ -124,8 +124,12 @@ exposure have not been validated.
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the
 Windows development machine and is planned to move to the server after a
-replacement GPU is acquired. This is a target design, not an installed or
-compatibility-tested stack.
+replacement GPU is acquired. Its intended role is exclusively maintenance AI;
+it is not intended for household-facing inference. GPU passthrough is not
+planned; the GPU will be used directly by the Proxmox host and its AI runtime.
+A possible second GPU for household-facing AI is not selected. Until then,
+single-GPU/single-runtime model handoff remains the interim design. This is a
+target design, not an installed or compatibility-tested stack.
 
 ## Intended Linux/Proxmox stack
 
