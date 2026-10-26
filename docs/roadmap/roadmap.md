@@ -68,7 +68,10 @@ environment, not the deployment target.
 - Dashboard UI and panel navigation
 - Dashboard behavior is organized into native browser modules without a build
   step; browser loading and focused module ownership are documented in the
-  frontend guide.
+  frontend guide. Playwright browser regressions now cover module loading,
+  sign-in gating, viewer/operator/admin UI behavior, panel navigation, and
+  persisted preferences. They found and fixed CSS that had overridden the
+  standard `hidden` attribute on styled controls.
 - FastAPI backend foundation
 - Discord bot foundation
 - System monitoring in the Windows test environment

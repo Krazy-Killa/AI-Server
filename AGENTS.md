@@ -2,6 +2,8 @@
 
 ## Documentation Updates
 
+For initial project orientation, read `docs/project-context.md`; use the
+roadmap and focused guides below as the detailed source of truth.
 Before any implementation work, read `docs/roadmap/roadmap.md` and the
 documentation for the affected subsystem. Use those documents to understand intended
 behavior, constraints, and current status before planning or editing code. If

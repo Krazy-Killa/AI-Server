@@ -21,6 +21,17 @@ exchange shared API/auth and UI state through explicit imports or initializer
 arguments rather than classic-script globals. Serve the dashboard over HTTP or
 HTTPS so browsers can load its module imports.
 
+## Browser regression tests
+
+The Playwright suite in `tests/frontend/` serves the dashboard's allowlisted
+assets over local HTTP and mocks API responses in the browser. It checks native
+module loading, pre-authentication request gating, successful and rejected
+sign-in, role-specific controls, panel navigation, and persisted
+theme/accent/sidebar preferences.
+These are frontend regressions, not backend authentication tests or Proxmox
+integration evidence. See the [Windows testing guide](../operations/testing-environment.md#dashboard-browser-regressions)
+for setup and execution.
+
 ## Panels
 
 - AI Interface (single shared admin server console)

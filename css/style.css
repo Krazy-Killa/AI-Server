@@ -1483,9 +1483,8 @@ header {
     margin-top: 18px;
 }
 
-.app[hidden],
-.auth-screen[hidden] {
-    display: none;
+[hidden] {
+    display: none !important;
 }
 
 .auth-screen {

@@ -18,6 +18,7 @@ implemented behavior from planned or unverified work.
 
 ## Main references
 
+- [Project context and AI session handoff](./project-context.md)
 - [Project roadmap](./roadmap/roadmap.md)
 - [Architecture overview](./architecture/architecture.md)
 - [Backend API](./backend/api.md)

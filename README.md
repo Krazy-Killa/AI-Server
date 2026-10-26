@@ -114,6 +114,8 @@ index.html        Dashboard interface
 
 ## Documentation
 
+- [Project context](./docs/project-context.md) — Primary onboarding briefing
+  for contributors and AI sessions.
 - [Documentation index](./docs/README.md) — Browse the guides by topic.
 - [Development roadmap](./docs/roadmap/roadmap.md) — Current status, phases,
   and future plans.

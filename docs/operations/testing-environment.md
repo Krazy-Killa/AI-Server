@@ -134,6 +134,24 @@ environment, installs the API dependencies and ONNX Runtime DirectML, then
 checks that ONNX Runtime exposes `DmlExecutionProvider`, then runs a small ONNX
 graph through DirectML.
 
+### Dashboard browser regressions
+
+The Playwright suite exercises the native browser modules using mocked API
+responses. It covers module loading, sign-in gating and rejected credentials,
+administrator/operator/viewer UI controls, panel navigation, and persisted
+theme, accent, and sidebar preferences. It does not replace backend
+authorization tests or validate the nested Proxmox guest. From PowerShell, run:
+
+```powershell
+npm install
+npx playwright install chromium
+npm run test:frontend
+```
+
+The test server binds only to `127.0.0.1:4173`, serves an explicit allowlist of
+dashboard assets, and is started and stopped by Playwright. Do not reuse these
+mocked results as live API or deployment acceptance.
+
 ## Portable diagnostics and infrastructure tests
 
 The runbook retrieval and maintenance/remediation simulations are local-only

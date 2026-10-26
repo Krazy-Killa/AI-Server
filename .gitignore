@@ -18,6 +18,9 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+node_modules/
+/test-results/
+/playwright-report/
 
 # Local model weights, runtime logs, and generated artifacts
 models/

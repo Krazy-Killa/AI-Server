@@ -8,6 +8,16 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added `docs/project-context.md` as the primary project onboarding and AI
+  session briefing, with current architecture, environment evidence,
+  infrastructure, priorities, and explicit unresolved hardware-plan
+  discrepancy.
+- Added Playwright browser regressions for dashboard module loading,
+  authentication gating and failed sign-in, viewer/operator/admin controls,
+  panel navigation, and persisted UI preferences. The tests exposed and fixed
+  a CSS rule that allowed styled controls with the HTML `hidden` attribute to
+  remain visible. The suite mocks API responses and does not validate backend
+  authorization.
 - Added a household network and future infrastructure reference covering the
   reported network topology, possible read-only telemetry, household voice
   concepts, managed-Wi-Fi evaluation, and a potential multi-GPU workload split.

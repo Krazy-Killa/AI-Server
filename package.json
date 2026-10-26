@@ -1,0 +1,10 @@
+{
+  "name": "ai-server-dashboard-tests",
+  "private": true,
+  "scripts": {
+    "test:frontend": "playwright test --config tests/frontend/playwright.config.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
