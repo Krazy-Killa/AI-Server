@@ -39,8 +39,9 @@ status/control, and read-only Proxmox VM/container inventory.
 
 Future concepts include network-aware household diagnostics, infrastructure
 inventory, a conversational voice interface, and possible separation of
-user-facing and maintenance AI workloads. These concepts are not implemented
-integrations; see [Future Capabilities](#future-capabilities).
+user-facing and maintenance AI workloads, plus a household file-storage
+service. These concepts are not implemented integrations; see
+[Future Capabilities](#future-capabilities).
 
 ### Core architectural principles
 
@@ -415,12 +416,22 @@ These are plans or concepts, not implemented behavior:
   implemented.
 - **Conversational Household Interface (Concept):** Household AI would handle
   chat, research, future voice requests, and user-facing explanations, while
-  routing authorized operational questions to Maintenance AI. Local STT/TTS,
-  household enrollment and authorization, consent, audio retention, and
-  notification safeguards must be designed; voice must not establish
-  identity or privileges. A bounded diagnostic model handoff is planned but
-  not implemented. No household voice interface or STT/TTS integration is
-  selected or implemented.
+  routing authorized operational questions to Maintenance AI. The future
+  design should provide an admin-managed Dashboard setting for a shared
+  display name shown in dashboard and conversational interfaces, plus a
+  separate phonetic pronunciation for future STT/TTS and spoken invocation.
+  The system may suggest a pronunciation from the display name, subject to
+  administrator review and override. Invocation should rely on the configured
+  pronunciation rather than assuming the display name will be consistently
+  spoken or recognized; a future test may let users check recognition
+  confidence. The name, pronunciation, and voice recognition do not establish
+  identity, authentication, authorization, or privileges. No STT/TTS engine,
+  phonetic standard, external pronunciation service, or implementation method
+  is selected. Household enrollment, consent, audio retention, notification
+  safeguards, and listening-state feedback remain to be designed. A bounded
+  diagnostic model handoff is planned but not implemented. No configurable
+  name/pronunciation setting, voice-recognition test, household voice
+  interface, or STT/TTS integration is implemented.
 - **Shared Incident Reporting and Administrative Visibility:** extend the
   current bounded diagnostics incident history to attribute household-
   initiated reports, provide authorized administrators a shared operational
@@ -441,10 +452,19 @@ These are plans or concepts, not implemented behavior:
   Until hardware and runtime support are validated, the interim design is
   single-GPU/single-runtime model handoff; concurrent operation is not
   implemented or validated. See the
-  [multi-GPU roadmap concept](./roadmap/roadmap.md#multi-gpu-workload-separation-concept).
+  [GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference) and the
+  [roadmap candidate backlog](./roadmap/roadmap.md#candidate-backlog--not-scheduled).
 - **Infrastructure Awareness:** add verified read-only inventory and health
   sources for network and household services, starting with explicit scope
   and no configuration changes.
+- **Household File Server / NAS (Concept):** provide a simple household
+  storage service using up to four SATA HDDs in RAID 5 to increase usable
+  capacity while retaining single-drive failure tolerance, with future
+  expansion through a NAS box on a dedicated USB 3.1 connection or a separate
+  Ethernet-connected NAS, preferably using two 2.5 Gbps links. RAID 5 is not
+  a backup; the RAID/filesystem implementation, array-expansion procedure,
+  access controls, backup/recovery design, and NAS connection behavior remain
+  undecided. No NAS service is implemented.
 
 See the [roadmap candidate backlog](./roadmap/roadmap.md#candidate-backlog--not-scheduled)
 and [household infrastructure reference](./operations/home-network-topology.md).

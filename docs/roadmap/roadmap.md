@@ -478,6 +478,50 @@ validated on the physical target.
 
 ## Candidate backlog — not scheduled
 
+- **Household File Server / NAS (Future)**
+
+  **Status:** Concept
+
+  **Objective:** Provide a simple, locally hosted household file-storage
+  service on the AI Server, using RAID 5 to increase usable capacity over
+  mirrored storage while retaining single-drive failure tolerance, and leave
+  a path to expand storage capacity.
+
+  **Responsibilities:**
+
+  - **AI Server:** host and manage the initial household file-storage service
+    using up to four SATA hard drives in a RAID 5 configuration.
+  - **Future NAS expansion:** provide additional storage through either a
+    dedicated USB 3.1 connection to a NAS box or a separate NAS connected over
+    Ethernet, preferably with two 2.5 Gbps connections.
+
+  **Design notes:**
+
+  - RAID implementation, filesystem, usable-capacity requirements, sharing
+    protocols, household access controls, and service isolation remain to be
+    selected and validated.
+  - RAID 5 is intended to provide single-drive failure tolerance, not protect
+    against multiple drive failures, corruption, accidental deletion, or
+    other data loss. It is not a backup strategy. A separate backup and
+    recovery plan must be defined before household data is trusted to the
+    service.
+  - Expandability is a goal for the overall storage design. Whether the
+    initial RAID 5 array itself can be expanded, and what procedure that
+    would require, depends on the selected RAID and filesystem implementation
+    and remains unverified. Additional NAS hardware is a possible capacity
+    expansion path.
+  - The external NAS connection method is undecided. For the Ethernet option,
+    link aggregation, failover, addressing, and required switching equipment
+    are not yet specified; two 2.5 Gbps connections do not by themselves
+    establish a particular throughput or resilience behavior.
+  - Storage-device compatibility, drive health monitoring, failure handling,
+    restore procedures, and performance require validation on the target
+    Proxmox host.
+
+  This is a concept, not implemented behavior. No household file-sharing
+  service, RAID array, external NAS attachment, or backup/recovery workflow
+  is configured or validated.
+
 - **Household AI ↔ Maintenance AI Delegation Model (Future)**
 
   **Status:** Concept
@@ -617,10 +661,30 @@ validated on the physical target.
   - Local speech-to-text (STT) and text-to-speech (TTS) are candidate
     capabilities; technologies, models, microphones, speakers, and
     deployment topology have not been selected.
+  - Provide an admin-managed Dashboard setting for a household-shared
+    Household AI display name. Use this name in the dashboard and
+    conversational interfaces.
+  - Provide a separate phonetic-pronunciation field to guide future speech
+    recognition and voice interactions. The system may suggest a pronunciation
+    based on the display name, but an administrator must be able to review
+    and override the suggestion.
+  - Use the configured pronunciation, rather than assuming the display name
+    will be spoken or recognized consistently, for future spoken invocation.
+    When the AI is addressed by its configured name, the interface should
+    recognize that it is being queried, accept the following request, and
+    provide an appropriate response. Design clear listening-state feedback
+    and safeguards against unintended activation.
+  - Consider a future voice-recognition test that lets a user verify
+    recognition confidence for the configured invocation name.
+  - The display name, pronunciation, invocation cue, and recognition
+    confidence must not establish identity, authentication, authorization,
+    or privileges.
   - Household enrollment, identity, authorization, consent, audio retention,
     and safeguards against unintended or overheard requests must be defined
     before implementation. Voice recognition must not itself establish
     identity or grant privileges.
+  - No STT/TTS engine, phonetic standard, external pronunciation service, or
+    implementation method is selected at this stage.
   - Requests must remain within the caller's authorized role. A symptom
     request may use the bounded Maintenance AI handoff described in the
     Network-Aware Diagnostics concept above, but operational changes require
@@ -630,9 +694,11 @@ validated on the physical target.
     details to unauthorized listeners.
 
   This is a concept, not implemented behavior. No household voice interface,
-  local STT/TTS integration, household enrollment/authorization workflow, or
-  notification channel has been selected or implemented. The reported home
-  topology and potential components are summarized in the
+  Dashboard name/pronunciation setting, automatic pronunciation suggestion,
+  invocation recognition, voice-recognition confidence test, local STT/TTS
+  integration, household enrollment/authorization workflow, or notification
+  channel has been selected or implemented. The reported home topology and
+  potential components are summarized in the
   [household network reference](../operations/home-network-topology.md).
 
 - **Multi-GPU Workload Separation (Concept)**

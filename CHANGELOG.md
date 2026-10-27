@@ -14,7 +14,15 @@ principles and [Semantic Versioning](https://semver.org/).
 - Restructured the Network-Aware Diagnostics and Conversational Household
   Interface roadmap concepts to match the delegation-model format, clarifying
   objectives, AI responsibilities, design constraints, and unimplemented
-  status.
+  status. Expanded the conversational interface concept with an
+  admin-managed shared display name for dashboard/conversational interfaces
+  and a separate reviewable phonetic pronunciation for future voice
+  invocation. Invocation will rely on the configured pronunciation; an
+  optional generated suggestion may be reviewed or overridden, and a future
+  test may report recognition confidence. The name and voice recognition do
+  not establish identity, authentication, authorization, or privileges. No
+  STT/TTS engine, phonetic standard, external pronunciation service, or
+  implementation method is selected; the capability is not implemented.
 - Restructured the Multi-GPU Workload Separation roadmap concept to match the
   same format, documenting the intended RX 6800 XT Maintenance AI role, the
   possible second User AI GPU, candidate tradeoffs, and validation status.
@@ -34,6 +42,12 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added a **Household File Server / NAS** concept to the roadmap: an initial
+  service using up to four SATA HDDs in RAID 5, with possible USB 3.1 or
+  Ethernet-connected NAS expansion. RAID 5 is intended to increase usable
+  capacity and tolerate a single drive failure, not replace backups; array
+  expansion, backup/recovery, and connection behavior remain unselected and
+  unvalidated.
 - Added the **Household AI ↔ Maintenance AI Delegation Model** as a roadmap
   concept, defining the planned user-facing and operational-analysis roles,
   diagnostics requests, persisted findings, and audience-appropriate
