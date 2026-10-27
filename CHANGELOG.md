@@ -8,6 +8,9 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Clarified that RX 6800 XT telemetry is collected on the Windows development
+  machine using Windows performance counters, rather than implying the card
+  is specific to Windows.
 - Restructured the Network-Aware Diagnostics and Conversational Household
   Interface roadmap concepts to match the delegation-model format, clarifying
   objectives, AI responsibilities, design constraints, and unimplemented

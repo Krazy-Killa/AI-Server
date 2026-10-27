@@ -635,7 +635,7 @@ validated on the physical target.
   topology and potential components are summarized in the
   [household network reference](../operations/home-network-topology.md).
 
-- **Multi-GPU Workload Separation (Future)**
+- **Multi-GPU Workload Separation (Concept)**
 
   **Status:** Concept
 
@@ -669,8 +669,9 @@ validated on the physical target.
 
   This is a concept, not implemented behavior. No second GPU has been
   selected or acquired, and independent concurrent operation of the two AI
-  roles has not been validated. See the [GPU plan](../gpu/gpu-plan.md#potential-future-multi-gpu-inference)
-  and [household network and infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
+  roles has not been validated. See the
+  [GPU plan](../gpu/gpu-plan.md#potential-future-multi-gpu-inference) and
+  [household network and infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
 
 ## Documentation References
 

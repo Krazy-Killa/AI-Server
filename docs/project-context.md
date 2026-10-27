@@ -271,9 +271,10 @@ flowchart TD
 
 ### Current telemetry and limitations
 
-Current telemetry is for the AI Server host: CPU/RAM, plus Windows RX 6800 XT
-load and dedicated VRAM. A Linux `amdgpu` sysfs provider exists and is covered
-by fixture tests, but live Linux readings have not been validated. There is
+The host monitor reports CPU and RAM telemetry. On the Windows development
+machine, it also reports RX 6800 XT load and dedicated VRAM using Windows
+performance counters. A Linux `amdgpu` sysfs provider exists and is covered by
+fixture tests, but live Linux readings have not been validated. There is
 currently no telemetry from the Xfinity gateway, Google WiFi, TP-Link AP, or
 household clients; no WAN/LAN/Wi-Fi correlation; and no network incident
 diagnosis. TP-Link SSH availability as reported does not imply application
@@ -439,7 +440,8 @@ These are plans or concepts, not implemented behavior:
   User AI. The RX 7900 XT/XTX and RX 9070 XT remain unselected candidates.
   Until hardware and runtime support are validated, the interim design is
   single-GPU/single-runtime model handoff; concurrent operation is not
-  implemented or validated.
+  implemented or validated. See the
+  [multi-GPU roadmap concept](./roadmap/roadmap.md#multi-gpu-workload-separation-concept).
 - **Infrastructure Awareness:** add verified read-only inventory and health
   sources for network and household services, starting with explicit scope
   and no configuration changes.
