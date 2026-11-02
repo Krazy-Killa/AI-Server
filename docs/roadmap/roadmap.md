@@ -651,9 +651,8 @@ validated on the physical target.
   selected as the next priority. No network telemetry provider or end-to-end
   network diagnostic workflow is implemented. See the
   [diagnostics design](../diagnostics/ai-diagnostics-self-healing.md),
-  [infrastructure contracts](../operations/infrastructure-contracts.md),
-  and [household network reference](../operations/home-network-topology.md)
-  for current constraints and possible integration points.
+  and [infrastructure contracts](../operations/infrastructure-contracts.md)
+  for current constraints and safety boundaries.
 
 - **Conversational Household Interface (Concept)**
 
@@ -716,9 +715,6 @@ validated on the physical target.
   STT/TTS integration, household enrollment/authorization workflow, or
   notification channel has been selected or implemented.
 
-  The reported home topology and potential components are summarized in the
-  [household network reference](../operations/home-network-topology.md).
-
 - **Multi-GPU Workload Separation (Concept)**
 
   **Status:** Concept
@@ -754,8 +750,7 @@ validated on the physical target.
   **Implementation status:** Concept only. No second GPU has been selected
   or acquired, and independent concurrent operation of the two AI roles has
   not been validated. See the
-  [GPU plan](../gpu/gpu-plan.md#potential-future-multi-gpu-inference) and
-  [household network and infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
+  [GPU plan](../gpu/gpu-plan.md#potential-future-multi-gpu-inference).
 
 ## Documentation References
 

@@ -221,69 +221,15 @@ verified against the exact host.
 compatibility, permissions, network exposure, service lifecycle, performance,
 and recovery. Phase 5 is waiting for this physical server.
 
-## Current Infrastructure
-
-The following topology was supplied as a planning reference and has not been
-independently verified on the AI Server. Cabling, addressing, mesh backhaul,
-DHCP/DNS ownership, VLANs, and firewall policy are not documented.
-
-```mermaid
-flowchart TD
-
-    ISP["Internet / ISP"]
-    XFINITY["Xfinity Gateway<br>(Bridge Mode)"]
-
-    GOOGLE["Google WiFi Mesh<br>(Primary Router)"]
-
-    SERVER["AI Server<br>Household Operations Platform"]
-
-    TP["TP-Link AP<br>(Custom Firmware, Static IP, SSH Enabled)"]
-
-    HOUSE["Household Devices"]
-    QUEST["Quest Headset"]
-    CONSOLES["Gaming Consoles"]
-    GAMING["High-Bandwidth Devices"]
-
-    ISP --> XFINITY
-    XFINITY --> GOOGLE
-
-    GOOGLE --> SERVER
-    GOOGLE --> HOUSE
-    GOOGLE --> TP
-
-    TP --> QUEST
-    TP --> CONSOLES
-    TP --> GAMING
-```
-
-### Reported components
-
-- **Xfinity Gateway:** reported bridge mode, providing ISP connectivity; not
-  intended for direct platform management.
-- **Google WiFi Mesh:** reported primary router and mesh platform, managed
-  through Google Home. Considered limited-visibility; no direct integration
-  is selected.
-- **TP-Link AP:** reported access-point mode, custom firmware, static
-  management IP, and SSH enabled. It is a potential read-only telemetry
-  source, not an implemented integration.
-- **Household devices:** include the reported Quest headset, consoles, and
-  high-bandwidth/low-latency devices behind the TP-Link AP, plus other devices
-  on the Google WiFi network.
-
-### Current telemetry and limitations
+## Host Telemetry Status
 
 The host monitor reports CPU and RAM telemetry. On the Windows development
 machine, it also reports RX 6800 XT load and dedicated VRAM using Windows
 performance counters. A Linux `amdgpu` sysfs provider exists and is covered by
-fixture tests, but live Linux readings have not been validated. There is
-currently no telemetry from the Xfinity gateway, Google WiFi, TP-Link AP, or
-household clients; no WAN/LAN/Wi-Fi correlation; and no network incident
-diagnosis. TP-Link SSH availability as reported does not imply application
-authorization or define a safe integration. Network-aware diagnostics remain
-observe-only in the initial phase and are not implemented.
-
-See the [household topology reference](./operations/home-network-topology.md)
-for component notes and proposed future integration points.
+fixture tests, but live Linux readings have not been validated. The platform
+does not currently integrate external network telemetry or correlate WAN, LAN,
+wireless, service, and client evidence. Network-aware diagnostics remain a
+future observe-only concept and are not implemented.
 
 ## Server Hardware Plans
 
@@ -327,8 +273,7 @@ arrangement are validated, the existing single-GPU, single-llama.cpp model
 handoff remains the interim design; the intended dedicated roles do not
 establish that both AIs can operate concurrently. Power/cooling, compatibility,
 isolation, and performance remain unvalidated. See the
-[GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference) and
-[household infrastructure reference](./operations/home-network-topology.md#possible-multi-gpu-role-separation).
+[GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference).
 
 ## Completed Milestones
 
@@ -465,8 +410,8 @@ These are plans or concepts, not implemented behavior:
   access controls, backup/recovery design, and NAS connection behavior remain
   undecided. No NAS service is implemented.
 
-See the [roadmap candidate backlog](./roadmap/roadmap.md#candidate-backlog--not-scheduled)
-and [household infrastructure reference](./operations/home-network-topology.md).
+See the
+[roadmap candidate backlog](./roadmap/roadmap.md#candidate-backlog--not-scheduled).
 
 ## Repository Guide
 
@@ -516,9 +461,8 @@ Important guides include the [roadmap](./roadmap/roadmap.md),
 [architecture](./architecture/architecture.md),
 [API](./backend/api.md), [authentication](./security/authentication.md),
 [diagnostics design](./diagnostics/ai-diagnostics-self-healing.md),
-[deployment runbook](./deployment/linux-proxmox-transition.md),
-[GPU plan](./gpu/gpu-plan.md), and
-[household network topology](./operations/home-network-topology.md).
+[deployment runbook](./deployment/linux-proxmox-transition.md), and
+[GPU plan](./gpu/gpu-plan.md).
 
 ## AI Session Handoff
 

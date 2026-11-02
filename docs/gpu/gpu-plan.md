@@ -150,7 +150,8 @@ tradeoffs have not been benchmarked with the intended workloads. The second
 GPU is not selected or acquired. Until it is validated, the interim design is
 single-GPU/single-runtime model handoff, not concurrent operation of both
 roles. Power/cooling, compatibility, and performance are unvalidated. See the
-[household infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
+multi-GPU workload separation concept in the
+[project roadmap](../roadmap/roadmap.md).
 
 ## Strategy
 

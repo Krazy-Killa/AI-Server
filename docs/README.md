@@ -9,7 +9,7 @@ implemented behavior from planned or unverified work.
 | [architecture/](./architecture/) | Project overview, components, and data flow |
 | [backend/](./backend/) | Backend modules and API contracts |
 | [security/](./security/) | Authentication, sessions, and authorization |
-| [operations/](./operations/) | Configuration, testing, infrastructure contracts, and household network reference |
+| [operations/](./operations/) | Configuration, testing, and infrastructure contracts |
 | [deployment/](./deployment/) | Linux and Proxmox transition runbook |
 | [diagnostics/](./diagnostics/) | Observe-only diagnostics and proposed self-healing design |
 | [gpu/](./gpu/) | GPU integration status and deployment considerations |
@@ -24,4 +24,3 @@ implemented behavior from planned or unverified work.
 - [Backend API](./backend/api.md)
 - [Authentication and session management](./security/authentication.md)
 - [Linux/Proxmox transition runbook](./deployment/linux-proxmox-transition.md)
-- [Household network topology and future infrastructure notes](./operations/home-network-topology.md)
