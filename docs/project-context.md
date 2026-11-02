@@ -417,21 +417,20 @@ These are plans or concepts, not implemented behavior:
 - **Conversational Household Interface (Concept):** Household AI would handle
   chat, research, future voice requests, and user-facing explanations, while
   routing authorized operational questions to Maintenance AI. The future
-  design should provide an admin-managed Dashboard setting for a shared
-  display name shown in dashboard and conversational interfaces, plus a
-  separate phonetic pronunciation for future STT/TTS and spoken invocation.
-  The system may suggest a pronunciation from the display name, subject to
-  administrator review and override. Invocation should rely on the configured
-  pronunciation rather than assuming the display name will be consistently
-  spoken or recognized; a future test may let users check recognition
-  confidence. The name, pronunciation, and voice recognition do not establish
-  identity, authentication, authorization, or privileges. No STT/TTS engine,
-  phonetic standard, external pronunciation service, or implementation method
-  is selected. Household enrollment, consent, audio retention, notification
-  safeguards, and listening-state feedback remain to be designed. A bounded
-  diagnostic model handoff is planned but not implemented. No configurable
-  name/pronunciation setting, voice-recognition test, household voice
-  interface, or STT/TTS integration is implemented.
+  design includes an admin-managed Dashboard setting for a shared display
+  name shown in Dashboard and conversational interfaces, plus a separate
+  phonetic pronunciation for future speech recognition and voice interactions.
+  An automatically suggested pronunciation may be reviewed and overridden by
+  an administrator. Spoken invocation should use the configured pronunciation
+  rather than assume the display name is consistently spoken or recognized;
+  a future test may report recognition confidence. The name, pronunciation,
+  invocation, and voice recognition do not establish identity,
+  authentication, authorization, or privileges. No STT/TTS engine, phonetic
+  standard, external pronunciation service, or implementation method is
+  selected. Enrollment, consent, audio retention, notification safeguards,
+  and listening-state feedback remain to be designed. This remains a concept:
+  no name/pronunciation setting, voice-recognition test, voice interface, or
+  STT/TTS integration is implemented.
 - **Shared Incident Reporting and Administrative Visibility:** extend the
   current bounded diagnostics incident history to attribute household-
   initiated reports, provide authorized administrators a shared operational

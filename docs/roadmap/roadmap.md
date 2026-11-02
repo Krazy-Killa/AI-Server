@@ -6,11 +6,17 @@
   Windows build environment, or with focused mocks where noted. This counts as
   project implementation for shared behavior; it does not imply target-host
   validation for OS-, hardware-, network-, or service-specific behavior.
+- **Partial** — some implementation or integration is complete, but the
+  stated capability or validation remains incomplete.
 - **In progress** — implementation is actively underway.
 - **Not started** — planned, but implementation has not begun.
 - **Experimental / waiting for server** — unsupported-by-vendor work that
   depends on the Proxmox host, its kernel, or the production hardware; staged
   investigation is possible, but runtime validation is still required.
+- **Concept** — a candidate future capability in the backlog; it is not
+  scheduled or implemented unless explicitly stated otherwise.
+
+## Current status summary
 
 Dashboard-owned login/session management and per-account SQLite conversation
 history are implemented and verified in the Windows build/prototype
@@ -135,7 +141,10 @@ environment, not the deployment target.
   and recovery hysteresis. Viewer-readable evidence reports summarize the
   selected saved observation, including incident state/evidence at that time,
   without running probes.
-- **Planned — admin-configurable scheduled maintenance window:** add an
+
+### Planned behavior and design constraints
+
+- **Not started — admin-configurable scheduled maintenance window:** add an
   admin-only Diagnostics/Maintenance setting for enablement, recurrence days,
   start/end time, and explicit IANA timezone. Show the configured timezone and
   next scheduled window, validate and audit changes, and define persistence
@@ -152,6 +161,9 @@ environment, not the deployment target.
   rollback/out-of-band recovery. Full autonomy is a distinct later gate; the
   AI must never promote its own authority or infer permission from successful
   monitoring.
+
+### Done — dashboard and responsive-layout refinements
+
 - Optional HTTPS launchers for whole-dashboard testing from a mobile device
   on a trusted private LAN. They bind to one configured private IPv4 address
   and serve only public UI assets. Phone certificate trust and dashboard access
@@ -264,11 +276,11 @@ environment, not the deployment target.
    recovery after a guest reboot. Do not enable boot auto-start until
    separately reviewed; reboot recovery and physical-host acceptance remain
    unverified.
-2. **Proxmox identity and dashboard authorization — next.** Exercise the live
-   Proxmox ticket login and identity-to-role mapping in the nested lab, then
-   verify cookie, CSRF/origin, viewer/operator/admin boundaries. Use a
-   least-privilege test identity; do not grant mutation permissions or treat
-   lab success as physical-host acceptance.
+2. **Proxmox identity and dashboard authorization — subsequent priority.**
+   Exercise the live Proxmox ticket login and identity-to-role mapping in the
+   nested lab, then verify cookie, CSRF/origin, viewer/operator/admin
+   boundaries. Use a least-privilege test identity; do not grant mutation
+   permissions or treat lab success as physical-host acceptance.
 3. **Linux application smoke coverage — after the service design.** Verify
    backend startup, SQLite paths/permissions, logs, authentication,
    read-only diagnostics, and API health as the service account. Add llama.cpp,
@@ -332,9 +344,11 @@ until checked against the actual machine.
   exact board model, delivered hardware, firmware/boot configuration, and
   actual memory needs against Proxmox, planned VMs, inference, and concurrent
   services before deployment.
-- Select the storage topology: HDD count, RAID/ZFS layout, controller mode,
-  usable capacity, and expansion plan are undecided. Redundancy is not a
-  backup; plan a separate backup and test restoration. Consider NVMe for
+- Select the host storage topology: actual HDD count, RAID/ZFS layout,
+  controller mode, usable capacity, and expansion plan remain undecided. The
+  household NAS concept proposes up to four SATA HDDs in RAID 5, but this is
+  not a selected or validated host storage implementation. Redundancy is not
+  a backup; plan a separate backup and test restoration. Consider NVMe for
   databases, active VM disks, and frequently used model files; model tiering
   improves load/switch time, not inference speed after model load.
 - Research compatibility for the intended Proxmox release, RX 6800 XT,
@@ -478,7 +492,7 @@ validated on the physical target.
 
 ## Candidate backlog — not scheduled
 
-- **Household File Server / NAS (Future)**
+- **Household File Server / NAS (Concept)**
 
   **Status:** Concept
 
@@ -518,11 +532,11 @@ validated on the physical target.
     restore procedures, and performance require validation on the target
     Proxmox host.
 
-  This is a concept, not implemented behavior. No household file-sharing
+  **Implementation status:** Concept only. No household file-sharing
   service, RAID array, external NAS attachment, or backup/recovery workflow
   is configured or validated.
 
-- **Household AI ↔ Maintenance AI Delegation Model (Future)**
+- **Household AI ↔ Maintenance AI Delegation Model (Concept)**
 
   **Status:** Concept
 
@@ -545,13 +559,13 @@ validated on the physical target.
   - Household AI translates operational findings into audience-appropriate
     responses.
 
-  This is a concept, not implemented behavior. The backend does not yet
-  provide this delegated two-role workflow, and runbook execution remains
+  **Implementation status:** Concept only. The backend does not yet provide
+  this delegated two-role workflow, and runbook execution remains
   unimplemented. Any future diagnostic request, operational record, and
   execution path must preserve the project's authorization, audit, and
   observe-first constraints.
 
-- **Shared Incident Reporting and Administrative Visibility (Future)**
+- **Shared Incident Reporting and Administrative Visibility (Concept)**
 
   **Status:** Concept
 
@@ -587,11 +601,13 @@ validated on the physical target.
   **Long-term vision:** Treat diagnostics and maintenance activities as shared
   operational records instead of private chat messages, enabling historical
   analysis, administrative oversight, and future automated maintenance
-  workflows. This is a concept only; no household incident attribution,
+  workflows.
+
+  **Implementation status:** Concept only. No household incident attribution,
   shared Maintenance AI event workflow, or linked household-facing incident
   updates are implemented.
 
-- **Network-Aware Diagnostics (Future)**
+- **Network-Aware Diagnostics (Concept)**
 
   **Status:** Concept
 
@@ -631,21 +647,31 @@ validated on the physical target.
     The AI must not change network configuration or promote its own
     authority.
 
-  This is a concept, not implemented behavior; it is not assigned to a phase
-  or selected as the next priority. No network telemetry provider or
-  end-to-end network diagnostic workflow is implemented. See the
+  **Implementation status:** Concept only. It is not assigned to a phase or
+  selected as the next priority. No network telemetry provider or end-to-end
+  network diagnostic workflow is implemented. See the
   [diagnostics design](../diagnostics/ai-diagnostics-self-healing.md),
   [infrastructure contracts](../operations/infrastructure-contracts.md),
   and [household network reference](../operations/home-network-topology.md)
   for current constraints and possible integration points.
 
-- **Conversational Household Interface (Future)**
+- **Conversational Household Interface (Concept)**
 
   **Status:** Concept
 
   **Objective:** Let household members interact naturally with household
   services, diagnostics, and maintenance through a user-facing conversational
   interface, without requiring direct dashboard access for every request.
+
+  **Configuration:**
+
+  - An administrator can configure a household-shared Household AI display
+    name in the Dashboard. The display name appears in the Dashboard and
+    conversational interfaces.
+  - Configure a separate phonetic pronunciation for future speech
+    recognition and voice interactions. The system may suggest a
+    pronunciation from the display name, but an administrator must be able
+    to review and override it.
 
   **Responsibilities:**
 
@@ -661,13 +687,6 @@ validated on the physical target.
   - Local speech-to-text (STT) and text-to-speech (TTS) are candidate
     capabilities; technologies, models, microphones, speakers, and
     deployment topology have not been selected.
-  - Provide an admin-managed Dashboard setting for a household-shared
-    Household AI display name. Use this name in the dashboard and
-    conversational interfaces.
-  - Provide a separate phonetic-pronunciation field to guide future speech
-    recognition and voice interactions. The system may suggest a pronunciation
-    based on the display name, but an administrator must be able to review
-    and override the suggestion.
   - Use the configured pronunciation, rather than assuming the display name
     will be spoken or recognized consistently, for future spoken invocation.
     When the AI is addressed by its configured name, the interface should
@@ -679,10 +698,8 @@ validated on the physical target.
   - The display name, pronunciation, invocation cue, and recognition
     confidence must not establish identity, authentication, authorization,
     or privileges.
-  - Household enrollment, identity, authorization, consent, audio retention,
-    and safeguards against unintended or overheard requests must be defined
-    before implementation. Voice recognition must not itself establish
-    identity or grant privileges.
+  - Household enrollment, consent, audio retention, and safeguards against
+    unintended or overheard requests must be defined before implementation.
   - No STT/TTS engine, phonetic standard, external pronunciation service, or
     implementation method is selected at this stage.
   - Requests must remain within the caller's authorized role. A symptom
@@ -693,12 +710,13 @@ validated on the physical target.
     must be opt-in and avoid exposing sensitive household or infrastructure
     details to unauthorized listeners.
 
-  This is a concept, not implemented behavior. No household voice interface,
-  Dashboard name/pronunciation setting, automatic pronunciation suggestion,
-  invocation recognition, voice-recognition confidence test, local STT/TTS
-  integration, household enrollment/authorization workflow, or notification
-  channel has been selected or implemented. The reported home topology and
-  potential components are summarized in the
+  **Implementation status:** Concept only; none of this voice-interface
+  capability is implemented. No Dashboard name/pronunciation setting,
+  pronunciation suggestion, invocation recognition, confidence test, local
+  STT/TTS integration, household enrollment/authorization workflow, or
+  notification channel has been selected or implemented.
+
+  The reported home topology and potential components are summarized in the
   [household network reference](../operations/home-network-topology.md).
 
 - **Multi-GPU Workload Separation (Concept)**
@@ -733,9 +751,9 @@ validated on the physical target.
     isolation require validation before adopting separate concurrent
     workloads.
 
-  This is a concept, not implemented behavior. No second GPU has been
-  selected or acquired, and independent concurrent operation of the two AI
-  roles has not been validated. See the
+  **Implementation status:** Concept only. No second GPU has been selected
+  or acquired, and independent concurrent operation of the two AI roles has
+  not been validated. See the
   [GPU plan](../gpu/gpu-plan.md#potential-future-multi-gpu-inference) and
   [household network and infrastructure reference](../operations/home-network-topology.md#possible-multi-gpu-role-separation).
 

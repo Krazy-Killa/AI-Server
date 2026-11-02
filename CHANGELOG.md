@@ -8,6 +8,11 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Audited the full roadmap for structural consistency: documented the `Partial`
+  and `Concept` status meanings, separated Phase 2 planned behavior from
+  completed work, aligned candidate-backlog concept labels and implementation
+  status sections, clarified the NAS concept against the undecided host
+  storage plan, and removed conflicting Phase 3 priority wording.
 - Clarified that RX 6800 XT telemetry is collected on the Windows development
   machine using Windows performance counters, rather than implying the card
   is specific to Windows.
