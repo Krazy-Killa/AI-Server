@@ -4,7 +4,7 @@
 
 For initial project orientation, read `docs/project-context.md`; use the
 roadmap and focused guides below as the detailed source of truth.
-Before any implementation work, read `docs/roadmap/roadmap.md` and the
+Before any implementation work, read `docs/roadmap/README.md` and the
 documentation for the affected subsystem. Use those documents to understand intended
 behavior, constraints, and current status before planning or editing code. If
 the relevant design or behavior is undocumented, identify that gap and resolve
@@ -14,9 +14,9 @@ documentation in the same change as the implementation; do not defer it.
 Use these references as applicable:
 
 - `docs/backend/api.md` for endpoint paths, request/response shapes, and API behavior.
-- `docs/architecture/architecture.md` and subsystem design documents for
+- `docs/architecture/README.md` and subsystem design documents for
   component behavior, boundaries, safety constraints, and implementation status.
-- `docs/roadmap/roadmap.md` for completed work, remaining work, and the next suggested
+- `docs/roadmap/README.md` for completed work, remaining work, and the next suggested
   steps. Keep status explicit: distinguish implemented, partial, planned, and
   unverified behavior.
 - `README.md` for current project capabilities, setup, and high-level status.

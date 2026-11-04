@@ -552,5 +552,5 @@ for the template and limitations.
 
 - [GPU integration plan](../gpu/gpu-plan.md)
 - [Windows testing environment](../operations/testing-environment.md)
-- [Architecture](../architecture/architecture.md)
+- [Architecture](../architecture/README.md)
 - [Backend API](../backend/api.md)

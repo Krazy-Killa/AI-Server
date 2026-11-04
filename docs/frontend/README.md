@@ -133,12 +133,12 @@ for setup and execution.
 - Network-service UI remains a planning view. Network-aware diagnostics are
   an unscheduled concept; no network telemetry integration or diagnostic
   workflow is implemented. See the
-  [roadmap candidate](../roadmap/roadmap.md#candidate-backlog--not-scheduled).
+  [roadmap candidate](../roadmap/README.md#candidate-backlog--not-scheduled).
 - The conversational household interface is also an unscheduled concept.
   Local speech recognition/synthesis, household-member authorization, and
   proactive incident notifications are not implemented. Voice must not bypass
   the existing role and approval boundaries; see the
-  [roadmap candidate](../roadmap/roadmap.md#candidate-backlog--not-scheduled).
+  [roadmap candidate](../roadmap/README.md#candidate-backlog--not-scheduled).
 - Planned update UI: upload a signed prebuilt application `.tar.gz`, display
   validated release/target/digest and compatibility, then require an explicit
   admin confirmation before Apply. Show updater progress, health-check result,

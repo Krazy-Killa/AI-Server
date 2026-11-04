@@ -8,6 +8,10 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Added high-level `README.md` guides to the documentation subfolders that
+  lacked them and linked those summaries from the documentation index.
+- Renamed folder-matching documentation files in `docs/` to `README.md` and
+  updated references to the new paths.
 - Clarified the ROCm/Proxmox compatibility assessment: Linux-kernel and
   Debian-related common ground make testing plausible, but do not establish
   low risk or AMD support for Proxmox; the exact host, driver, ROCm, container,

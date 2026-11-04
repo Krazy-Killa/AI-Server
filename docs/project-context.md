@@ -2,7 +2,7 @@
 
 **Purpose:** Primary onboarding briefing for new contributors and AI sessions.
 This is a high-level snapshot, not an operational runbook. The
-[development roadmap](./roadmap/roadmap.md), focused subsystem guides, source,
+[development roadmap](./roadmap/README.md), focused subsystem guides, source,
 and tests remain authoritative for detailed status and behavior.
 
 **Status snapshot:** 2026-11-04. Distinguish implemented Windows behavior,
@@ -403,7 +403,7 @@ These are plans or concepts, not implemented behavior:
   single-GPU/single-runtime model handoff; concurrent operation is not
   implemented or validated. See the
   [GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference) and the
-  [roadmap candidate backlog](./roadmap/roadmap.md#candidate-backlog--not-scheduled).
+  [roadmap candidate backlog](./roadmap/README.md#candidate-backlog--not-scheduled).
 - **Infrastructure Awareness:** add verified read-only inventory and health
   sources for network and household services, starting with explicit scope
   and no configuration changes.
@@ -417,7 +417,7 @@ These are plans or concepts, not implemented behavior:
   undecided. No NAS service is implemented.
 
 See the
-[roadmap candidate backlog](./roadmap/roadmap.md#candidate-backlog--not-scheduled).
+[roadmap candidate backlog](./roadmap/README.md#candidate-backlog--not-scheduled).
 
 ## Repository Guide
 
@@ -463,8 +463,8 @@ See the
 ### Documentation areas
 
 Start at [docs/README.md](./README.md) for the documentation index.
-Important guides include the [roadmap](./roadmap/roadmap.md),
-[architecture](./architecture/architecture.md),
+Important guides include the [roadmap](./roadmap/README.md),
+[architecture](./architecture/README.md),
 [API](./backend/api.md), [authentication](./security/authentication.md),
 [diagnostics design](./diagnostics/ai-diagnostics-self-healing.md),
 [deployment runbook](./deployment/linux-proxmox-transition.md), and
@@ -498,5 +498,5 @@ Important guides include the [roadmap](./roadmap/roadmap.md),
   Core i9-11900KF and RX 6800 XT. Confirm the exact motherboard model and
   delivered hardware before host-specific deployment.
 
-For current status, read the [roadmap](./roadmap/roadmap.md) and the focused
+For current status, read the [roadmap](./roadmap/README.md) and the focused
 guide for the requested subsystem before editing code.

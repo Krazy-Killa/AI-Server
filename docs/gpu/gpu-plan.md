@@ -163,7 +163,7 @@ GPU is not selected or acquired. Until it is validated, the interim design is
 single-GPU/single-runtime model handoff, not concurrent operation of both
 roles. Power/cooling, compatibility, and performance are unvalidated. See the
 multi-GPU workload separation concept in the
-[project roadmap](../roadmap/roadmap.md).
+[project roadmap](../roadmap/README.md).
 
 ## Strategy
 

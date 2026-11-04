@@ -765,7 +765,7 @@ validated on the physical target.
 - [AI Diagnostics & Self-Healing System](../diagnostics/ai-diagnostics-self-healing.md) — design specification
 - [Portable Infrastructure Contracts](../operations/infrastructure-contracts.md) — read-only inventory and proposal-only infrastructure contracts
 - [Linux/Proxmox Transition Runbook](../deployment/linux-proxmox-transition.md) — deployment decisions, blockers, and acceptance criteria
-- [Architecture Overview](../architecture/architecture.md) — system components and data flow
+- [Architecture Overview](../architecture/README.md) — system components and data flow
 - [Configuration Guide](../operations/configuration.md) — environment variables and settings
-- [Backend Documentation](../backend/backend.md) — FastAPI endpoints and modules
-- [Frontend Documentation](../frontend/frontend.md) — dashboard UI and JavaScript structure
+- [Backend Documentation](../backend/README.md) — FastAPI endpoints and modules
+- [Frontend Documentation](../frontend/README.md) — dashboard UI and JavaScript structure
