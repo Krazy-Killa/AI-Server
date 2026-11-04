@@ -98,7 +98,10 @@ environment, not the deployment target.
 - Windows SearXNG test setup and dashboard web-research integration
 - Cited web research with bounded public-page retrieval, explicit excerpt
   fallback status, and authenticated SSE streaming. Focused unit/API tests
-  pass; a live SearXNG/llama.cpp end-to-end smoke test remains unverified.
+  pass. A live Windows browser smoke test on 2026-11-04 verified local
+  Qwen2.5 1.5B chat and the Research Web path through WSL SearXNG to llama.cpp;
+  the research response included source links. This does not establish
+  Linux/Proxmox or physical-host acceptance.
 - Dashboard-owned authentication: local and mapped Proxmox login, persistent
   revocable sessions, role authorization, protected REST/WebSocket routes,
   CSRF and origin checks, login throttling, CLI account/mapping management,
@@ -355,7 +358,11 @@ until checked against the actual machine.
   ROCm/HIP, and application versions. Confirm the installed Proxmox release
   and running kernel, and re-check compatibility on-host in Phase 5. AMD does
   not list the planned GPU/Proxmox combination as officially supported;
-  community reports are leads, not proof. GPU passthrough is not planned.
+  community reports are leads, not proof. Ubuntu and Proxmox share Linux
+  kernel and Debian-related foundations, making compatibility investigation
+  plausible, but they are distinct distributions; that shared foundation does
+  not establish low risk or AMD support for Proxmox. GPU passthrough is not
+  planned.
   Follow the staged recovery and acceptance requirements in the
   [GPU plan](../gpu/gpu-plan.md).
 - Select pinned versions, host-vs-container boundaries, persistent paths,

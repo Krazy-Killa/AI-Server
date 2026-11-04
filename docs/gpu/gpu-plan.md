@@ -45,6 +45,18 @@ does not list this GPU/Proxmox combination. Linux reports on other
 distributions are useful leads, not evidence that ROCm works natively on this
 host.
 
+The shared Linux kernel ecosystem and Debian-related foundations of Ubuntu
+and Proxmox make compatibility investigation technically plausible, but they
+do not establish that the overall compatibility risk is low. Ubuntu and
+Proxmox remain distinct operating-system distributions with different
+packaging and kernel integration; an upstream kernel version match does not
+make them interchangeable for ROCm support. AMD's published support applies
+to the listed operating-system, kernel/driver, ROCm, and GPU combinations,
+not automatically to Debian derivatives. Verify the exact Proxmox release
+and running kernel, AMD driver, ROCm version, container device access, and
+target inference workload on the physical host before drawing a compatibility
+conclusion.
+
 ### Experimental RX 6800 XT community evidence
 
 The following community material was reviewed on 2026-10-14. These are

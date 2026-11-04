@@ -8,6 +8,10 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Clarified the ROCm/Proxmox compatibility assessment: Linux-kernel and
+  Debian-related common ground make testing plausible, but do not establish
+  low risk or AMD support for Proxmox; the exact host, driver, ROCm, container,
+  and inference combination remains to be validated.
 - Audited the full roadmap for structural consistency: documented the `Partial`
   and `Concept` status meanings, separated Phase 2 planned behavior from
   completed work, aligned candidate-backlog concept labels and implementation
@@ -47,6 +51,10 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Recorded the 2026-11-04 live Windows browser smoke test: local
+  Qwen2.5 1.5B chat and Research Web through WSL SearXNG to llama.cpp both
+  returned successfully, with source links in the research response. Kept the
+  result scoped to Windows/WSL rather than Proxmox or physical-host acceptance.
 - Added a **Household File Server / NAS** concept to the roadmap: an initial
   service using up to four SATA HDDs in RAID 5, with possible USB 3.1 or
   Ethernet-connected NAS expansion. RAID 5 is intended to increase usable

@@ -161,6 +161,14 @@ to a VM via passthrough is not part of this design. See the
 Do not assume the Windows Vulkan results establish ROCm, HIP, or ROCm telemetry
 compatibility.
 
+Ubuntu and Proxmox share Linux-kernel ecosystem and Debian-related foundations,
+which make testing a reasonable hypothesis, but this alone does not establish
+low compatibility risk or AMD support for Proxmox. Their packaging, kernel
+integration, and supported release combinations differ. Verify the exact
+Proxmox release/kernel, AMD driver, ROCm version, container device access, and
+the intended inference workload on the physical host before treating the
+combination as usable.
+
 ## Provisional host hardware and storage plan
 
 This planning outline is not a finalized bill of materials. The planned

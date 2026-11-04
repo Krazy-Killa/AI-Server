@@ -5,7 +5,7 @@ This is a high-level snapshot, not an operational runbook. The
 [development roadmap](./roadmap/roadmap.md), focused subsystem guides, source,
 and tests remain authoritative for detailed status and behavior.
 
-**Status snapshot:** 2026-10-26. Distinguish implemented Windows behavior,
+**Status snapshot:** 2026-11-04. Distinguish implemented Windows behavior,
 portable/mock test evidence, nested-lab validation, plans, and physical-host
 acceptance. Success in one environment does not prove behavior in another.
 
@@ -182,9 +182,11 @@ implemented.
 Windows 11 with Python 3.12 is the active shared-application development and
 prototype environment. The RX 6800 XT is currently available in this machine.
 Windows tests cover application behavior, local llama.cpp/Vulkan inference,
-GPU counters, DirectML smoke tests, and browser regressions. Keep the Python
-environment and model/build files outside the OneDrive repository under
-`%LOCALAPPDATA%\AI-Server`.
+GPU counters, DirectML smoke tests, and browser regressions. A live browser
+smoke test on 2026-11-04 verified local chat and Research Web through WSL
+SearXNG to llama.cpp; this is Windows/WSL evidence, not Linux/Proxmox
+acceptance. Keep the Python environment and model/build files outside the
+OneDrive repository under `%LOCALAPPDATA%\AI-Server`.
 
 **Purpose:** Build shared application features and run deterministic tests
 before moving them to Linux. Windows results do not validate Linux services,
@@ -214,8 +216,12 @@ Potential Linux components include ROCm/HIP, ROCm-built llama.cpp,
 Podman/Quadlet, NGINX, and other runtimes/services described in the
 [deployment runbook](./deployment/linux-proxmox-transition.md). The RX 6800 XT
 and Proxmox combination is not listed as officially supported by AMD in the
-documented compatibility review; treat GPU compute as experimental until
-verified against the exact host.
+documented compatibility review. Ubuntu and Proxmox share Linux-kernel and
+Debian-related foundations, which make testing plausible but do not establish
+low compatibility risk or AMD support for Proxmox; they remain distinct
+distributions with different packaging and kernel integration. Treat GPU
+compute as experimental until the exact host, kernel, driver, ROCm stack,
+container access, and inference workload are validated.
 
 **Purpose:** Final target-host validation of hardware, kernel/runtime
 compatibility, permissions, network exposure, service lifecycle, performance,
@@ -470,7 +476,8 @@ Important guides include the [roadmap](./roadmap/roadmap.md),
   operations, developed on Windows and intended for a Linux/Proxmox server.
 - **Validated:** Windows application/backend behavior and tests; local
   llama.cpp/Vulkan smoke path and Windows GPU telemetry; DirectML synthetic
-  test; six browser regressions; portable Python tests; selected loopback
+  test; six browser regressions; portable Python tests; 2026-11-04 live
+  Windows browser chat and WSL SearXNG research smoke test; selected loopback
   container lifecycle and read-only inventory checks in the nested Proxmox
   lab.
 - **Not validated:** physical-server deployment; Linux live GPU telemetry;

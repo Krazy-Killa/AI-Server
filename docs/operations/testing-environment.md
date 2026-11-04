@@ -342,10 +342,14 @@ addresses and nonstandard ports. Unsafe, unavailable, and non-HTML pages fall
 back to their SearXNG excerpts; source metadata reports `page_status`. The
 stream returns source metadata before answer tokens, and completed turns are
 saved with their citations. Automated unit and API tests cover these
-boundaries; a live browser-to-WSL SearXNG-to-llama.cpp end-to-end smoke test
-after this implementation is still unverified. Search queries may be
-forwarded by SearXNG to its configured upstream search engines, so avoid
-sending secrets or private data in Research mode.
+boundaries. On 2026-11-04, a live Windows browser smoke test verified local
+chat through the Qwen2.5 1.5B model (1.13 seconds) and Research Web through
+the WSL SearXNG service to llama.cpp (6.02 seconds); the research response
+included source links. The backend, dashboard, llama.cpp, and SearXNG
+endpoints responded successfully during the test. This verifies only the tested
+Windows/WSL path; it is not Linux/Proxmox or physical-host acceptance.
+Search queries may be forwarded by SearXNG to its configured upstream search
+engines, so avoid sending secrets or private data in Research mode.
 
 SearXNG does not support native Windows, so the test environment runs it inside
 WSL (Ubuntu) with no root access needed. One-time install from the project
