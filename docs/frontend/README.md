@@ -10,6 +10,7 @@ ai-dashboard/
         backend-logs.js
         operations.js
         system-monitor.js
+        theme-init.js
         ui-preferences.js
 
 `index.html` loads `js/app.js` as a native ES-module entry point; the dashboard
@@ -20,6 +21,29 @@ Proxmox inventory, system telemetry, and persisted UI preferences. Modules
 exchange shared API/auth and UI state through explicit imports or initializer
 arguments rather than classic-script globals. Serve the dashboard over HTTP or
 HTTPS so browsers can load its module imports.
+
+## Browser security headers
+
+The dashboard has no inline scripts, inline event handlers, or `style`
+attributes, so it can be served under a strict Content-Security-Policy.
+`js/theme-init.js` is the small classic script that applies the saved light
+theme before first paint. Keep new code in external modules.
+
+[`ai-backend/dashboard_server.py`](../../ai-backend/dashboard_server.py)
+defines the policy (`script-src 'self'`, `default-src 'none'`,
+`frame-ancestors 'none'`, `connect-src` limited to the dashboard origin and
+port `8000`) plus `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+and `Cache-Control: no-store`. It serves only `index.html`, `css/`, and `js/`
+with directory listings disabled. The Quadlet dashboard unit,
+`run-dashboard.bat`, and `lan_dashboard_server.py` use it; the Playwright
+static server sends an equivalent policy and the module-loading test fails on
+any policy violation. `css/style.css` still imports Google Fonts, so the policy
+allows `fonts.googleapis.com` and `fonts.gstatic.com`; self-hosting the fonts
+would remove that third-party dependency. A `window.AI_SERVER_API_BASE`
+override to another origin or port must also be added to `connect-src`.
+HSTS and TLS headers belong to the future HTTPS proxy and are not implemented.
+The lab dashboard container must be rebuilt to pick up this server; that has
+not been done or validated in the nested lab.
 
 ## Browser regression tests
 

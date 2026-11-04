@@ -2,9 +2,13 @@
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import ssl
+import sys
 from urllib.parse import unquote, urlsplit
 
 from lan_test_config import PROJECT_ROOT, load_lan_test_config
+
+sys.path.insert(0, str(PROJECT_ROOT / "ai-backend"))
+from dashboard_server import SECURITY_HEADERS  # noqa: E402
 
 ASSETS = {
     "/": (PROJECT_ROOT / "index.html", "text/html; charset=utf-8"),
@@ -25,6 +29,10 @@ ASSETS = {
     ),
     "/js/ui-preferences.js": (
         PROJECT_ROOT / "js" / "ui-preferences.js",
+        "text/javascript; charset=utf-8",
+    ),
+    "/js/theme-init.js": (
+        PROJECT_ROOT / "js" / "theme-init.js",
         "text/javascript; charset=utf-8",
     ),
 }
@@ -54,9 +62,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "same-origin")
+        for name, value in SECURITY_HEADERS.items():
+            self.send_header(name, value)
         self.end_headers()
         if include_body:
             self.wfile.write(content)

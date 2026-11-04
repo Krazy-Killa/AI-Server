@@ -34,11 +34,16 @@ class LanTestConfigTests(unittest.TestCase):
                 "/js/operations.js",
                 "/js/system-monitor.js",
                 "/js/ui-preferences.js",
+                "/js/theme-init.js",
             ):
                 with self.subTest(asset=path), urlopen(f"{base_url}{path}") as response:
                     self.assertEqual(response.status, 200)
                     self.assertIn("javascript", response.headers["Content-Type"])
                     self.assertTrue(response.read())
+                    self.assertIn(
+                        "script-src 'self'",
+                        response.headers["Content-Security-Policy"],
+                    )
 
             for path in (
                 "/.env",

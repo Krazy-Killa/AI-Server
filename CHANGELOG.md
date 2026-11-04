@@ -6,6 +6,19 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- Dashboard static servers now send a restrictive Content-Security-Policy,
+  `X-Frame-Options: DENY`, and related headers. A new
+  `ai-backend/dashboard_server.py` replaces `python -m http.server` in the
+  Quadlet dashboard unit and `run-dashboard.bat`, serves only the dashboard
+  assets, and disables directory listings; the inline theme script moved to
+  `js/theme-init.js`. Verified by unit tests and the Playwright suite; the lab
+  container has not been rebuilt, and HSTS/TLS headers remain a proxy task.
+- Proxmox dashboard login now rejects accounts whose ticket response signals a
+  pending second factor (`NeedTFA` or a `PVE:!tfa!` ticket) instead of
+  creating a session from the password alone. Covered by mocked tests only.
+
 ### Changed
 
 - Added high-level `README.md` guides to the documentation subfolders that

@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#080c12">
     <title>AI Server // Command Interface</title>
-    <script>
-        try {
-            const p = JSON.parse(localStorage.getItem('ai-server-ui-prefs')) || {};
-            if (p.theme === 'light') document.documentElement.dataset.theme = 'light';
-        } catch (e) {}
-    </script>
+    <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>

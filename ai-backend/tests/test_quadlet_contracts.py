@@ -101,6 +101,15 @@ class QuadletContractTests(unittest.TestCase):
         )
         self.assertNotIn("Volume", self.dashboard["Container"])
 
+    def test_dashboard_uses_header_setting_static_server(self):
+        self.assertEqual(
+            self.dashboard["Container"]["Exec"],
+            [
+                "python /opt/ai-server/ai-backend/dashboard_server.py "
+                "--bind 0.0.0.0 --port 8001 --directory /opt/ai-server/www"
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

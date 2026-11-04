@@ -156,6 +156,13 @@ class ProxmoxTicketClient:
                 "Proxmox authentication response was incomplete."
             )
 
+        # A password-only success for a 2FA account returns HTTP 200 with a
+        # partial ticket; the second factor is not implemented, so fail closed.
+        if data.get("NeedTFA") or ticket.startswith("PVE:!tfa!"):
+            raise ProxmoxAuthenticationError(
+                "Proxmox accounts requiring two-factor authentication are not supported."
+            )
+
         return ProxmoxTicket(
             username=canonical_username,
             ticket=ticket,

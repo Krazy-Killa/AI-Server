@@ -134,6 +134,29 @@ class ProxmoxTicketClientTests(unittest.TestCase):
                     "user@pve", "password"
                 )
 
+    def test_rejects_pending_two_factor_tickets(self):
+        for data in (
+            {"NeedTFA": 1, "ticket": "ticket"},
+            {"ticket": "PVE:!tfa!user@pve:partial"},
+        ):
+            payload = {
+                "data": {
+                    "username": "user@pve",
+                    "ticket": "ticket",
+                    "CSRFPreventionToken": "csrf",
+                    **data,
+                }
+            }
+            opener = MagicMock()
+            opener.open.return_value = response(payload)
+            with patch("proxmox_auth.build_opener", return_value=opener):
+                with self.subTest(data=data), self.assertRaisesRegex(
+                    ProxmoxAuthenticationError, "two-factor"
+                ):
+                    ProxmoxTicketClient("https://pve.example:8006").authenticate(
+                        "user@pve", "password"
+                    )
+
     def test_rejects_malformed_or_incomplete_proxmox_responses(self):
         for payload in (
             {"data": {"username": "user@pve"}},

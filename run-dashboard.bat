@@ -8,4 +8,4 @@ if not exist "%PYTHON%" (
     exit /b 1
 )
 
-"%PYTHON%" -m http.server 8001 --bind 127.0.0.1
+"%PYTHON%" ai-backend\dashboard_server.py --bind 127.0.0.1 --port 8001 --directory "%~dp0."

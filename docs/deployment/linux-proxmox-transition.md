@@ -374,6 +374,12 @@ installer. Explore a distinct application deployment/update workflow for the
 backend and static dashboard container image, rootless `ai-server`
 account/runtime requirements, and their Podman/Quadlet units.
 
+The dashboard unit runs `ai-backend/dashboard_server.py`, which adds a
+Content-Security-Policy and framing/sniffing protections and serves only the
+dashboard assets. Rebuild the lab image and restart the dashboard unit to apply
+it, then confirm the headers from a browser or `curl -I` on loopback; this
+nested-lab check has not been performed. Add HSTS at the planned HTTPS proxy.
+
 Before implementing the installer, define and test the following behavior:
 
 - A read-only preflight/plan mode that identifies the supported OS/Proxmox and

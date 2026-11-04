@@ -54,6 +54,12 @@ deployment security checks below pass.
   `operator`, or `viewer` using the trusted local CLI. Unmapped users are
   denied by default. There is no automatic Proxmox group or ACL-to-role
   translation.
+- Proxmox accounts with two-factor authentication enabled are rejected. The
+  ticket endpoint returns a partial ticket (`NeedTFA` / `PVE:!tfa!` prefix)
+  after the password alone is verified; the dashboard has no second-factor
+  step, so it fails closed rather than creating a session. Use a Proxmox
+  account without two-factor authentication or a local dashboard account.
+  Verified with mocked responses only, not a live 2FA realm.
 - Use dedicated, non-root Proxmox users for routine access. API tokens are
   separate machine credentials and are not interactive login credentials.
 - The VM inventory integration uses its own backend-only, read-only API token.

@@ -93,7 +93,11 @@ async function signIn(page, role) {
 test('loads every native module and keeps protected polling behind sign-in', async ({ page }) => {
     const api = await installApiMocks(page);
     const pageErrors = [];
+    const policyViolations = [];
     page.on('pageerror', error => pageErrors.push(error.message));
+    page.on('console', message => {
+        if (message.text().includes('Content Security Policy')) policyViolations.push(message.text());
+    });
 
     await page.goto('/');
     await expect(page.locator('#auth-screen')).toBeVisible();
@@ -110,10 +114,12 @@ test('loads every native module and keeps protected polling behind sign-in', asy
         '/js/backend-logs.js',
         '/js/operations.js',
         '/js/system-monitor.js',
+        '/js/theme-init.js',
         '/js/ui-preferences.js',
     ]);
     expect(api.requestedPaths()).toEqual(['/api/auth/status']);
     expect(pageErrors).toEqual([]);
+    expect(policyViolations).toEqual([]);
 });
 
 test('shows rejected sign-in errors and keeps the dashboard locked', async ({ page }) => {

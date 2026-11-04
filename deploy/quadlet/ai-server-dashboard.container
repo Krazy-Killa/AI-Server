@@ -8,7 +8,7 @@ StartLimitBurst=3
 [Container]
 Image=localhost/ai-server:lab
 ContainerName=ai-server-dashboard
-Exec=python -m http.server 8001 --bind 0.0.0.0 --directory /opt/ai-server/www
+Exec=python /opt/ai-server/ai-backend/dashboard_server.py --bind 0.0.0.0 --port 8001 --directory /opt/ai-server/www
 WorkingDir=/opt/ai-server
 UserNS=keep-id
 User=999:990

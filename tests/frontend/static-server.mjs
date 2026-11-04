@@ -13,7 +13,20 @@ const assets = new Map([
     ['/js/operations.js', ['js/operations.js', 'text/javascript; charset=utf-8']],
     ['/js/system-monitor.js', ['js/system-monitor.js', 'text/javascript; charset=utf-8']],
     ['/js/ui-preferences.js', ['js/ui-preferences.js', 'text/javascript; charset=utf-8']],
+    ['/js/theme-init.js', ['js/theme-init.js', 'text/javascript; charset=utf-8']],
 ]);
+
+const contentSecurityPolicy = [
+    "default-src 'none'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+].join('; ');
 
 const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
@@ -29,6 +42,8 @@ const server = createServer(async (request, response) => {
             'Content-Type': asset[1],
             'Cache-Control': 'no-store',
             'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': contentSecurityPolicy,
+            'X-Frame-Options': 'DENY',
         });
         response.end(content);
     } catch (error) {
