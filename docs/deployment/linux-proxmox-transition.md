@@ -563,11 +563,17 @@ backend routes moved into the `api/` package (commit `cb525a4`),
 `api/runtime.py` loaded `.env` from `ai-backend/` instead of the project root.
 The mounted `/opt/ai-server/.env` was therefore never read, so its path and
 Proxmox settings did not apply and the defaults (`HOME`-based) were used. The
-loader is fixed (`PROJECT_ROOT`, with tests), but the fix is not yet deployed
-to the lab. Until it is, the lab backend runs without its `.env` settings. Do
-not archive or delete either database set; the `/var/lib/ai-server/data/` pair
-is the live one, and the `AI-Server/` pair is empty. Whether the `.env` pins the
-paths could not be confirmed (only variable names were listed, not values).
+loader is fixed (`PROJECT_ROOT`, with tests) and was redeployed to the lab as
+`20261105-dotenv`. Verified in the running container: `AI_SERVER_AUTH_DB_PATH`,
+`AI_SERVER_MEMORY_DB_PATH`, and `AI_SERVER_LOG_DIR` are set from `.env` and the
+backend resolves `/var/lib/ai-server/data/{auth,memory}.sqlite3` and
+`/var/lib/ai-server/logs`; both containers `healthy`; docs routes 404;
+anonymous protected route 401; dashboard CSP present. Row counts of the live
+databases and an authenticated login after the redeploy are not yet verified.
+The `/var/lib/ai-server/AI-Server/` pair is empty and unused; do not delete it
+until you have reviewed and archived it. A verification that imports only
+`config` (as `podman exec ... from config import settings` does) does not load
+`.env` and shows defaults; import `api.runtime` first.
 
 Before implementing the installer, define and test the following behavior:
 
@@ -598,6 +604,62 @@ it started with; rollback between distinct application versions still needs
 testing. Until the deployment contract, pinned artifacts, and recovery path
 are verified in the lab, keep the installer planned and perform deployment
 steps manually.
+
+### LAN access via NGINX with TLS (prepared; not yet executed)
+
+Status: files and contract tests exist; nothing has been installed or verified
+on the nested lab guest. Scope is a trusted single-LAN household audience,
+using a local CA. The backend (`8000`) and dashboard (`8001`) stay bound to
+`127.0.0.1`; NGINX is the only listener exposed to the LAN, on 80 (redirect)
+and 443.
+
+Artifacts:
+
+- `deploy/nginx/ai-server.conf`: TLS 1.2/1.3 server, same-origin proxy
+  (`/api/` and `/ws/` to `127.0.0.1:8000`, everything else to
+  `127.0.0.1:8001`), WebSocket upgrade, per-client login rate limit,
+  short-lived HSTS, 2 MB body limit.
+- `scripts/proxmox/make-lan-cert.sh`: creates a local CA (EC P-256, 5 years)
+  constrained by X.509 name constraints to the supplied names, and a server
+  certificate (397 days). Refuses to overwrite, writes keys `0600`, prints no
+  key material, and ends with `openssl verify`.
+
+Procedure (placeholders: `LAB_HOST` is the guest's LAN IP or DNS name). Take a
+guest checkpoint first. Run as root on the guest console, starting `bash` on
+its own line and `cd /` before other commands:
+
+```bash
+apt-get install -y nginx
+rm -f /etc/nginx/sites-enabled/default
+bash /home/ai-deploy/releases/<release-id>/scripts/proxmox/make-lan-cert.sh --ip LAB_HOST
+install -m 0644 /home/ai-deploy/releases/<release-id>/deploy/nginx/ai-server.conf /etc/nginx/conf.d/ai-server.conf
+nginx -t && systemctl enable --now nginx
+```
+
+Use `--dns NAME` instead of, or in addition to, `--ip`. Then, as the operator
+(the file holds secrets, so edit it directly), set
+`AI_SERVER_CORS_ORIGINS=https://LAB_HOST` in `/opt/ai-server/.env` and restart
+the backend unit. Copy only `/etc/ai-server/tls/ca.crt` to client devices
+and import it as a trusted root. Never copy `ca.key` or `server.key`.
+
+Verification (all unverified until run):
+
+1. From a separate LAN client: `https://LAB_HOST/` loads without a warning,
+   login succeeds, and the chat WebSocket streams.
+2. `http://LAB_HOST/` redirects to HTTPS.
+3. From the LAN client, ports 8000 and 8001 are unreachable.
+4. Check which client address the backend sees behind NGINX and rootless
+   Podman port forwarding. The backend login limiter keys on
+   `request.client.host`; NGINX limits per client address as a mitigation.
+
+Rollback: `systemctl disable --now nginx`, remove
+`/etc/nginx/conf.d/ai-server.conf`, and restore `AI_SERVER_CORS_ORIGINS`.
+Because the app services never left loopback, no application change is needed.
+
+Caveats: the CA key lives on the server (root-only); move it offline when
+practical. Server certificates need re-issuing before expiry; clients keep
+trusting the same CA. Browsers ignore HSTS for IP-literal hosts. Review
+firewall rules so only 80/443 are reachable.
 
 ### Planned one-click application updates — not implemented
 

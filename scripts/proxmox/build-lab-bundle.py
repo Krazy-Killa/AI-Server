@@ -28,6 +28,8 @@ SINGLE_FILES = (
     "deploy/systemd/ai-server-housekeeping.service",
     "deploy/systemd/ai-server-housekeeping.timer",
     "scripts/proxmox/ai-server-housekeeping.sh",
+    "scripts/proxmox/make-lan-cert.sh",
+    "deploy/nginx/ai-server.conf",
     "ai-backend/requirements-linux.lock",
 )
 TREES = (("ai-backend", "*.py"), ("ai-backend/api", "*.py"),

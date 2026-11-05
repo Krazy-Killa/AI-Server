@@ -6,6 +6,24 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Prepared LAN access: an NGINX TLS reverse-proxy configuration
+  (`deploy/nginx/ai-server.conf`) and a local-CA certificate generator
+  (`scripts/proxmox/make-lan-cert.sh`) with name constraints, both in the lab
+  bundle and covered by contract tests. Documented in the Linux/Proxmox guide;
+  not yet installed or verified on the lab guest.
+
+### In Development
+
+- Retrieval of similar historical incidents, semantic/vector search, and
+  model-assisted diagnostics.
+- Image-generation backend groundwork and later runtime integration.
+- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
+  validation on the target server.
+
+## [0.8.0] - 2026-11-05
+
 ### Security
 
 - Dashboard static servers now send a restrictive Content-Security-Policy,
@@ -26,8 +44,9 @@ principles and [Semantic Versioning](https://semver.org/).
   `api/` package: `api/runtime.py` looked in `ai-backend/` instead of the
   project root, so database paths, Proxmox settings, and other `.env` values
   silently fell back to defaults. In the nested lab this made the redeployed
-  backend use empty databases. Covered by new tests; not yet redeployed to the
-  lab.
+  backend use empty databases. Covered by new tests; redeployed to the nested
+  lab as `20261105-dotenv`, where the backend now resolves its `.env` paths and
+  both containers are healthy.
 - The Containerfile did not copy the backend `api/` and `api/routes/` packages,
   so an image built from it failed at startup with `ModuleNotFoundError: No
   module named 'api'` (reproduced by simulating the image contents; the likely
@@ -141,14 +160,6 @@ principles and [Semantic Versioning](https://semver.org/).
   Household AI explanations linked to shared operational records. This
   extends existing bounded incident history; the proposed household workflow
   and attribution are not implemented.
-
-### In Development
-
-- Retrieval of similar historical incidents, semantic/vector search, and
-  model-assisted diagnostics.
-- Image-generation backend groundwork and later runtime integration.
-- Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
-  validation on the target server.
 
 ## [0.7.0] - 2026-10-26
 

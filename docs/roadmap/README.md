@@ -318,19 +318,20 @@ environment, not the deployment target.
    secret/config handling, pinned versions, health checks, and rollback that
    preserves persistent data. Keep SearXNG optional; exclude ROCm and the
    inference stack until their separate compatibility/version gates are met.
-   **Lab redeploy (done 2026-11-05, nested lab only):** the manual release
-   procedure in the runbook was executed on the nested guest. A Containerfile
-   gap (missing `api/` packages) was fixed; the build and import gate passed
-   and the switch brought both services up (image `02a3f7cebac4`, rollback tag
-   retained). Verified: `/` 200; `/docs`, `/redoc`, `/openapi.json` 404;
-   dashboard CSP and `X-Frame-Options: DENY`; 8000/8001 bound to loopback;
-   protected routes 401 anonymously. **Caveat (found 2026-11-05):** the
-   redeployed backend did not load its `.env` (a loader-path regression, fixed
-   in code but not yet redeployed) and so used empty default databases;
-   existing lab data is untouched under `/var/lib/ai-server/data/`. Authenticated
-   behavior in the lab has not been verified since the redeploy.    Both containers reported `healthy`
-      about 2 minutes after the switch (backend was `starting` at 25 s).
-   Boot auto-start and reboot recovery remain unverified. See the
+   **Lab redeploys (nested lab only):** the manual release procedure in the
+   runbook was executed twice on 2026-11-05. The first (`20261105-docs-off`)
+   fixed a Containerfile gap (missing `api/` packages) and brought both services
+   up, with `/docs` 404, dashboard CSP and `X-Frame-Options: DENY`, loopback
+   binds, and protected routes 401. It also exposed a regression: the backend
+   had stopped loading its `.env` (loader path wrong since the `api/` move), so
+   it ran on empty default databases while the real data stayed untouched under
+   `/var/lib/ai-server/data/`. The second (`20261105-dotenv`) fixed the loader;
+   the backend now resolves the `.env` paths
+   (`/var/lib/ai-server/data/{auth,memory}.sqlite3`, `/var/lib/ai-server/logs`)
+   and both containers are `healthy`. Authenticated behavior (login, Proxmox
+   features) is not yet verified after the redeploy. Boot auto-start and reboot
+   recovery were tested before the second redeploy (see the runbook) and need a
+   re-check. See the
    [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
    The planned deployment workflow now includes an admin-uploaded signed
    `.tar.gz` release containing a prebuilt architecture-specific OCI image and
@@ -450,6 +451,11 @@ complete from Windows runs, mocks, or nested-lab results.
   CSRF/origin checks, HTTPS reverse proxy, firewall rules, and browser access
   from a separate LAN client. Keep the API and inference service private until
   this gate passes. See [authentication.md](../security/authentication.md).
+  Status: **prepared, not executed.** The NGINX TLS config, local-CA
+  certificate script, bundle entries, contract tests, and runbook section
+  exist; nothing is installed or verified on the nested lab guest yet. Next:
+  install on the lab, test from a separate LAN client, and check the client
+  address the backend sees behind the proxy.
 - Integrate the existing dashboard, backend, model discovery/switching, chat
   and streaming, SQLite history, logging, optional research/bot, and
   observe-only diagnostics. Verify Linux dependencies, permissions, service
