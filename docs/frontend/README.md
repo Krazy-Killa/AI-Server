@@ -62,22 +62,26 @@ HSTS and TLS headers are sent by the NGINX proxy, not by this server.
   buttons. Where native file sharing is supported (including the iOS
   Home Screen app), the report is prepared before the tap and opens the
   system share sheet; choose Save to Files to keep it. Browsers without
-  supported file sharing retain the regular file-download behavior.
+  supported file sharing retain the regular file-download behavior. The iOS
+  Home Screen flow is feature-detected and covered with a mocked Playwright
+  test; it still needs on-device verification after deployment.
 - `manifest.webmanifest` and `icons/` (SVG, 192/512 PNG, 180 px Apple touch
   icon) let phones add the dashboard to the home screen in standalone mode.
   This does not add offline support or a service worker. Verified on an
   iPhone against the nested lab; the device must trust the lab certificate
   authority, or iOS shows a letter instead of the icon.
-  The rebuilt dashboard container is required to serve these assets; the
-  lab has not yet been redeployed with them.
+  These assets are deployed and were verified on an iPhone against the nested
+  lab. The newer Diagnostics share-sheet change has not yet been deployed or
+  verified on the phone.
 
 ## Browser regression tests
 
 The Playwright suite in `tests/frontend/` serves the dashboard's allowlisted
 assets over local HTTP and mocks API responses in the browser. It checks native
 module loading, pre-authentication request gating, successful and rejected
-sign-in, role-specific controls, panel navigation, and persisted
-theme/accent/sidebar preferences.
+sign-in, role-specific controls, panel navigation, persisted
+theme/accent/sidebar preferences, VM inventory rendering, signed-bundle
+staging controls, and Diagnostics report download/share behavior.
 These are frontend regressions, not backend authentication tests or Proxmox
 integration evidence. See the [Windows testing guide](../operations/testing-environment.md#dashboard-browser-regressions)
 for setup and execution.
@@ -105,7 +109,7 @@ for setup and execution.
   on the server. A chosen `.aibundle` is uploaded raw with the CSRF header and
   the verified release (ID, version, signer, payload digest, size, expiry) is
   listed with a Discard button. Apply is always disabled: applying is done at
-  the console with the operator runbook (`js/release-updates.js`)
+  the console with the operator runbook (`js/release-updates.js`).
 - A conversational household voice interface is a future concept; local STT/TTS
   and voice-driven requests are not implemented
 

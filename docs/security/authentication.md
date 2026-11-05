@@ -4,8 +4,9 @@
 
 **Status:** Windows implementation complete and verified by the backend test
 suite, including mocked Proxmox responses. A real Proxmox identity and
-dashboard role mapping have also been exercised in the nested lab; physical
-server and HTTPS-proxy validation have not been performed.
+dashboard role mapping have also been exercised in the nested lab. HTTPS
+sign-in and proxy-aware lockout behavior were tested from LAN clients against
+that lab. Physical-server and production-target validation remain outstanding.
 
 The dashboard supports two identity providers:
 
@@ -197,20 +198,23 @@ is mapped, or whether its password alone was valid.
   login remained active after a dashboard reload.
 - Viewer requests to higher-role routes were denied with HTTP 403. Browser
   JavaScript initially could not read those errors because auth middleware
-  returned before CORS added response headers. The middleware ordering fix is
-  covered by the regression test, but has not yet been deployed to the lab.
+  returned before CORS added response headers. The middleware ordering fix was
+  later deployed with the `20261106-frontend` release; HTTPS login and the
+  proxy-aware lockout behavior were then exercised from Windows/iPhone.
 - The lab browser used HTTP only through a loopback SSH tunnel, so its session
   cookie had `Secure` disabled. This is not acceptable for LAN or production
-  access. These results do not verify higher-role user behavior, HTTPS proxy
-  cookies, disabled Proxmox users, or physical-server acceptance.
+  access. That HTTP-only test is historical; HTTPS proxy access has since
+  been verified in the nested lab. Full role-boundary verification after the
+  later deployment, disabled Proxmox-user behavior, and physical-server
+  acceptance remain outstanding.
 
-### Before LAN or remote access
+### Before physical or production access
 
 - Configure and verify the intended Proxmox realm, API endpoint, exact user
-  mappings, and trusted TLS certificate.
-- Verify session lifetime and revocation, behavior when Proxmox users are
-  disabled, cookie settings through the deployed HTTPS proxy, trusted-origin
-  behavior, and rate limits.
+  mappings, and trusted TLS certificate on the target host.
+- Re-verify session lifetime and revocation, behavior when Proxmox users are
+  disabled, cookie settings through the intended HTTPS proxy, trusted-origin
+  behavior, and rate limits on the target host.
 - Confirm unauthorized users cannot access REST or WebSocket endpoints and
   each role receives only its documented capabilities.
 - Confirm the auth database and bot credential are stored with appropriate

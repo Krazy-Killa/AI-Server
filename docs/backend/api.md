@@ -101,11 +101,12 @@ from application-release rollback. No model upload or installation API exists
 yet.
 
 There is deliberately no `POST /api/admin/updates/{release_id}/apply` route;
-it returns `403` through the dashboard role gate. The apply step, the
-separate privileged updater, and an OCI image payload remain design targets
-(see the Linux/Proxmox transition guide). Known limit: nothing yet prevents
-replaying an older validly signed bundle (no rollback/downgrade protection
-beyond the operator's judgement).
+it returns `403` through the dashboard role gate. The apply step, a separate
+least-privilege updater (with its rootless-versus-brokered privilege model
+still undecided), and an OCI image payload remain design targets (see the
+Linux/Proxmox transition guide). Known limit: nothing yet prevents replaying
+an older validly signed bundle (no rollback/downgrade protection beyond the
+operator's judgement).
 
 ## System Endpoints
 

@@ -29,32 +29,34 @@ Explicitly curated, admin-only shared operational notes are also implemented.
 AI Chat transcripts remain private to each account. The AI Interface is a
 separate, single admin-shared operational transcript with attributed turns;
 its context does not load private AI Chat history.
-Proxmox-host and HTTPS-proxy validation remain outstanding. The dashboard,
-Windows backend foundation, operational logging, and interface polish are
-implemented. Transcript history is separate from diagnostic incident history
-and retrieval; automatic fact extraction and model training from conversations
-are not implemented. Observe-only diagnostics and persistent incident history
-are implemented locally. A reviewed, local lexical runbook-retrieval prototype
-and disconnected maintenance/remediation simulations are also implemented;
-semantic/vector retrieval and live remediation remain outstanding. The
-production Linux/Proxmox stack is unvalidated.
+Proxmox API integration and HTTPS access through NGINX have been exercised in
+the nested lab; physical-host and production acceptance remain outstanding.
+The dashboard, Windows backend foundation, operational logging, and interface
+polish are implemented. Transcript history is separate from diagnostic
+incident history and retrieval; automatic fact extraction and model training
+from conversations are not implemented. Observe-only diagnostics and
+persistent incident history are implemented locally. A reviewed, local
+lexical runbook-retrieval prototype and disconnected maintenance/remediation
+simulations are also implemented; semantic/vector retrieval and live
+remediation remain outstanding. The production Linux/Proxmox stack is
+unvalidated.
 
 ## Sequencing and portability rule
 
 All remaining work is directed toward the planned Proxmox server. Proxmox VE
 9.1-1 is running as a nested Hyper-V guest on the Windows PC and is available
-as an additional Linux/Proxmox deployment and integration environment. The
-dashboard and backend are installed there for loopback-only lab testing.
-Transient service startup and stop were verified on 2026-10-16. Rootless
-Podman/Quadlet backend and dashboard containers have since been built and are
-currently active and healthy on loopback, but are not configured for boot
-auto-start. The backend's host-gateway hostname mapping is deployed; a live
-inventory call from the backend container returned one guest with the expected
-fields. Use the guest to prepare and test suitable OS/API/deployment work
-before the physical server is available. It does not validate the physical
-host's hardware, GPU/ROCm, storage/network topology, sustained performance, or
-recovery behavior. Windows remains the active shared-application build
-environment, not the deployment target.
+as an additional Linux/Proxmox deployment and integration environment. Rootless
+Podman/Quadlet backend and dashboard containers are loopback-bound; boot
+auto-start and clean/forced guest recovery have passed in the nested lab. The
+latest release, `20261106-updater-verify`, was healthy immediately after its
+switch. NGINX/TLS access from Windows and iPhone and one signed Stage 1 bundle
+verification were also tested. A two-release rollback, some Stage 1 negative
+and large-upload tests, post-release reboot recovery, and physical-host
+acceptance remain unverified. Use the guest to prepare and test suitable
+OS/API/deployment work before the physical server is available. It does not
+validate the physical host's hardware, GPU/ROCm, storage/network topology,
+sustained performance, or recovery behavior. Windows remains the active
+shared-application build environment, not the deployment target.
 
 - **Pre-physical-server work:** use portable contracts, deterministic tests,
   and the nested Proxmox lab for Proxmox API, permissions,
@@ -111,9 +113,11 @@ environment, not the deployment target.
   Middleware ordering was corrected so allowed dashboard origins can read
   authorization errors, and the backend suite passes. A lab image update
   attempt was rolled back after the backend did not remain reachable; API
-  health recovered, but the cause was not isolated and the fix is not
-  currently deployed. Physical-server and HTTPS-proxy validation remain
-  outstanding.
+  health recovered, but the cause was not isolated. At that time the
+  middleware fix was not deployed; it was later deployed in release
+  `20261106-frontend`. HTTPS login and proxy-aware lockout behavior were
+  subsequently verified from Windows/iPhone against the nested lab.
+  Physical-server acceptance remains outstanding.
 - Proxmox authentication interface and HTTPS ticket client with mocked
   responses. These tests establish client behavior, not real-provider
   integration.
@@ -202,10 +206,10 @@ environment, not the deployment target.
   inventory request. A later rootless Podman deployment also passed dashboard,
   OpenAPI, health, and anonymous-route checks. After adding a host-gateway
   hostname mapping, the live inventory client inside the backend container
-  returned one guest with the expected five dashboard fields. Services are
-  active and healthy but not configured for boot auto-start. All results are
-  nested-lab evidence, not physical-host acceptance. No VM management or
-  console controls are exposed.
+  returned one guest with the expected five dashboard fields. Rootless service
+  lifecycle, boot auto-start, and clean/forced guest recovery have since been
+  tested in the nested lab. All results are nested-lab evidence, not
+  physical-host acceptance. No VM management or console controls are exposed.
 - Network Services panel has planning-only views for DHCPv4, DHCPv6, DNS, web
   hosting, and routing/firewall. The intended initial integration is
   **observe-only**, including services hosted inside VMs: discover their
@@ -237,8 +241,9 @@ environment, not the deployment target.
 - **Partial — nested-lab integration:** the inventory token's live read
   permission and transient loopback backend/dashboard startup and stop were
   verified on 2026-10-16. Rootless Podman/Quadlet units and container health
-  checks are now implemented; both containers are active, loopback-only, and
-  not configured for boot auto-start. The container's original route to the
+  checks are now implemented; at this point in the 2026-10-17 timeline both
+  containers were active and loopback-only, and boot auto-start was not yet
+  configured. The container's original route to the
   guest API was refused; the backend Quadlet now maps the API hostname to
   Podman's host gateway. The deployed mapping and live inventory request were
   verified: the container returned one guest with the expected five fields.
@@ -257,9 +262,9 @@ environment, not the deployment target.
   from pulling from a registry; after the unit hit its start limit, restoring
   the snapshot, resetting the failed unit, and starting it manually restored
   healthy API and live inventory. The snapshot is of the current build, not a
-  previous application release. Boot auto-start, reboot recovery,
-  deployment-script validation, and physical-host acceptance remain
-  outstanding.
+  previous application release. Subsequent nested-lab checks verified boot
+  auto-start and clean/forced guest recovery. Rollback between distinct
+  application releases and physical-host acceptance remain outstanding.
 
 #### Integration-priority order
 
@@ -268,7 +273,7 @@ environment, not the deployment target.
    was selected for the lab. Rootless backend and dashboard definitions now
    use loopback-only ports, explicit environment/CA mounts, persistent runtime
    state, health checks, and bounded restart behavior. The containers are
-   active but not configured for boot auto-start. The updated host-gateway
+   active and configured for boot auto-start. The updated host-gateway
    hostname mapping and live inventory request now pass in the nested lab.
    Stop/start, controlled backend failure/restart, start-limit behavior, and
    rollback from an unavailable candidate to a saved pre-test snapshot passed.
@@ -284,22 +289,24 @@ environment, not the deployment target.
       containers to `healthy` with all four SQLite files passing
       `integrity_check`. Not yet verified: the first timer-driven cleanup run,
       physical power loss, and physical-host acceptance.
-2. **Proxmox identity and dashboard authorization — subsequent priority.**
-   Exercise the live Proxmox ticket login and identity-to-role mapping in the
-   nested lab, then verify cookie, CSRF/origin, viewer/operator/admin
-   boundaries. Use a least-privilege test identity; do not grant mutation
-   permissions or treat lab success as physical-host acceptance.
+2. **Proxmox identity and dashboard authorization — partial.** A real mapped
+   viewer login and role denial were tested in the nested lab; HTTPS login and
+   proxy-aware lockout behavior were later verified from Windows/iPhone.
+   Repeat the full authorized-route, CSRF/origin, and role-boundary checks
+   after deployment changes. Use least privilege; nested-lab success is not
+   physical-host acceptance.
 3. **Linux application smoke coverage — partial (2026-11-05).** An
    unauthenticated loopback check passed: both ports bound to `127.0.0.1`, all
    32 non-parameterized protected routes returned 401 anonymously, and login
    enforced the `Origin` check. Still unverified: SQLite paths/permissions,
    logs, authenticated reads, and diagnostics, which need
    `ai-server` account access that `ai-deploy` lacks. Container health was
-   confirmed on the lab on 2026-11-05 (both `healthy`, no restarts; reboot
-   recovery still unverified). Decision: `/docs`,
-      `/redoc`, and `/openapi.json` are now disabled by default
-      (`AI_SERVER_ENABLE_API_DOCS`, implemented and tested; not yet deployed to
-      the lab). Add llama.cpp,
+   confirmed after release `20261106-updater-verify` (both containers
+   `healthy` about 45 seconds after the switch). `/docs`, `/redoc`, and
+   `/openapi.json` are disabled by default (`AI_SERVER_ENABLE_API_DOCS`), and
+   `/docs` returned 404 after deployment. Boot/reboot recovery passed earlier
+   in the nested lab and should be repeated after future releases as needed.
+   Add llama.cpp,
    SearXNG, bot, and proxy checks only when those services are installed and
    configured.
 4. **Deployment-script lab checks — `--check` and `--report` run on the
@@ -312,14 +319,14 @@ environment, not the deployment target.
    configuration changed. A cosmetic memory-label defect (`MemTotal::`) seen
    in the first run was fixed and re-verified on the guest. Nested-lab evidence
    only; it does not validate physical hardware, GPU/ROCm, or the installer
-   modes, which must not be run from the nested guest. A separate
-   application deployment installer is **planned, not started**: explore it
-   after the lab checks, keeping it distinct from `prepare-ai-host.sh`. Initial
-   scope is only the existing rootless backend/dashboard image and Quadlet
-   deployment, with read-only preflight, explicit confirmation, protected
-   secret/config handling, pinned versions, health checks, and rollback that
-   preserves persistent data. Keep SearXNG optional; exclude ROCm and the
-   inference stack until their separate compatibility/version gates are met.
+   modes, which must not be run from the nested guest. An automatic application
+   deployment installer is **planned, not started**, and remains separate from
+   `prepare-ai-host.sh`. The current nested-lab release procedure is manual.
+   Keep the eventual installer scoped to the existing rootless backend/
+   dashboard image and Quadlet deployment, with read-only preflight, explicit
+   confirmation, protected secret/config handling, pinned versions, health
+   checks, and rollback that preserves persistent data. Keep SearXNG optional;
+   exclude ROCm and inference until their separate compatibility gates pass.
    **Lab redeploys (nested lab only):** the manual release procedure in the
    runbook was executed twice on 2026-11-05. The first (`20261105-docs-off`)
    fixed a Containerfile gap (missing `api/` packages) and brought both services
@@ -330,18 +337,18 @@ environment, not the deployment target.
    `/var/lib/ai-server/data/`. The second (`20261105-dotenv`) fixed the loader;
    the backend now resolves the `.env` paths
    (`/var/lib/ai-server/data/{auth,memory}.sqlite3`, `/var/lib/ai-server/logs`)
-   and both containers are `healthy`. Authenticated behavior (login, Proxmox
-   features) is not yet verified after the redeploy. Boot auto-start and reboot
-   recovery were tested before the second redeploy (see the runbook) and need a
-   re-check. See the
+   and both containers are `healthy`. This historical check preceded the later
+   HTTPS login and signed-bundle tests. Boot auto-start and reboot recovery
+   passed before the latest release; repeat reboot recovery after that release.
+   See the
    [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
    The planned deployment workflow now includes an admin-uploaded signed
-   release bundle verified before apply (Stage 1 verify-only is implemented and
-   deployed to the nested lab; one signed test bundle verified through the
-   dashboard on 2026-11-05, and Discard appeared to work. Tamper and wrong-key rejection, expiry and
-   a large upload through NGINX are not yet exercised on the lab. The OCI-image
-   payload and Apply remain design only). A separate
-   privileged updater is required to
+   release bundle verified before apply (Stage 1 verify-only is implemented
+   and deployed; one signed test bundle was verified through the dashboard on
+   2026-11-05, and Discard appeared to work. Tamper/wrong-key rejection,
+   expiry, and a large upload through NGINX remain untested. The OCI-image
+   payload and Apply remain design-only). A separate
+   least-privilege updater is required to
    survive backend restarts, coordinate only backend/dashboard services, run
    health checks, and restore the prior image on failure. This is a design
    only; trust-key rotation, replay protection, database backup/schema
@@ -492,10 +499,12 @@ complete from Windows runs, mocks, or nested-lab results.
   Remaining: certificate renewal and the physical host.
 - Dashboard Settings is a tabbed page. Its admin-only Setup / Deployment tab
   holds the Firmware File picker and Verify button. **Updater Stage 1
-  (verify-only) is implemented and unit/browser-tested but not yet lab-
-  verified**: signed `.aibundle` upload, Ed25519 verification, hostile-archive
-  checks, staging and discard. Apply (Stage 2) is planned and not started; it
-  waits for a verified two-release rollback, container health and reboot tests.
+  (verify-only) is implemented, deployed, and partly lab-verified**: one
+  signed `.aibundle` upload verified in the dashboard and Discard appeared to
+  work. Tamper/wrong-key rejection, expiry, and a large upload through NGINX
+  remain unverified. Apply (Stage 2) is planned and not started; a rollback
+  between two distinct releases remains outstanding, while health and guest
+  reboot recovery have passed in the nested lab.
 - Frontend polish (implemented, tested in Playwright, deployed to the nested
   lab as `20261106-frontend` and verified over HTTPS): live CPU values,
   visibility-aware polling, self-hosted fonts, an

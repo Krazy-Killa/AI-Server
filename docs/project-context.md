@@ -5,7 +5,7 @@ This is a high-level snapshot, not an operational runbook. The
 [development roadmap](./roadmap/README.md), focused subsystem guides, source,
 and tests remain authoritative for detailed status and behavior.
 
-**Status snapshot:** 2026-11-04. Distinguish implemented Windows behavior,
+**Status snapshot:** 2026-11-05. Distinguish implemented Windows behavior,
 portable/mock test evidence, nested-lab validation, plans, and physical-host
 acceptance. Success in one environment does not prove behavior in another.
 
@@ -199,13 +199,16 @@ ROCm, Proxmox networking, or physical-host recovery.
 
 Proxmox VE 9.1-1 runs as a nested Hyper-V guest on the Windows PC. The
 dashboard and backend are deployed in rootless Podman/Quadlet containers with
-ports bound to guest loopback. The containers are active and healthy but not
-configured for boot auto-start. A live in-container Proxmox inventory read,
-stop/start, controlled backend restart, start-limit behavior, and recovery
-from an unavailable candidate were recorded in the roadmap/testing guide.
-That rollback restored the saved current build, not a different release.
-Boot/reboot recovery, NGINX/TLS, and LAN application exposure remain
-unverified.
+ports bound to guest loopback. The latest deployment is
+`20261106-updater-verify`; both containers were healthy about 45 seconds after
+the switch, and the dashboard root returned 200 while `/docs` returned 404.
+Boot auto-start and clean/forced guest recovery were verified earlier in the
+nested lab; re-check reboot recovery after this latest release. NGINX/TLS
+access was verified from Windows and iPhone before this release. A signed
+Stage 1 test bundle was verified through the dashboard and the operator
+reported that Discard appeared to work. A separate two-release rollback,
+large upload through the dedicated NGINX location, and physical-host
+acceptance remain unverified.
 
 **Purpose:** Prepare Linux/Proxmox deployment and integration work. Results
 are nested-lab evidence only, not physical server acceptance.
@@ -303,17 +306,20 @@ scope notes and evidence boundaries):
   deterministic maintenance/remediation simulations, browser modules, and
   other portable feature groundwork. Live remediation and infrastructure
   mutation are not included.
-- **Frontend browser regressions:** six Playwright tests cover native module
-  loading, authentication gating and failure, admin/operator/viewer controls,
-  panel navigation, and saved preferences. The test-discovered CSS
-  `hidden`-attribute issue was fixed.
+- **Frontend browser regressions:** Playwright tests cover native module
+  loading, authentication and role controls, panel navigation, UI
+  preferences, VM inventory rendering, signed-bundle staging controls, and
+  Diagnostics report download/share behavior. These are browser tests with
+  mocked API responses, not live-device acceptance.
 - **Linux telemetry provider:** Linux AMD `amdgpu` sysfs provider and
   deterministic fixtures are implemented; live Linux/physical readings and
   ROCm/HIP inference are not validated.
 - **Nested-lab deployment evidence:** rootless backend/dashboard containers
-  are healthy and loopback-bound; some service restart, limit, and
-  current-build snapshot recovery checks passed. Auto-start, reboot recovery,
-  and rollback between distinct application releases remain outstanding.
+  are loopback-bound; service restart/limit checks, boot auto-start, clean and
+  forced guest recovery, and a current-build snapshot rollback passed. The
+  latest release was healthy immediately after its switch. Rollback between
+  distinct application releases and physical-host acceptance remain
+  outstanding.
 
 ## Current Priorities
 
@@ -333,17 +339,22 @@ According to the roadmap's integration-priority order:
    healthy without manual start (nested lab only; a forced guest power-off also
    recovered with intact SQLite files; physical power loss and the physical
    host remain untested).
-2. **Proxmox identity and authorization:** test live Proxmox ticket login,
-   explicit identity-to-role mapping, cookies, CSRF/origin checks, and role
-   boundaries in the nested lab with least-privilege access.
-3. **Linux application smoke coverage:** verify backend startup, SQLite paths
-   and permissions, logging, authentication, diagnostics, and API health as
-   the service account; add optional services only when installed.
-4. **Deployment workflow:** after the preceding lab checks, explore a separate
-   app-deployment installer with read-only preflight, explicit confirmation,
-   protected configuration, pinned versions, health checks, and rollback.
-   The signed-bundle updater is partly built: Stage 1 (verify-only) is
-   implemented and lab-verified for a basic upload; Apply is design-only.
+2. **Proxmox identity and authorization:** partial. A real mapped viewer login
+   and role denial were tested in the nested lab; HTTPS login and
+   proxy-aware lockout behavior were later verified from Windows/iPhone.
+   Repeat the full authorized-route, CSRF/origin, and role-boundary checks
+   after deployment changes; physical-host acceptance remains gated.
+3. **Linux application smoke coverage:** partial. Unauthenticated protected
+   route and Origin checks passed, the latest release passed its import gate,
+   and containers were healthy with expected root/docs responses. Review
+   authenticated application reads and persistent data/log behavior as the
+   service account; add optional services only when installed.
+4. **Deployment workflow:** the manual release procedure is in use. Signed
+   updater Stage 1 (verify-only) is deployed and partly lab-verified with one
+   signed bundle; the operator reported Discard appeared to work. Tamper and
+   wrong-key rejection, expiry, and large upload through NGINX remain to test.
+   Automatic Apply / Stage 2 remains unimplemented; a separate signed
+   model-package flow is planned.
 5. **Physical-host integration:** blocked until the planned physical Proxmox
    server is available. ROCm/HIP, production networking/proxy, GPU readings,
    reboot/recovery, and target acceptance cannot be established on Windows.
@@ -488,13 +499,15 @@ Important guides include the [roadmap](./roadmap/README.md),
   operations, developed on Windows and intended for a Linux/Proxmox server.
 - **Validated:** Windows application/backend behavior and tests; local
   llama.cpp/Vulkan smoke path and Windows GPU telemetry; DirectML synthetic
-  test; six browser regressions; portable Python tests; 2026-11-04 live
-  Windows browser chat and WSL SearXNG research smoke test; selected loopback
-  container lifecycle and read-only inventory checks in the nested Proxmox
-  lab.
+  test; browser regressions; portable Python tests; 2026-11-04 live Windows
+  browser chat and WSL SearXNG research smoke test; selected loopback
+  container lifecycle, reboot recovery, HTTPS proxy access, and read-only
+  inventory checks in the nested Proxmox lab; one signed Stage 1 bundle
+  verification in the lab.
 - **Not validated:** physical-server deployment; Linux live GPU telemetry;
-  RX 6800 XT ROCm/HIP inference on Proxmox; production HTTPS/proxy/LAN access;
-  boot/reboot recovery; rollback between distinct application releases;
+  RX 6800 XT ROCm/HIP inference on Proxmox; physical-target HTTPS/proxy/LAN
+  acceptance; reboot recovery after the latest release; rollback between
+  distinct application releases; all Stage 1 negative/large-upload tests;
   network telemetry; live maintenance/remediation; voice; or multi-GPU
   operation.
 - **Direction:** preserve native browser modules and portable backend

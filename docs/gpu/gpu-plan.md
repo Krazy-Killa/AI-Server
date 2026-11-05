@@ -17,7 +17,9 @@
   stored under `%LOCALAPPDATA%\AI-Server`, outside the OneDrive project
   folder. This confirms the test path, not performance with production models.
 - **Telemetry:** Windows GPU load and dedicated VRAM usage are reported live
-  by the system monitor. Linux/Proxmox telemetry remains future work.
+  by the system monitor. Linux AMD telemetry is implemented through the
+  `amdgpu` sysfs provider and fixture-tested; live Linux/Proxmox readings still
+  require target-host validation.
 - **Vision:** ONNX Runtime + DirectML. The local environment and provider have
   been installed and a small synthetic ONNX inference has passed. A real
   vision model and app integration are not yet configured.

@@ -1095,7 +1095,7 @@ blocked by guardrail (response includes the reason), 429 rate limited.
 | llama-server health | `http://127.0.0.1:8080/health` | same, behind the Quadlet/systemd unit |
 | Backend / dashboard | ports 8000 / 8001 (`run-*.bat`) | systemd or Podman units behind NGINX |
 | SearXNG | WSL process on 8888 (`run-searxng.bat`) | `searxng.service` on 127.0.0.1:8888 |
-| GPU telemetry | Windows performance counters | `rocm-smi` / amdgpu sysfs (not yet built) |
+| GPU telemetry | Windows performance counters | `amdgpu` sysfs provider implemented and fixture-tested; live target readings unverified |
 | Service restart | process supervisor scripts | `systemctl restart` / Podman |
 | Logs | `ai-backend` rotating log files | same files plus `journalctl` |
 

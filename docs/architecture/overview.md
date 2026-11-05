@@ -16,8 +16,9 @@ The AI Command Interface is a unified dashboard, backend API, and Discord bot de
 The Windows build/prototype connects dashboard AI Chat to a local llama.cpp
 Qwen2.5 1.5B Instruct model and reports live RX 6800 XT load and VRAM telemetry.
 Dashboard authentication supports local accounts and explicitly mapped
-Proxmox identities, with protected sessions and role-gated APIs; Proxmox and
-production proxy deployment are not yet validated. Installed GGUF files are
+Proxmox identities, with protected sessions and role-gated APIs. Proxmox API
+integration and HTTPS proxy access have been exercised in the nested lab;
+physical-host validation remains outstanding. Installed GGUF files are
 discovered and can be selected for model switching; the backend confirms
 which model is active and attempts recovery if a switch fails.
 Discord heartbeat/status, operational logs, restart, command listing, and
@@ -31,10 +32,12 @@ unverified.
 Windows remains the active build environment for shared application behavior.
 An additional Proxmox VE 9.1-1 deployment/integration lab is running inside a
 nested Hyper-V virtual machine on the Windows PC; the dashboard and backend
-have been deployed there for manual loopback-only testing through an SSH
-tunnel. This lab can support Linux/Proxmox implementation work, but GPU/ROCm,
-physical hardware, production networking, and recovery behavior still require
-validation on the eventual physical host.
+have been deployed there with loopback-only service ports and an NGINX HTTPS
+proxy, tested from LAN clients as well as through operator access. This lab
+can support Linux/Proxmox implementation work, but GPU/ROCm,
+physical hardware, production networking, and physical-host recovery behavior
+still require validation on the eventual server. Nested-lab boot recovery and
+LAN HTTPS proxy checks have passed; see the transition runbook for scope.
 The AI Interface has a single admin-shared, attributed transcript; private
 AI Chat conversations remain scoped to each account.
 

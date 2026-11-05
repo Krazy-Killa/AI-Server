@@ -12,9 +12,12 @@ intended Linux/Proxmox deployment.
 ## Status and boundaries
 
 The Windows machine is the active shared-application development environment.
-The nested Proxmox guest supports limited deployment and integration testing;
-its results do not establish physical-host acceptance. Production service
-exposure, HTTPS proxy behavior, boot/reboot recovery, and GPU runtime
-compatibility require their separately documented validation gates.
+The nested Proxmox guest supports deployment and integration testing; its
+results do not establish physical-host acceptance. Rootless service lifecycle
+and boot recovery have been tested in the nested guest. NGINX/TLS access was
+verified from Windows and iPhone, and signed updater Stage 1 was partially
+verified there. Repeat release-sensitive health/reboot checks as needed.
+Physical-target service exposure, GPU runtime compatibility, and production
+acceptance remain gated.
 
 Consult the [roadmap](../roadmap/README.md) for phase status and sequencing.

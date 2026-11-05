@@ -40,7 +40,8 @@ implemented, or tested.
 
 ### Not yet operational
 
-- SearXNG must be installed and configured before web research can search.
+- Windows/WSL web research through SearXNG is verified; SearXNG is not yet
+  deployed/configured for the nested lab or physical target.
 - Linux AMD GPU telemetry has a sysfs-backed provider with deterministic
   fixture tests; live Linux/Proxmox readings and the production inference
   stack still need target-host implementation/validation.

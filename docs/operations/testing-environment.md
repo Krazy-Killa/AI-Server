@@ -36,15 +36,22 @@ closed afterward. Dashboard and backend OpenAPI requests returned HTTP 200,
 and an unauthenticated inventory request returned HTTP 401.
 
 The guest now also has Podman 5.4.2 and rootless `ai-server` Quadlet
-definitions. The backend and dashboard containers are currently active and
-healthy, with ports 8000/8001 published only on `127.0.0.1`; they are not
-configured for boot auto-start. The dashboard and backend OpenAPI return HTTP
-200, and an unauthenticated inventory request returns HTTP 401. Windows cannot
-reach these loopback-only ports. On 2026-10-17, both units were explicitly
-stopped: systemd reported inactive/dead, no managed containers remained, and
-ports 8000/8001 had no listeners. Both units were then started again; they
-reached healthy state and passed dashboard HTTP 200, backend OpenAPI HTTP 200,
-and anonymous inventory HTTP 401 checks.
+definitions. The backend and dashboard publish ports 8000/8001 only on
+`127.0.0.1`; Windows cannot reach these loopback-only ports directly. Current
+lab status (2026-11-05): boot auto-start and clean/forced guest recovery have
+passed; release `20261106-updater-verify` was healthy about 45 seconds after
+the switch, `/` returned HTTP 200, and `/docs` returned 404. A signed
+Stage 1 test bundle was verified through the dashboard; the operator reported
+that Discard appeared to work. A separate two-release rollback, large upload
+through the dedicated NGINX location, and reboot recovery after this latest
+release remain unverified. NGINX/TLS was verified earlier from Windows and
+iPhone. These are nested-lab results, not physical-host acceptance.
+
+On 2026-10-17, both units were explicitly stopped: systemd reported
+inactive/dead, no managed containers remained, and ports 8000/8001 had no
+listeners. Both units were then started again; they reached healthy state and
+passed dashboard HTTP 200, backend OpenAPI HTTP 200, and anonymous inventory
+HTTP 401 checks.
 
 A controlled `podman kill ai-server-backend` tested failure recovery. The
 backend Quadlet service restarted once (`NRestarts=1`); after recovery, the
@@ -59,9 +66,9 @@ automatic restarts; the fourth left the unit failed at the limit
 (`NRestarts=4`). `systemctl --user reset-failed` followed by a manual start
 restored the unit and container to active/healthy. OpenAPI returned HTTP 200,
 anonymous inventory remained HTTP 401, and listeners remained loopback-only.
-This verifies the configured repeated-failure limit and manual recovery path;
-boot auto-start, reboot recovery, rollback between distinct application
-releases, and full browser-login behavior remain unverified.
+This verifies the configured repeated-failure limit and manual recovery path.
+At this point in the 2026-10-17 checks, boot auto-start and reboot recovery had
+not yet been verified; later nested-lab tests passed both.
 
 Deployment rollback was exercised on 2026-10-17. Before changing the active
 unit, the exact backend Quadlet was copied to
@@ -100,8 +107,8 @@ inside the backend container, returning one guest with only `name`, `node`,
 `status`, `type`, and `vmid`. Both backend and dashboard services were active
 and healthy after the restart, and host ports 8000/8001 remained bound only to
 `127.0.0.1`. This retains the configured API hostname and TLS hostname
-verification. These are nested-lab results only; boot auto-start and reboot
-recovery remain unverified.
+verification. These are nested-lab results only. Boot auto-start and clean/
+forced guest recovery were verified later on 2026-11-05.
 
 On 2026-10-19, live dashboard authentication was tested with the Proxmox
 identity `ai-dashboard@pve`, explicitly mapped to dashboard role `viewer`.
@@ -116,16 +123,19 @@ snapshot returned the backend API to HTTP 200. The rollback is verified, but
 the failed attempt's cause was not isolated, and the CORS fix is not currently
 deployed. The live session used HTTP only over a loopback SSH tunnel with
 `Secure` disabled; do not reuse that cookie setting for LAN/production.
-Higher-role identities, HTTPS proxy behavior, and the deployed fix remain
-unverified.
+Higher-role identities, HTTPS proxy behavior, and the deployed fix were
+unverified at that time. Subsequent 2026-11-05 testing exercised HTTPS access
+from Windows/iPhone and the proxy-aware login lockout fix. This historical test
+does not establish physical-host behavior.
 
-The optional Discord bot and chat/inference remain degraded because their
-required services/runtime have not been configured. NGINX/TLS, LAN application
-exposure, persistent service supervision, and inference runtime are not
-configured. All results are nested-lab-only and do not validate physical
-hardware, GPU/ROCm, network/storage topology, sustained performance, or
-recovery behavior. The non-root `ai-deploy` SSH account is intended for
-deployment work and has no sudo access.
+At that point the optional Discord bot and chat/inference were degraded
+because their required services/runtime had not been configured. NGINX/TLS,
+LAN application exposure, and persistent service supervision were subsequently
+set up and tested in the nested lab, but llama.cpp/inference remains
+unconfigured there. No nested-lab result validates physical hardware,
+GPU/ROCm, network/storage topology, sustained performance, or physical-host
+recovery. The non-root `ai-deploy` SSH account is intended for deployment work
+and has no sudo access.
 
 On 2026-11-05, after the guest rebooted (about 11 minutes before the check) and
 the operator manually started the backend and dashboard services as root, a
@@ -141,13 +151,14 @@ serves through the old `SimpleHTTP` server with no CSP or frame headers (the lab
 image predates the CSP change), and `/docs`, `/redoc`, and `/openapi.json` are
 publicly readable. Decision (2026-11-05): disable them by default
 (`AI_SERVER_ENABLE_API_DOCS`) and move the backend health probe to `GET /`;
-this is implemented and unit-tested but not yet deployed to the lab. This did
-not cover SQLite
+at the time of this check, that change was implemented and unit-tested but not
+yet deployed. It was subsequently deployed in release
+`20261106-updater-verify`, where `/docs` returned 404. This check did not cover SQLite
 paths and permissions, logs, authenticated reads, or container health status,
 because `ai-deploy` cannot read `/var/lib/ai-server` or the `ai-server`
-account's journal. Services did not start on their own after the reboot, which
-matches the documented absence of boot auto-start but was not observed as a
-controlled recovery test.
+account's journal. Services did not start on their own after this earlier
+reboot, before boot auto-start was installed; a later controlled reboot and
+forced guest power-off both recovered without manual service start.
 
 ## Setup
 
@@ -161,7 +172,10 @@ graph through DirectML.
 The Playwright suite exercises the native browser modules using mocked API
 responses. It covers module loading, sign-in gating and rejected credentials,
 administrator/operator/viewer UI controls, panel navigation, and persisted
-theme, accent, and sidebar preferences. It does not replace backend
+theme, accent, and sidebar preferences; it also checks VM inventory rendering,
+signed release staging controls, and Diagnostics report download/native-share
+behavior. The native-share test mocks the platform API and does not verify the
+iOS Home Screen app on a physical device. These tests do not replace backend
 authorization tests or validate the nested Proxmox guest. From PowerShell, run:
 
 ```powershell

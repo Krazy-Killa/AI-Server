@@ -62,7 +62,8 @@ GPU / LLM / Bot / System Stats
   staged, never applied) is implemented in `release_bundle.py` and
   `api/routes/updates.py`; a signed test bundle verified on the nested lab
   (2026-11-05). Applying is planned: the target
-  design uses a separate privileged updater so the API can restart safely.
+  design uses a separate least-privilege updater so the API can restart safely;
+  its rootless-versus-brokered privilege model remains undecided.
   The updater is limited to the backend/dashboard services; host packages,
   Proxmox, GPU runtimes, secrets, persistent user data, and model weights are
   out of scope. A separate signed model-package flow is planned to verify and

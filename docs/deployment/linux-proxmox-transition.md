@@ -5,19 +5,22 @@
 Windows remains the active build and prototype environment for shared
 application and API behavior. An additional deployment/integration lab is
 running Proxmox VE 9.1-1 as a nested Hyper-V guest on the Windows PC. The
-dashboard and backend are deployed in that guest for manual, loopback-only
-testing through an SSH tunnel. This runbook identifies the platform-specific
+dashboard and backend are deployed in that guest with loopback-only service
+ports, and NGINX provides verified HTTPS access from LAN clients. This runbook identifies the platform-specific
 changes, decisions, and target-host checks needed to carry the implementation
 to Linux/Proxmox. Nested-lab results do not constitute physical-host acceptance.
 
-The current guest deployment is a lab setup: rootless Podman/Quadlet backend
-and dashboard unit definitions are installed and active, but neither is
-configured for boot auto-start. The backend and dashboard are bound to
-loopback-only host ports. NGINX/TLS, LAN application exposure, and inference
-runtime are not configured. A dedicated non-root `ai-deploy` SSH account is
-available for deployment work; it has no sudo access. Keep guest application
-services bound to loopback unless a separately reviewed secure deployment is
-requested.
+The current guest release is `20261106-updater-verify`. Rootless
+Podman/Quadlet backend and dashboard units publish only loopback ports; boot
+auto-start and clean/forced guest recovery were verified before this release.
+The latest switch left both containers healthy, with the dashboard root
+returning 200 and `/docs` returning 404. NGINX/TLS access was verified from
+Windows and iPhone before this release. A signed Stage 1 test bundle was
+verified through the dashboard and Discard appeared to work. Release-to-release
+rollback, some updater negative/large-upload checks, and reboot recovery after
+the latest release remain unverified. A dedicated non-root `ai-deploy` SSH
+account is available for deployment work; it has no sudo access. Physical-host
+acceptance remains separate.
 
 ## Read-only VM inventory lab integration
 
@@ -118,8 +121,9 @@ known-good image tag and config snapshot remain on the guest under
 `/var/lib/ai-server/deploy-backups/rollback-test-20261017/`.
 
 These results are nested-lab evidence only; physical-host acceptance remains
-separate. Boot auto-start, reboot recovery, NGINX/TLS, and LAN application
-exposure have not been validated.
+separate. At this point in the 2026-10-17 timeline, boot auto-start,
+reboot recovery, NGINX/TLS, and LAN application exposure had not yet been
+validated; later nested-lab checks are recorded below.
 
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the
@@ -369,22 +373,22 @@ ComfyUI, Qdrant, or production Quadlet/NGINX configuration. Those steps need
 version pins and an install method verified for the actual host; do not
 silently install floating latest releases on a Proxmox hypervisor.
 
-### Planned application deployment installer — not implemented
+### Application deployment installer — planned, not implemented
 
 Keep host preparation separate from application deployment. The existing
 `prepare-ai-host.sh` is for host inventory, carefully reviewed prerequisites,
 and the separately gated SearXNG setup; do not turn it into an all-components
-installer. Explore a distinct application deployment/update workflow for the
-backend and static dashboard container image, rootless `ai-server`
-account/runtime requirements, and their Podman/Quadlet units.
+installer. The nested lab currently uses the manual release procedure below;
+an automatic application deployment/update installer for the backend and
+dashboard image and their Podman/Quadlet units has not been built.
 
 The dashboard unit runs `ai-backend/dashboard_server.py`, which adds a
 Content-Security-Policy and framing/sniffing protections and serves only the
-dashboard assets. Rebuild the lab image and restart the dashboard unit to apply
-it, then confirm the headers from a browser or `curl -I` on loopback; this
-nested-lab check has not been performed. Add HSTS at the planned HTTPS proxy.
+dashboard assets. The deployed lab dashboard has been verified with CSP and
+frame protections; NGINX/TLS is installed and was verified from Windows and
+iPhone. Production/physical-host exposure remains gated.
 
-### Lab release procedure (manual; executed once on the nested lab 2026-11-05)
+### Lab release procedure (manual; repeatedly executed on the nested lab)
 
 The 2026-10-19 deployment attempt left the backend unreachable and the cause was
 never isolated. The Containerfile has since been found to omit the backend
@@ -615,8 +619,10 @@ loader is fixed (`PROJECT_ROOT`, with tests) and was redeployed to the lab as
 `AI_SERVER_MEMORY_DB_PATH`, and `AI_SERVER_LOG_DIR` are set from `.env` and the
 backend resolves `/var/lib/ai-server/data/{auth,memory}.sqlite3` and
 `/var/lib/ai-server/logs`; both containers `healthy`; docs routes 404;
-anonymous protected route 401; dashboard CSP present. Row counts of the live
-databases and an authenticated login after the redeploy are not yet verified.
+anonymous protected route 401; dashboard CSP present. An authenticated login
+was later verified in the lab, and the admin-only signed-bundle test also
+required an authenticated session. Live database row counts have not been
+independently reviewed.
 The `/var/lib/ai-server/AI-Server/` pair is empty and unused; do not delete it
 until you have reviewed and archived it. A verification that imports only
 `config` (as `podman exec ... from config import settings` does) does not load
@@ -661,10 +667,11 @@ dashboard sign-in works over HTTPS, 8000 and 8001 are unreachable from the LAN,
 and `/docs` stays 404. The `/ws/chat` WebSocket connects through the proxy
 (origin and session cookie accepted; the lab has no llama.cpp, so a chat
 message returns the backend's "Cannot reach llama.cpp" error and token
-streaming is untested). Not yet verified: the client address the backend sees
-and renewal. Scope is a trusted
-single-LAN household audience,
-using a local CA. The backend (`8000`) and dashboard (`8001`) stay bound to
+streaming is untested). The initial client-address ambiguity was later
+mitigated with `AI_SERVER_TRUST_PROXY_HEADERS=true`; the iPhone lockout test
+then stopped affecting the desktop administrator. Certificate renewal is not
+yet verified. Scope is a trusted single-LAN household audience, using a local
+CA. The backend (`8000`) and dashboard (`8001`) stay bound to
 `127.0.0.1`; NGINX is the only listener exposed to the LAN, on 80 (redirect)
 and 443.
 
@@ -673,7 +680,9 @@ Artifacts:
 - `deploy/nginx/ai-server.conf`: TLS 1.2/1.3 server, same-origin proxy
   (`/api/` and `/ws/` to `127.0.0.1:8000`, everything else to
   `127.0.0.1:8001`), WebSocket upgrade, per-client login rate limit,
-  short-lived HSTS, 2 MB body limit.
+  short-lived HSTS, 2 MB general body limit, and a dedicated
+  `/api/admin/updates` location configured for 130 MB uploads (large-upload
+  behavior remains unverified).
 - `scripts/proxmox/make-lan-cert.sh`: creates a local CA (EC P-256, 5 years)
   constrained by X.509 name constraints to the supplied names, and a server
   certificate (397 days). Refuses to overwrite, writes keys `0600`, prints no
@@ -702,7 +711,7 @@ Restart the backend afterwards.
 Copy only `/etc/ai-server/tls/ca.crt` to client devices
 and import it as a trusted root. Never copy `ca.key` or `server.key`.
 
-Verification (all unverified until run):
+Verification checklist for a new installation:
 
 1. From a separate LAN client: `https://LAB_HOST/` loads without a warning,
    login succeeds, and the chat WebSocket streams.
@@ -729,17 +738,20 @@ practical. Server certificates need re-issuing before expiry; clients keep
 trusting the same CA. Browsers ignore HSTS for IP-literal hosts. Review
 firewall rules so only 80/443 are reachable.
 
-### Planned one-click application updates — not implemented
+### Signed application updater — staged implementation
 
-The desired operator flow is to upload a release `.tar.gz` in an
-admin-authenticated dashboard, inspect its verified version/compatibility
-plan, then click **Apply** and confirm. Scope is the AI Server backend and
-static dashboard application only. It must not update Proxmox, Debian
-packages, kernel, ROCm/HIP, inference runtimes, SearXNG, or operator-managed
-configuration and secrets.
+**Stage 1 (verify-only)** is implemented and deployed to the nested lab:
+administrators can upload a signed `.aibundle`, verify and stage it, and
+discard it from Settings → Setup / Deployment. It does not apply or extract
+the release into the live deployment. Automatic **Apply** (Stage 2) is not
+implemented. Its scope is the AI Server backend and static dashboard
+application only; it must not update Proxmox, Debian packages, kernel,
+ROCm/HIP, inference runtimes, SearXNG, or operator-managed configuration and
+secrets.
 
-The proposed release bundle contains a signed manifest and a prebuilt,
-architecture-specific OCI image archive. It contains no source build
+The Stage 2 target is a signed manifest and a prebuilt, architecture-specific
+OCI image archive. This differs from the current Stage 1 source-tree payload.
+The future image archive contains no source build
 instructions, environment files, CA/private keys, runtime databases, user
 data, or host package changes. The manifest identifies the release, target
 architecture, image digest, and data-schema compatibility. A detached
@@ -758,15 +770,16 @@ Validation and Apply require an authenticated admin, allowed Origin, and
 CSRF token. The UI shows the exact release, image digest, target, disk
 requirements, current version, and rollback plan before confirmation.
 
-Applying an update must be handled by a separate, narrowly scoped rootless
-updater because the API process will be restarted during deployment. Its
-fixed operations are limited to validating a staged release, loading/tagging
-its image, coordinating only the backend/dashboard Quadlet user services,
-checking their health, and restoring the retained prior image on failure. It
-must not execute bundle-provided scripts or arbitrary commands, obtain root
-privileges, change host packages, modify unit bindings, enable boot
-auto-start, or delete persistent application data. Its status channel must
-not be able to request unrestricted shell execution.
+Applying an update must be handled by a separate updater because the API
+process will be restarted during deployment. Its fixed operations are limited
+to validating a staged release, loading/tagging its image, coordinating only
+the backend/dashboard Quadlet services, checking their health, and restoring
+the retained prior image on failure. It must not execute bundle-provided
+scripts or arbitrary commands, change host packages or service bindings,
+change the boot auto-start policy, or delete persistent application data. Its
+status channel must not be able to request unrestricted shell execution. The
+exact privilege model (rootless service-account helper versus a narrowly
+scoped root-owned broker) remains undecided and must be settled before Stage 2.
 
 Before restart, retain the prior image and deployment metadata and create a
 consistent backup of application databases. Keep the live `.env`, CA bundle,
@@ -782,7 +795,8 @@ database backup. If rollback or recovery checks fail, report an actionable
 failed state and require out-of-band operator recovery.
 
 This is a staged design. **Stage 1 (verify-only) is implemented in the
-repository but only partly lab-verified** (see the 2026-11-05 record below): the admin-only upload/verify/discard
+repository but only partly lab-verified** (see the 2026-11-05 record below):
+the admin-only upload/verify/discard
 routes (`docs/backend/api.md`), the Settings → Setup / Deployment Verify flow,
 `scripts/release/sign-release.py` (`keygen`, `build`, `verify`), and a dedicated
 NGINX location for the large upload. Stage 1 deliberately differs from the
@@ -793,10 +807,12 @@ trusted public keys come only from the server `.env`
 (`AI_SERVER_UPDATE_PUBLIC_KEYS`), so a bundle cannot introduce its own key.
 The bundle is an uncompressed tar of `manifest.json`, `manifest.sig` and
 `payload.tar.gz`. The operator still applies a staged release at the console
-using the procedure in this guide. **Stage 2** (a root-owned helper outside
-the application that performs backup, build, health gate, switch and automatic
-rollback) is not started and must wait for a verified two-release rollback,
-container health and reboot-recovery tests. The Apply button stays disabled.
+using the procedure in this guide. **Stage 2** (a separate least-privilege
+helper that performs backup, build, health gate, switch and automatic rollback)
+is not started. The helper's privilege model must be resolved. Health and
+reboot-recovery checks have passed in the nested lab, but should be repeated
+after the latest release; rollback between two distinct releases remains an
+outstanding gate. The Apply button stays disabled.
 The signing private key is created with `keygen`, encrypted by a passphrase
 typed at the prompt, and must live outside the repository and off the server.
 Replay protection, key rotation and an OCI payload remain open. Do not claim
@@ -832,8 +848,9 @@ exercised on the lab: rejection of a tampered or
 wrong-key bundle, expiry purge, an upload near the 128 MiB cap through NGINX
 (the test bundle was far below the default body limit, so the dedicated upload
 location is not proven by it), and whether the NGINX configuration was reloaded
-with the new location. The container health and reboot state after this release
-were not re-checked.
+with the new location. Container health was checked about 45 seconds after the
+switch and both containers were healthy; reboot recovery after this release
+was not re-checked.
 
 The backend and Discord bot load project-root `.env` values with
 `python-dotenv` when they start; shell-provided environment values take

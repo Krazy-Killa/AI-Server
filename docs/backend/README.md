@@ -13,7 +13,9 @@ ai-backend/
             memory.py
             research.py
             operations.py
+            updates.py
     config.py
+    release_bundle.py
     diagnostics.py
     memory_store.py
     logging_config.py
@@ -69,7 +71,17 @@ logging retains DEBUG-level handling for frequently polled paths.
 config.py  
 - Reads and validates environment settings once at import into a frozen
   `settings` object; invalid values stop startup with a clear message  
-- Covers llama.cpp, model-switch options, SearXNG, CORS, chat limits, and logging  
+- Covers llama.cpp, model-switch options, SearXNG, CORS, chat limits, logging,
+  and signed release-staging settings
+
+release_bundle.py
+- Verifies signed application release bundles, inspects source archives without
+  extracting them, and manages verified staging/expiry; it does not apply
+  releases or install model weights
+
+api/routes/updates.py
+- Admin-only signed application-bundle upload, verification, listing, and
+  discard. Apply is not supported.
 
 web_research.py
 - Searches SearXNG, retrieves a bounded set of public HTML pages, extracts
