@@ -177,6 +177,25 @@ test('applies admin access and navigates between panels', async ({ page }) => {
     await expect(page.locator('#settings-panel')).toBeVisible();
 });
 
+test('places shared admin knowledge in the AI Interface, not private AI Chat', async ({ page }) => {
+    await installApiMocks(page);
+    await page.goto('/');
+    await signIn(page, 'admin');
+
+    const sharedKnowledge = page.locator('#shared-admin-memory');
+    await expect(sharedKnowledge).toBeVisible();
+    await expect(page.locator('#interface-panel #shared-admin-memory')).toHaveCount(1);
+    await expect(page.locator('#chat-panel #shared-admin-memory')).toHaveCount(0);
+    await sharedKnowledge.locator('summary').click();
+    await expect(sharedKnowledge).toContainText('Notes published here are shared with all administrators');
+    await expect(sharedKnowledge.locator('#shared-insight-list')).toContainText('No notes have been published.');
+
+    await page.locator('[data-panel="chat-panel"]').click();
+    await expect(page.locator('#chat-panel')).toBeVisible();
+    await expect(page.locator('#shared-admin-memory')).toHaveCount(1);
+    await expect(page.locator('#shared-admin-memory')).toBeHidden();
+});
+
 test('downloads a diagnostics report without navigating away from the panel', async ({ page }) => {
     await installApiMocks(page, {
         diagnosticsObservation: {
@@ -303,6 +322,7 @@ test('allows operator chat while keeping administrator controls hidden', async (
     await expect(page.locator('[data-panel="chat-panel"]')).toBeVisible();
     await expect(page.locator('[data-panel="interface-panel"]')).toBeHidden();
     await expect(page.locator('[data-panel="backend-logs-panel"]')).toBeHidden();
+    await expect(page.locator('#shared-admin-memory')).toBeHidden();
     await page.locator('[data-panel="diagnostics-panel"]').click();
     await expect(page.locator('#diagnostics-panel')).toBeVisible();
     await expect(page.locator('#diagnostics-run')).toBeVisible();
@@ -362,6 +382,7 @@ test('AI Chat header contains the model picker and reports Household AI readines
 
     await expect(page.locator('#chat-panel > .panel-header #active-model-select')).toHaveValue('test-model.gguf');
     await expect(page.locator('#household-ai-status-value')).toHaveText('Online');
+    await expect(page.locator('#chat-panel [aria-label="Temperature"]')).toHaveCount(0);
 });
 
 test('AI Chat reports Household AI offline when no loaded model is available', async ({ page }) => {

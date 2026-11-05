@@ -15,6 +15,15 @@ principles and [Semantic Versioning](https://semver.org/).
   Household AI readiness tile based on local runtime availability and loaded
   model state.
 
+### Changed
+
+- Moved the collapsed Shared Admin Knowledge manager from private AI Chat to
+  the admin-shared AI Interface, reducing chat-panel clutter while preserving
+  the existing note and context behavior. Not yet deployed.
+- Removed the inert TEMP slider from AI Chat. Sampling remains at the backend's
+  fixed `0.7` until a real temperature preference is implemented. Not yet
+  deployed.
+
 ### Fixed
 
 - Diagnostics report download in the iOS Home Screen app now uses the native

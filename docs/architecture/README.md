@@ -44,8 +44,9 @@ GPU / LLM / Bot / System Stats
   separate scoped bearer credential for designated Discord-bot routes
 - Persists private per-account conversation history and explicitly
   admin-published shared insights in a separate SQLite database. Admin chat
-  and research receive current-admin identity and bounded shared notes; other
-  roles and Discord service requests do not.
+  and research receive current-admin identity and bounded shared notes; the
+  AI Interface also receives shared notes. Other roles and Discord service
+  requests do not.
 - Persists one separate admin-shared AI Interface transcript with attributed
   admin turns. Only the explicit diagnostics observation is executable from
   this console; private AI Chat transcripts are never loaded into it.

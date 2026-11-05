@@ -137,8 +137,9 @@ The SQLite memory store contains separate data domains:
 
 - Private per-account AI Chat conversations, with ownership checks and bounded
   recent-turn context.
-- Admin-published shared operational notes, included only in authorized
-  dashboard chat/research context.
+- Admin-published shared operational notes, managed in the AI Interface and
+  included only in authorized admin AI Chat, AI Interface, and Research
+  context.
 - The admin-shared AI Interface operational transcript, separate from private
   AI Chat history.
 - Bounded diagnostics observations, incidents, and audit history.

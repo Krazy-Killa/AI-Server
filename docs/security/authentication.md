@@ -125,6 +125,7 @@ Shared admin memory is a separate store of operational notes. An admin must
 explicitly publish each note; there is no transcript scraping, automatic
 fact-sharing, or model training. Every admin can read and remove published
 notes, and admin chat/research context may include the newest bounded set.
+The same bounded notes may be included in the admin-shared AI Interface context.
 Admins are told which identity is signed in, but the model is never given
 another admin's private transcript. Non-admin accounts and the Discord bot
 service credential cannot access or receive shared admin notes.

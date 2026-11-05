@@ -683,7 +683,7 @@ sharedInsightForm.addEventListener('submit', async event => {
     const content = sharedInsightContent.value.trim();
     if (!content) return;
     if (!window.confirm(
-        'Publish this note to every admin? It will be available in admin chat context. ' +
+        'Publish this note to every admin? It will be included in admin AI Chat, AI Interface, and Research context. ' +
         'Do not include private chat, credentials, or information that should not be shared.',
     )) return;
 

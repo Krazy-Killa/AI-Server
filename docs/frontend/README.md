@@ -88,8 +88,10 @@ for setup and execution.
 
 ## Panels
 
-- AI Interface (single shared admin server console)
-- AI Chat (private per-account conversations and optional web research)
+- AI Interface (single shared admin server console, with a collapsed admin-only
+  manager for explicitly published shared operational notes)
+- AI Chat (private per-account conversations and optional web research; shared
+  note management is no longer embedded in this panel)
 - Models
 - System Monitor
 - Virtual Machines (read-only inventory table: one 12 px cell scale, monospace
@@ -126,17 +128,21 @@ for setup and execution.
   stays beside the input.
 - AI Interface uses one persistent admin-shared operational transcript, with
   admin attribution and a persistent notice that turns are visible to all
-  administrators; the notice can be dismissed until the page is reloaded
+  administrators; the notice can be dismissed until the page is reloaded.
+  Its collapsed Shared Admin Knowledge disclosure manages notes that are
+  included in authorized admin AI Chat, AI Interface, and Research context.
 - AI Chat keeps saved conversations scoped to the signed-in account, with
   resume, new-chat, and confirmed delete controls; the most recently updated
-  chat resumes after sign-in
+  chat resumes after sign-in. No temperature control is shown; the backend
+  currently uses a fixed `0.7` value.
 - The AI Chat header places the installed-model selector on the right beside a
   Household AI readiness tile. The tile is online only when the local
   llama.cpp runtime responds and an installed model is loaded; it refreshes
   every 10 seconds while the browser tab is visible and shows offline when no
   loaded model or runtime is available.
 - Admin-only shared operational notes with explicit publish/remove
-  confirmations, distinct from private chat transcripts
+  confirmations, managed from AI Interface and kept distinct from private
+  chat transcripts
 - Sidebar navigation
 - The sidebar toggle collapses the navigation on desktop and tablet layouts;
   collapsed desktop mode keeps navigation icons centered in the sidebar rail,

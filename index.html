@@ -105,6 +105,33 @@
                     <button class="console-notice-dismiss" id="console-notice-dismiss" type="button"
                         aria-label="Dismiss shared console notice" title="Dismiss notice">×</button>
                 </p>
+                <details class="shared-admin-memory" id="shared-admin-memory" hidden>
+                    <summary>
+                        Shared admin knowledge
+                        <span id="shared-insight-count" class="shared-insight-count"></span>
+                    </summary>
+                    <div class="shared-admin-memory-content">
+                        <p class="shared-memory-notice">
+                            Notes published here are shared with all administrators and included in admin AI Chat, AI Interface, and Research context.
+                            The AI Interface transcript is separate and is also visible to all administrators.
+                        </p>
+                        <div id="shared-insight-list" class="shared-insight-list" aria-live="polite">
+                            <p class="shared-insight-empty">Loading published notes…</p>
+                        </div>
+                        <form id="shared-insight-form" class="shared-insight-form">
+                            <label for="shared-insight-content">PUBLISH AN OPERATIONAL INSIGHT</label>
+                            <textarea id="shared-insight-content" maxlength="2000" rows="3"
+                                placeholder="Write only information that should be shared with every administrator."
+                                required></textarea>
+                            <div class="shared-insight-actions">
+                                <span id="shared-insight-status" role="status" aria-live="polite"></span>
+                                <button class="btn-secondary" id="shared-insight-publish" type="submit">
+                                    Publish to admins
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
                 <div class="chat-window" id="interface-window" aria-live="polite" aria-label="Shared server console">
                     <div class="conversation-empty">Loading the shared server console…</div>
                 </div>
@@ -139,11 +166,6 @@
             </div>
 
             <div class="panel-body">
-                <div class="chat-header-row">
-                    <div class="slider-label">TEMP: 0.7</div>
-                    <input type="range" min="0" max="1" step="0.1" value="0.7" class="slider" aria-label="Temperature">
-                </div>
-
                 <div class="conversation-controls">
                     <label for="conversation-select">SAVED CHATS</label>
                     <select id="conversation-select" aria-label="Saved conversations">
@@ -153,34 +175,6 @@
                     <button class="btn-secondary" id="conversation-delete" type="button" disabled>Delete</button>
                     <span id="conversation-status" role="status" aria-live="polite"></span>
                 </div>
-
-                <details class="shared-admin-memory" id="shared-admin-memory" hidden>
-                    <summary>
-                        Shared admin knowledge
-                        <span id="shared-insight-count" class="shared-insight-count"></span>
-                    </summary>
-                    <div class="shared-admin-memory-content">
-                        <p class="shared-memory-notice">
-                            Your chat transcript stays private. Only notes you explicitly publish here are
-                            shared with admins and included in admin chat context.
-                        </p>
-                        <div id="shared-insight-list" class="shared-insight-list" aria-live="polite">
-                            <p class="shared-insight-empty">Loading published notes…</p>
-                        </div>
-                        <form id="shared-insight-form" class="shared-insight-form">
-                            <label for="shared-insight-content">PUBLISH AN OPERATIONAL INSIGHT</label>
-                            <textarea id="shared-insight-content" maxlength="2000" rows="3"
-                                placeholder="Write only information that should be shared with every administrator."
-                                required></textarea>
-                            <div class="shared-insight-actions">
-                                <span id="shared-insight-status" role="status" aria-live="polite"></span>
-                                <button class="btn-secondary" id="shared-insight-publish" type="submit">
-                                    Publish to admins
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </details>
 
                 <div class="chat-window" id="chat-window" aria-live="polite" aria-label="Conversation">
                     <div class="conversation-empty">Start a new chat or choose a saved conversation.</div>
