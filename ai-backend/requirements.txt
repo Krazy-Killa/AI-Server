@@ -3,3 +3,4 @@ uvicorn
 websockets>=13
 psutil
 python-dotenv>=1.0,<2
+cryptography>=45

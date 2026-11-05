@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-async function installApiMocks(page, { loginRole = 'admin', rejectLogin = false } = {}) {
+async function installApiMocks(page, {
+    loginRole = 'admin',
+    rejectLogin = false,
+    diagnosticsObservation = null,
+    diagnosticsReportStatus = 200,
+} = {}) {
     let sessionRole = null;
     let requestedPaths = [];
     await page.route('**/api/**', async route => {
@@ -62,9 +67,18 @@ async function installApiMocks(page, { loginRole = 'admin', rejectLogin = false 
         } else if (url.pathname === '/api/backend/logs') {
             body = { logs: [], count: 0 };
         } else if (url.pathname === '/api/diagnostics/status') {
-            body = { status: 'idle', latest_observation: null, open_incidents: 0 };
+            body = {
+                status: diagnosticsObservation?.status || 'idle',
+                latest_observation: diagnosticsObservation,
+                open_incidents: 0,
+            };
         } else if (url.pathname === '/api/diagnostics/incidents') {
             body = { incidents: [], open_incidents: 0 };
+        } else if (url.pathname === '/api/diagnostics/report') {
+            status = diagnosticsReportStatus;
+            body = status === 200
+                ? { report_version: 1, observation_id: diagnosticsObservation?.id }
+                : { detail: 'Your session expired.' };
         } else if (url.pathname === '/api/proxmox/vms') {
             body = { configured: false };
         }
@@ -113,6 +127,7 @@ test('loads every native module and keeps protected polling behind sign-in', asy
         '/js/app.js',
         '/js/backend-logs.js',
         '/js/operations.js',
+        '/js/release-updates.js',
         '/js/system-monitor.js',
         '/js/theme-init.js',
         '/js/ui-preferences.js',
@@ -153,6 +168,105 @@ test('applies admin access and navigates between panels', async ({ page }) => {
 
     await page.locator('[data-panel="settings-panel"]').click();
     await expect(page.locator('#settings-panel')).toBeVisible();
+});
+
+test('downloads a diagnostics report without navigating away from the panel', async ({ page }) => {
+    await installApiMocks(page, {
+        diagnosticsObservation: {
+            id: 'obs-test',
+            status: 'healthy',
+            observed_at: '2026-11-05T12:00:00Z',
+            resources: {},
+            checks: [],
+        },
+    });
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="diagnostics-panel"]').click();
+    await expect(page.locator('#diagnostics-report')).toBeEnabled();
+
+    const navigations = [];
+    page.on('framenavigated', frame => {
+        if (frame === page.mainFrame()) navigations.push(frame.url());
+    });
+    const currentUrl = page.url();
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#diagnostics-report').click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toBe('diagnostics-obs-test.json');
+    expect(page.url()).toBe(currentUrl);
+    await expect(page.locator('#dashboard-app')).toBeVisible();
+    expect(navigations).toEqual([]);
+});
+
+test('shares a prepared diagnostics file through the native share API when supported', async ({ page }) => {
+    await page.addInitScript(() => {
+        window.__sharedReport = null;
+        Object.defineProperty(navigator, 'canShare', {
+            configurable: true,
+            value: data => Array.isArray(data.files) && data.files.length === 1,
+        });
+        Object.defineProperty(navigator, 'share', {
+            configurable: true,
+            value: async data => {
+                const file = data.files[0];
+                window.__sharedReport = {
+                    name: file.name,
+                    type: file.type,
+                    userActivation: navigator.userActivation?.isActive,
+                    content: await file.text(),
+                };
+            },
+        });
+    });
+    await installApiMocks(page, {
+        diagnosticsObservation: {
+            id: 'obs-ios',
+            status: 'healthy',
+            observed_at: '2026-11-05T12:00:00Z',
+            resources: {},
+            checks: [],
+        },
+    });
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="diagnostics-panel"]').click();
+    await expect(page.locator('#diagnostics-report')).toBeEnabled();
+
+    const currentUrl = page.url();
+    await page.locator('#diagnostics-report').click();
+    await expect.poll(() => page.evaluate(() => window.__sharedReport?.name))
+        .toBe('diagnostics-obs-ios.json');
+
+    const sharedReport = await page.evaluate(() => window.__sharedReport);
+    expect(sharedReport.type).toBe('application/json');
+    expect(sharedReport.content).toContain('"observation_id": "obs-ios"');
+    expect(sharedReport.userActivation).toBe(true);
+    expect(page.url()).toBe(currentUrl);
+    await expect(page.locator('#dashboard-app')).toBeVisible();
+    await expect(page.locator('#diagnostics-notice')).toContainText('Save to Files');
+});
+
+test('shows the expired-session sign-in screen if report download returns 401', async ({ page }) => {
+    await installApiMocks(page, {
+        diagnosticsObservation: {
+            id: 'obs-test',
+            status: 'healthy',
+            observed_at: '2026-11-05T12:00:00Z',
+            resources: {},
+            checks: [],
+        },
+        diagnosticsReportStatus: 401,
+    });
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="diagnostics-panel"]').click();
+    await page.locator('#diagnostics-report').click();
+
+    await expect(page.locator('#auth-screen')).toBeVisible();
+    await expect(page.locator('#auth-notice')).toHaveText('Your session expired. Sign in again to continue.');
+    await expect(page.locator('#dashboard-app')).toBeHidden();
 });
 
 test('limits viewer navigation and controls to read-only access', async ({ page }) => {
@@ -210,6 +324,104 @@ test('settings sub-tabs switch views and gate the deployment tab to admins', asy
     await page.locator('#settings-tab-diagnostics').click();
     await page.locator('[data-settings-goto="diagnostics-panel"]').click();
     await expect(page.locator('#diagnostics-panel')).toBeVisible();
+});
+
+test('verifies and discards a signed release bundle without offering apply', async ({ page }) => {
+    await installApiMocks(page);
+    const staged = [];
+    const seen = [];
+    await page.route('**/api/admin/updates**', async route => {
+        const request = route.request();
+        const url = new URL(request.url());
+        seen.push(`${request.method()} ${url.pathname} ${request.headers()['x-csrf-token'] || ''}`);
+        if (request.method() === 'POST') {
+            if (request.postDataBuffer()?.toString() === 'bad') {
+                return route.fulfill({
+                    status: 422, contentType: 'application/json',
+                    body: JSON.stringify({ detail: 'Signature is not valid for any trusted signing key.' }),
+                });
+            }
+            staged.push({
+                release_id: '20261201-test', version: '9.9.9', signer: 'abcd1234abcd1234',
+                payload_sha256: 'f'.repeat(64), file_count: 2, unpacked_bytes: 2048,
+                expires_at: Date.now() / 1000 + 3600,
+            });
+            return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(staged[0]) });
+        }
+        if (request.method() === 'DELETE') {
+            staged.length = 0;
+            return route.fulfill({ status: 200, contentType: 'application/json', body: '{"discarded":"20261201-test"}' });
+        }
+        return route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({ enabled: true, apply_supported: false, staged, limits: {} }),
+        });
+    });
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="settings-panel"]').click();
+    await page.locator('#settings-tab-setup').click();
+
+    await expect(page.locator('#setup-firmware-file')).toBeEnabled();
+    await expect(page.locator('#setup-firmware-verify')).toBeDisabled();
+    await page.locator('#setup-firmware-file').setInputFiles({
+        name: 'bad.aibundle', mimeType: 'application/octet-stream', buffer: Buffer.from('bad'),
+    });
+    await page.locator('#setup-firmware-verify').click();
+    await expect(page.locator('#setup-firmware-status')).toContainText('Rejected: Signature is not valid');
+
+    await page.locator('#setup-firmware-file').setInputFiles({
+        name: 'ok.aibundle', mimeType: 'application/octet-stream', buffer: Buffer.from('good'),
+    });
+    await page.locator('#setup-firmware-verify').click();
+    await expect(page.locator('#setup-firmware-staged')).toContainText('20261201-test');
+    await expect(page.locator('#setup-firmware-staged')).toContainText('abcd1234abcd1234');
+    await expect(page.locator('#setup-firmware-apply')).toBeDisabled();
+    expect(seen.some(entry => entry.startsWith('POST /api/admin/updates test-csrf-token'))).toBe(true);
+
+    await page.locator('#setup-firmware-staged button').click();
+    await expect(page.locator('#setup-firmware-staged')).toBeEmpty();
+});
+
+test('renders the VM inventory as a consistent table and as labelled rows on a phone', async ({ page }) => {
+    await installApiMocks(page);
+    await page.route('**/api/proxmox/vms', route => route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+            configured: true, count: 3, observed_at: '2026-11-05T12:00:00Z',
+            guests: [
+                { name: 'ai-host', vmid: 100, node: 'pve', type: 'QEMU VM', status: 'running' },
+                { name: 'old-build', vmid: 101, node: 'pve', type: 'LXC container', status: 'stopped' },
+                { name: '<img src=x onerror=alert(1)>', vmid: 102, node: 'pve', type: 'QEMU VM', status: 'paused' },
+            ],
+        }),
+    }));
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="vms-panel"]').click();
+    await page.locator('#vm-inventory-refresh').click();
+
+    await expect(page.locator('#vm-connection-status')).toHaveClass(/pill-ok/);
+    const rows = page.locator('#vm-inventory-rows tr');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(2).locator('.cell-name')).toHaveText('<img src=x onerror=alert(1)>');
+    await expect(rows.nth(0).locator('.vm-state')).toHaveClass(/vm-state-running/);
+    await expect(rows.nth(1).locator('.vm-state')).toHaveClass(/vm-state-stopped/);
+
+    const sizes = await page.evaluate(() => [...document.querySelectorAll('#vm-inventory-rows td')]
+        .map(cell => getComputedStyle(cell).fontSize));
+    expect(new Set(sizes)).toEqual(new Set(['12px']));
+    const headerSize = await page.locator('.infra-table th').first()
+        .evaluate(cell => getComputedStyle(cell).fontSize);
+    expect(headerSize).toBe('10px');
+
+    await page.setViewportSize({ width: 390, height: 780 });
+    await expect(page.locator('.infra-table thead')).toHaveCSS('position', 'absolute');
+    await expect(rows.nth(0).locator('td').nth(1)).toHaveAttribute('data-label', 'VMID');
+    const rowBox = await rows.nth(0).boundingBox();
+    expect(rowBox.width).toBeLessThanOrEqual(390);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(overflow).toBe(false);
 });
 
 test('settings sign-out works from the Account tab on a phone viewport', async ({ page }) => {

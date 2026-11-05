@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from release_bundle import decode_public_key
+
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:8001", "http://localhost:8001")
 VALID_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
@@ -94,6 +96,23 @@ class Settings:
     proxmox_api_ca_bundle: Path | None
     proxmox_api_allow_missing_ca_key_usage: bool
     bot_api_token: str
+    update_public_keys: tuple[bytes, ...]
+    update_staging_dir: Path
+    update_max_bytes: int
+    update_expiry_hours: int
+
+
+def _update_public_keys() -> tuple[bytes, ...]:
+    raw = os.environ.get("AI_SERVER_UPDATE_PUBLIC_KEYS", "").strip()
+    keys = []
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        try:
+            keys.append(decode_public_key(item))
+        except ValueError as error:
+            raise ConfigError(f"AI_SERVER_UPDATE_PUBLIC_KEYS: {error}") from error
+    return tuple(keys)
 
 
 def load_settings() -> Settings:
@@ -176,6 +195,7 @@ def load_settings() -> Settings:
             "PROXMOX_API_ALLOW_MISSING_CA_KEY_USAGE is true."
         )
 
+    configured_update_dir = os.environ.get("AI_SERVER_UPDATE_STAGING_DIR", "").strip()
     bot_api_token = os.environ.get("AI_SERVER_BOT_API_TOKEN", "").strip()
     if bot_api_token and len(bot_api_token) < 32:
         raise ConfigError("AI_SERVER_BOT_API_TOKEN must contain at least 32 characters.")
@@ -205,6 +225,14 @@ def load_settings() -> Settings:
         proxmox_api_ca_bundle=proxmox_api_ca_bundle,
         proxmox_api_allow_missing_ca_key_usage=proxmox_api_allow_missing_ca_key_usage,
         bot_api_token=bot_api_token,
+        update_public_keys=_update_public_keys(),
+        update_staging_dir=(
+            Path(configured_update_dir).expanduser()
+            if configured_update_dir
+            else auth_database_path.parent / "updates"
+        ),
+        update_max_bytes=_positive_int("AI_SERVER_UPDATE_MAX_BYTES", 128 * 1024 * 1024),
+        update_expiry_hours=_positive_int("AI_SERVER_UPDATE_EXPIRY_HOURS", 24),
     )
 
 

@@ -7,6 +7,8 @@ ROUTE_ROLES = {
     ("GET", "/api/system"): "viewer",
     ("GET", "/api/gpu"): "viewer",
     ("GET", "/api/backend/logs"): "admin",
+    ("GET", "/api/admin/updates"): "admin",
+    ("POST", "/api/admin/updates"): "admin",
     ("GET", "/api/diagnostics/status"): "viewer",
     ("GET", "/api/diagnostics/observations"): "viewer",
     ("GET", "/api/diagnostics/incidents"): "viewer",
@@ -111,6 +113,13 @@ async def authenticate_http_requests(request: runtime.Request, call_next):
             and method == "GET"
         ):
             required_role = "viewer"
+        if (
+            required_role is None
+            and path.startswith("/api/admin/updates/")
+            and "/" not in path[len("/api/admin/updates/"):]
+            and method in {"GET", "DELETE"}
+        ):
+            required_role = "admin"
         if required_role is None:
             return runtime._json_error(403, "This route is not enabled for dashboard sessions.")
     if not runtime._role_allows(session.role, required_role):

@@ -454,10 +454,12 @@ AS systemctl --user reset-failed ai-server-backend ai-server-dashboard || true
 AS systemctl --user start ai-server-backend ai-server-dashboard
 ```
 
-Verify from `ai-deploy` on the guest: both services healthy
-(`podman healthcheck run`), `GET /` returns 200, `/openapi.json` and `/docs`
+Verify from the guest: both services report `healthy` in `podman ps` (or
+`podman inspect --format '{{.State.Health.Status}}'`), `GET /` returns 200, `/openapi.json` and `/docs`
 return 404, anonymous API routes return 401, and the dashboard response has a
-`Content-Security-Policy` header. If any step or check fails, roll back:
+`Content-Security-Policy` header. Do not use `podman healthcheck run` or
+`podman exec` through `runuser`: they fail with a cgroup permission error (see
+the container health record below) even when the containers are healthy. If any step or check fails, roll back:
 
 ```bash
 AS systemctl --user stop ai-server-dashboard ai-server-backend
@@ -496,9 +498,25 @@ with no Google origins; `/docs` and `/openapi.json` return 404 and `/api/memory`
 returns 401. The backend answers on loopback. The shared-address lockout test
 then passed: failed sign-ins with a made-up username on an iPhone produced the
 readable "Too many login attempts" message, and `labadmin` still signed in on
-the desktop, so the client address behind the proxy is now seen correctly. Not
-yet verified: container `healthcheck` output and home-screen install on an
-iPhone.
+the desktop, so the client address behind the proxy is now seen correctly.
+iPhone home-screen install then worked, with one caveat: until full trust was
+enabled for the lab CA (Settings → General → About → Certificate Trust
+Settings), iOS showed a plain letter instead of the icon because it fetches
+the touch icon separately from the page. Enabling that trust fixed it.
+
+**Container health (nested lab, release `20261106-nonblocking`, 2026-11-05).**
+Both containers showed `healthy` with a failing streak of 0 after 31 minutes
+up, both Quadlet units were `active` with `NRestarts=0`, and the containers'
+own periodic probes (30 s interval) passed repeatedly. The probe URLs
+(`http://127.0.0.1:8000/` and `:8001/`) returned 200 in about 1-2 ms from the
+host. Running `podman healthcheck run` and `podman exec` as `ai-server` through
+`runuser` fails (`crun: write file …/cgroup.procs: Permission denied`) because
+that shell has no systemd user session; the probe never starts, and the
+container is briefly marked `unhealthy` until the next periodic probe passes. That
+is an artifact of the invocation, not an application fault. Use `podman ps`
+or `podman inspect` for health. Open: running the check from a proper user
+session (for example `machinectl shell ai-server@`, unverified), and health
+after a guest reboot.
 
 A follow-up release (`20261106-nonblocking`) fixed `/api/system` blocking the
 backend's event loop. With two dashboards open, the backend stalled long enough
@@ -763,17 +781,59 @@ disk policy; never remove the only known-good version or the most recent
 database backup. If rollback or recovery checks fail, report an actionable
 failed state and require out-of-band operator recovery.
 
-This is a design, not an implemented feature. The only implemented piece is a
-disabled placeholder in the dashboard (Settings → Setup / Deployment →
-Firmware File, admin-only) that reserves the place for the upload, verify, and
-apply flow; its controls do nothing. Building the signed release bundle from
-this repository (a build script producing the manifest, image archive, and
-signature) is a separate future step that is not started. Release signing/key rotation,
-the updater's host integration and permissions, upload/staging boundaries,
-archive parser limits, disk retention, database backup/compatibility behavior,
-and user-visible status/error contract require implementation and adversarial
-tests before any production use. Do not claim atomicity or successful rollback
-until tested on the nested lab and then the physical host.
+This is a staged design. **Stage 1 (verify-only) is implemented in the
+repository but only partly lab-verified** (see the 2026-11-05 record below): the admin-only upload/verify/discard
+routes (`docs/backend/api.md`), the Settings → Setup / Deployment Verify flow,
+`scripts/release/sign-release.py` (`keygen`, `build`, `verify`), and a dedicated
+NGINX location for the large upload. Stage 1 deliberately differs from the
+design above in two ways: the payload is the existing allow-listed source-tree
+bundle (`payload.type: source-tree`) rather than a prebuilt OCI image
+archive, because no image can be built on the Windows workstation; and the
+trusted public keys come only from the server `.env`
+(`AI_SERVER_UPDATE_PUBLIC_KEYS`), so a bundle cannot introduce its own key.
+The bundle is an uncompressed tar of `manifest.json`, `manifest.sig` and
+`payload.tar.gz`. The operator still applies a staged release at the console
+using the procedure in this guide. **Stage 2** (a root-owned helper outside
+the application that performs backup, build, health gate, switch and automatic
+rollback) is not started and must wait for a verified two-release rollback,
+container health and reboot-recovery tests. The Apply button stays disabled.
+The signing private key is created with `keygen`, encrypted by a passphrase
+typed at the prompt, and must live outside the repository and off the server.
+Replay protection, key rotation and an OCI payload remain open. Do not claim
+atomicity or successful rollback until tested on the nested lab and then the
+physical host.
+
+The source-tree `.aibundle` is intentionally not a model delivery format. The
+allow-listed release builder excludes model files, and the current 128 MiB
+upload / 256 MiB unpacked limits are unsuitable for large GGUF weights. Models
+are persistent data under the configured `AI_SERVER_MODEL_DIR`, outside the
+application image and release rollback. **Planned, not implemented:** a
+separate admin-only signed model-package workflow. It must verify a
+model-specific manifest and file digest before installation, check free space,
+install without overwriting or deleting existing models, and never load a
+model automatically. Keep its verification and recovery behavior independent
+from application updates; do not raise application-bundle limits to carry model
+weights.
+
+**Stage 1 lab record (nested lab only, release `20261106-updater-verify`,
+2026-11-05).** The release followed the lab procedure. The import gate, extended
+to also import `release_bundle` (so the new `cryptography` dependency is checked
+before any switch), printed `import ok`. Both containers reported `healthy`
+about 45 s after the switch, `GET /` on the dashboard returned 200 and `/docs`
+returned 404. After the operator added a trusted public key to the server
+`.env`, a signed test bundle (release ID `20261106-verify-test`, 584 KB, wrapping
+the 72-file source tree) was uploaded from Settings → Setup / Deployment and
+reported as verified, with the signer fingerprint, a payload SHA-256 that matched
+the locally built tarball, 72 files, and a 24-hour expiry, and Apply stayed
+disabled. The operator then pressed Discard on that release and reported that it
+appeared to work (observed in the page only; the staging directory and the
+follow-up `GET /api/admin/updates` listing were not inspected). Not yet
+exercised on the lab: rejection of a tampered or
+wrong-key bundle, expiry purge, an upload near the 128 MiB cap through NGINX
+(the test bundle was far below the default body limit, so the dedicated upload
+location is not proven by it), and whether the NGINX configuration was reloaded
+with the new location. The container health and reboot state after this release
+were not re-checked.
 
 The backend and Discord bot load project-root `.env` values with
 `python-dotenv` when they start; shell-provided environment values take

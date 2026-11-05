@@ -59,11 +59,15 @@ HSTS and TLS headers are sent by the NGINX proxy, not by this server.
   focus. Pinch zoom is not disabled.
 - The Diagnostics header stacks on phones: the status pill sits on its own
   row above the full-width Refresh, Download report and Run observation
-  buttons.
+  buttons. Where native file sharing is supported (including the iOS
+  Home Screen app), the report is prepared before the tap and opens the
+  system share sheet; choose Save to Files to keep it. Browsers without
+  supported file sharing retain the regular file-download behavior.
 - `manifest.webmanifest` and `icons/` (SVG, 192/512 PNG, 180 px Apple touch
   icon) let phones add the dashboard to the home screen in standalone mode.
-  This does not add offline support or a service worker. Install behavior on
-  an iPhone against the nested lab is unverified until the next deploy.
+  This does not add offline support or a service worker. Verified on an
+  iPhone against the nested lab; the device must trust the lab certificate
+  authority, or iOS shows a letter instead of the icon.
   The rebuilt dashboard container is required to serve these assets; the
   lab has not yet been redeployed with them.
 
@@ -84,7 +88,10 @@ for setup and execution.
 - AI Chat (private per-account conversations and optional web research)
 - Models
 - System Monitor
-- Virtual Machines
+- Virtual Machines (read-only inventory table: one 12 px cell scale, monospace
+  VMID and node, and a power-state pill with a status dot; on screens up to
+  560 px wide each guest becomes a compact two-column card instead of scrolling
+  sideways; on phones the stat tiles sit two per row)
 - Network Services
 - Discord Bot
 - Settings, organized as sub-tabs: Appearance (theme, accent), Account
@@ -92,10 +99,13 @@ for setup and execution.
   layouts because the sidebar footer is hidden there),
   Network & Access (read-only origin and HTTPS status), Models and Diagnostics
   (links to their panels), About, and an admin-only Setup / Deployment tab
-- Setup / Deployment contains a disabled **Firmware File** release-bundle
-  picker with disabled Verify and Apply buttons. It is a design placeholder
-  only: no upload, verification, or apply endpoint exists (see the planned
-  update design in the Linux/Proxmox transition guide)
+- Setup / Deployment contains the **Firmware File** picker and Verify button
+  (verify-only, Stage 1). Opening the tab checks `GET /api/admin/updates`; the
+  controls stay disabled with an explanation when no signing key is configured
+  on the server. A chosen `.aibundle` is uploaded raw with the CSRF header and
+  the verified release (ID, version, signer, payload digest, size, expiry) is
+  listed with a Discard button. Apply is always disabled: applying is done at
+  the console with the operator runbook (`js/release-updates.js`)
 - A conversational household voice interface is a future concept; local STT/TTS
   and voice-driven requests are not implemented
 
@@ -192,9 +202,9 @@ for setup and execution.
   proactive incident notifications are not implemented. Voice must not bypass
   the existing role and approval boundaries; see the
   [roadmap candidate](../roadmap/README.md#candidate-backlog--not-scheduled).
-- Planned update UI: upload a signed prebuilt application `.tar.gz`, display
-  validated release/target/digest and compatibility, then require an explicit
+- Planned update UI (Stage 2): after a verified upload (implemented, verify-only),
+  display target/compatibility, then require an explicit
   admin confirmation before Apply. Show updater progress, health-check result,
   rollback result, and recovery-needed failures. Never imply success before
-  the updater confirms both services healthy. This UI and its endpoints are
+  the updater confirms both services healthy. Apply and its endpoints are
   not implemented.

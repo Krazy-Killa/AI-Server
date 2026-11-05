@@ -16,7 +16,15 @@ export function initializeOperations({ API_BASE, apiFetch }) {
     const vmInventoryRefreshButton = document.getElementById('vm-inventory-refresh');
     let diagnosticsRequestInProgress = false;
     let diagnosticsLatestObservationId = null;
+    let diagnosticsReportFile = null;
+    let diagnosticsReportGeneration = 0;
     let vmInventoryRequestInProgress = false;
+    const diagnosticsFileShareSupported = typeof navigator.share === 'function'
+        && typeof navigator.canShare === 'function'
+        && typeof File === 'function'
+        && navigator.canShare({
+            files: [new File([], 'diagnostics.json', { type: 'application/json' })],
+        });
 
     function formatBytes(bytes) {
         if (!Number.isFinite(bytes) || bytes < 0) return 'N/A';
@@ -36,6 +44,9 @@ export function initializeOperations({ API_BASE, apiFetch }) {
     }
 
     function renderDiagnosticsObservation(observation) {
+        diagnosticsReportGeneration += 1;
+        const reportGeneration = diagnosticsReportGeneration;
+        diagnosticsReportFile = null;
         if (!observation) {
             diagnosticsLatestObservationId = null;
             diagnosticsReportButton.disabled = true;
@@ -52,7 +63,10 @@ export function initializeOperations({ API_BASE, apiFetch }) {
         }
 
         diagnosticsLatestObservationId = observation.id;
-        diagnosticsReportButton.disabled = !diagnosticsLatestObservationId;
+        diagnosticsReportButton.disabled = !diagnosticsLatestObservationId || diagnosticsFileShareSupported;
+        if (diagnosticsFileShareSupported) {
+            void prepareDiagnosticsReport(observation.id, reportGeneration);
+        }
         diagnosticsObservedAt.textContent = `Observed ${formatTimestamp(observation.observed_at)}`;
         const resources = observation.resources || {};
         document.getElementById('diagnostics-cpu').textContent =
@@ -157,16 +171,37 @@ export function initializeOperations({ API_BASE, apiFetch }) {
 
         for (const guest of guests) {
             const row = document.createElement('tr');
-            const values = [guest.name, guest.vmid, guest.type, guest.node, guest.status];
-            for (const [index, value] of values.entries()) {
+            const state = String(guest.status);
+            const columns = [
+                ['Name', 'cell-name', String(guest.name)],
+                ['VMID', 'cell-id', String(guest.vmid)],
+                ['Type', 'cell-type', String(guest.type)],
+                ['Node', 'cell-node', String(guest.node)],
+            ];
+            for (const [label, className, value] of columns) {
                 const cell = document.createElement('td');
-                const text = String(value);
-                cell.textContent = index === 4
-                    ? `${text.charAt(0).toUpperCase()}${text.slice(1)}`
-                    : text;
+                cell.className = className;
+                cell.dataset.label = label;
+                cell.textContent = value;
                 row.appendChild(cell);
             }
+            const stateCell = document.createElement('td');
+            stateCell.dataset.label = 'Power';
+            const badge = document.createElement('span');
+            const stateClass = state.toLowerCase().replace(/[^a-z0-9]/g, '');
+            badge.className = `vm-state vm-state-${stateClass}`;
+            badge.textContent = state;
+            stateCell.appendChild(badge);
+            row.appendChild(stateCell);
             vmInventoryRows.appendChild(row);
+        }
+    }
+
+    function setVmPills(tone, connection, inventory) {
+        for (const [element, text] of [[vmConnectionStatus, connection], [vmInventoryStatus, inventory]]) {
+            element.textContent = text;
+            element.classList.remove('pill-ok', 'pill-warn', 'pill-bad');
+            if (tone) element.classList.add(`pill-${tone}`);
         }
     }
 
@@ -174,8 +209,7 @@ export function initializeOperations({ API_BASE, apiFetch }) {
         if (vmInventoryRequestInProgress) return;
         vmInventoryRequestInProgress = true;
         vmInventoryRefreshButton.disabled = true;
-        vmConnectionStatus.textContent = 'Loading inventory…';
-        vmInventoryStatus.textContent = 'Loading';
+        setVmPills('warn', 'Loading inventory…', 'Loading');
         try {
             const response = await apiFetch(`${API_BASE}/api/proxmox/vms`);
             const data = await response.json();
@@ -183,8 +217,7 @@ export function initializeOperations({ API_BASE, apiFetch }) {
                 throw new Error(data.detail || `Inventory request failed (${response.status}).`);
             }
             if (!data.configured) {
-                vmConnectionStatus.textContent = 'Not configured';
-                vmInventoryStatus.textContent = 'Not configured';
+                setVmPills(null, 'Not configured', 'Not configured');
                 vmInventoryCount.textContent = 'Not connected';
                 vmInventoryUpdated.textContent = 'Not yet queried';
                 vmInventoryRows.replaceChildren();
@@ -201,15 +234,13 @@ export function initializeOperations({ API_BASE, apiFetch }) {
                 throw new Error('The backend returned an invalid inventory response.');
             }
             renderVmInventory(data.guests);
-            vmConnectionStatus.textContent = 'Connected · read-only';
-            vmInventoryStatus.textContent = 'Live inventory';
+            setVmPills('ok', 'Connected · read-only', 'Live inventory');
             vmInventoryCount.textContent = String(data.count);
             vmInventoryUpdated.textContent = data.observed_at
                 ? new Date(data.observed_at).toLocaleString()
                 : 'Unknown';
         } catch (error) {
-            vmConnectionStatus.textContent = 'Unavailable';
-            vmInventoryStatus.textContent = 'Request failed';
+            setVmPills('bad', 'Unavailable', 'Request failed');
             vmInventoryCount.textContent = 'Unavailable';
             vmInventoryUpdated.textContent = 'Refresh to retry';
             vmInventoryRows.replaceChildren();
@@ -306,12 +337,58 @@ export function initializeOperations({ API_BASE, apiFetch }) {
         }
     }
 
+    async function prepareDiagnosticsReport(observationId, generation) {
+        try {
+            const response = await apiFetch(
+                `${API_BASE}/api/diagnostics/report?observation_id=${encodeURIComponent(observationId)}`,
+            );
+            const report = await response.json();
+            if (!response.ok) {
+                throw new Error(report.detail || `Evidence report failed (${response.status}).`);
+            }
+            if (generation !== diagnosticsReportGeneration || observationId !== diagnosticsLatestObservationId) {
+                return;
+            }
+            diagnosticsReportFile = new File(
+                [JSON.stringify(report, null, 2)],
+                `diagnostics-${observationId}.json`,
+                { type: 'application/json' },
+            );
+            diagnosticsReportButton.disabled = false;
+        } catch (error) {
+            if (generation === diagnosticsReportGeneration) {
+                diagnosticsNotice.textContent = error instanceof Error
+                    ? `Unable to prepare the diagnostics report: ${error.message}`
+                    : 'Unable to prepare the diagnostics report.';
+            }
+        }
+    }
+
     async function downloadDiagnosticsReport() {
         if (!diagnosticsLatestObservationId || diagnosticsRequestInProgress) return;
         diagnosticsRequestInProgress = true;
         diagnosticsReportButton.disabled = true;
         diagnosticsNotice.textContent = 'Preparing the saved observe-only evidence report…';
         try {
+            if (diagnosticsFileShareSupported) {
+                if (!diagnosticsReportFile) {
+                    throw new Error('The report is not ready to share. Refresh diagnostics and try again.');
+                }
+                try {
+                    await navigator.share({
+                        title: 'AI Server diagnostics report',
+                        files: [diagnosticsReportFile],
+                    });
+                    diagnosticsNotice.textContent = 'Report shared. On iOS, choose Save to Files to keep a copy.';
+                } catch (error) {
+                    if (error?.name === 'AbortError') {
+                        diagnosticsNotice.textContent = 'Report sharing canceled.';
+                        return;
+                    }
+                    throw error;
+                }
+                return;
+            }
             const response = await apiFetch(
                 `${API_BASE}/api/diagnostics/report?observation_id=${encodeURIComponent(diagnosticsLatestObservationId)}`,
             );
@@ -335,7 +412,8 @@ export function initializeOperations({ API_BASE, apiFetch }) {
                 : 'Unable to download diagnostics report.';
         } finally {
             diagnosticsRequestInProgress = false;
-            diagnosticsReportButton.disabled = !diagnosticsLatestObservationId;
+            diagnosticsReportButton.disabled = !diagnosticsLatestObservationId
+                || (diagnosticsFileShareSupported && !diagnosticsReportFile);
         }
     }
 

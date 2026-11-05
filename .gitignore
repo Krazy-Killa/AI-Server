@@ -37,6 +37,10 @@ logs/
 /AI Server.code-workspace
 /ai-server-host-report*.md
 
+# Release signing keys must never be committed
+*.signing.pem
+signing-key*
+
 # Local build and editor/OS files
 build/
 dist/

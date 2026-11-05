@@ -293,8 +293,10 @@ environment, not the deployment target.
    unauthenticated loopback check passed: both ports bound to `127.0.0.1`, all
    32 non-parameterized protected routes returned 401 anonymously, and login
    enforced the `Origin` check. Still unverified: SQLite paths/permissions,
-   logs, authenticated reads, diagnostics, and container health, which need
-   `ai-server` account access that `ai-deploy` lacks. Decision: `/docs`,
+   logs, authenticated reads, and diagnostics, which need
+   `ai-server` account access that `ai-deploy` lacks. Container health was
+   confirmed on the lab on 2026-11-05 (both `healthy`, no restarts; reboot
+   recovery still unverified). Decision: `/docs`,
       `/redoc`, and `/openapi.json` are now disabled by default
       (`AI_SERVER_ENABLE_API_DOCS`, implemented and tested; not yet deployed to
       the lab). Add llama.cpp,
@@ -334,12 +336,24 @@ environment, not the deployment target.
    re-check. See the
    [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
    The planned deployment workflow now includes an admin-uploaded signed
-   `.tar.gz` release containing a prebuilt architecture-specific OCI image and
-   manifest, verified before apply. A separate rootless updater is required to
+   release bundle verified before apply (Stage 1 verify-only is implemented and
+   deployed to the nested lab; one signed test bundle verified through the
+   dashboard on 2026-11-05, and Discard appeared to work. Tamper and wrong-key rejection, expiry and
+   a large upload through NGINX are not yet exercised on the lab. The OCI-image
+   payload and Apply remain design only). A separate
+   privileged updater is required to
    survive backend restarts, coordinate only backend/dashboard services, run
    health checks, and restore the prior image on failure. This is a design
-   only; signing, trust-key rotation, archive hardening, database backup/schema
+   only; trust-key rotation, replay protection, database backup/schema
    compatibility, and updater permissions/status remain unimplemented.
+   Model weights are not part of the application bundle: they live in the
+   persistent `AI_SERVER_MODEL_DIR` and exceed the source-bundle size limits.
+   **Planned, not started:** a separate admin-only signed model-package flow
+   that verifies package metadata and content before installing into the
+   persistent model directory. It must check available disk space, avoid
+   overwriting or deleting installed models, and keep model installation
+   independent from application update rollback. Installing a model must not
+   load it automatically; selection remains an explicit existing operation.
 5. **Linux AMD GPU telemetry — provider implemented; target validation
    pending.** A platform dispatcher now selects the Windows provider or Linux
    `amdgpu` sysfs provider. Deterministic fixtures cover utilization, VRAM,
@@ -360,6 +374,21 @@ sample inventory. No VM mutation or console controls are exposed. Further UI
 guidance, such as linking a failure state to a reviewed runbook, is a
 non-blocking improvement rather than a prerequisite for the next integration
 step.
+
+**Planned (not started): admin-only VM management.** The Virtual Machines
+panel is read-only today, and its "Connected · read-only" label, the "Read-only
+access" notice, and the "Inventory scope" card are accurate only for that
+reason. Administrator-only guest actions (for example start/stop) are a
+planned later feature. Before it is built, it needs: a separately scoped,
+least-privilege Proxmox token distinct from the inventory token; dedicated
+admin-only routes with CSRF, `Origin` and exact-confirmation checks; audit
+logging; and the diagnostics and AI components remaining unable to invoke
+these routes. When it exists, the backend should report whether the token can
+write and the dashboard should derive the label from that capability: plain
+"Connected" for an administrator with write access, and "Connected · read-only"
+otherwise, with the static notices updated to match. This is design intent
+only; no mutation route, token or UI exists, and the current safety constraint
+against exposing mutation endpoints stays in force until then.
 
 ## Phase 4 — Proxmox Readiness and Compatibility Gate
 
@@ -462,14 +491,18 @@ complete from Windows runs, mocks, or nested-lab results.
   on the desktop).
   Remaining: certificate renewal and the physical host.
 - Dashboard Settings is a tabbed page. Its admin-only Setup / Deployment tab
-  holds a disabled Firmware File placeholder; the signed release bundle
-  build, upload, verify, and apply flow remain planned (not implemented).
+  holds the Firmware File picker and Verify button. **Updater Stage 1
+  (verify-only) is implemented and unit/browser-tested but not yet lab-
+  verified**: signed `.aibundle` upload, Ed25519 verification, hostile-archive
+  checks, staging and discard. Apply (Stage 2) is planned and not started; it
+  waits for a verified two-release rollback, container health and reboot tests.
 - Frontend polish (implemented, tested in Playwright, deployed to the nested
   lab as `20261106-frontend` and verified over HTTPS): live CPU values,
   visibility-aware polling, self-hosted fonts, an
   offline banner, a web-app manifest with icons, larger mobile labels, no iOS
-  input zoom, and a stacked Diagnostics header. Home-screen install on a real
-  iPhone and the phone layout are unverified.
+  input zoom, and a stacked Diagnostics header. iPhone home-screen install is
+  verified on the lab (the phone must trust the lab CA or iOS shows a letter
+  icon); the phone layout beyond that is not fully verified.
 - Integrate the existing dashboard, backend, model discovery/switching, chat
   and streaming, SQLite history, logging, optional research/bot, and
   observe-only diagnostics. Verify Linux dependencies, permissions, service

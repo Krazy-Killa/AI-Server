@@ -58,25 +58,54 @@ this does not replace production HTTPS proxy and firewall validation. See
 The local CLI manages accounts and explicit Proxmox identity-to-role mappings.
 The API does not expose account administration.
 
-### Planned application update API — not implemented
+### Release-bundle verification API — verify and stage only
 
-The planned update workflow is admin-only and requires the normal session,
-allowed Origin, and CSRF protections:
+These admin-only routes let an administrator upload a signed release bundle
+and have the server verify it. They require the normal session, allowed
+Origin, and CSRF protections. They never apply, extract into the live
+deployment, or execute anything from the bundle.
 
-- `POST /api/admin/updates` — stream a bounded `.tar.gz` to a private staging
-  area, verify the signed manifest and image digest, and return a staged
-  release identifier and compatibility/preflight result. It does not apply
-  the release.
-- `GET /api/admin/updates/{release_id}` — read the staged release's validation
-  and apply/rollback status.
-- `POST /api/admin/updates/{release_id}/apply` — request the one-click apply
-  operation after a separate explicit confirmation in the UI. The API hands
-  the fixed update job to a separate rootless updater; it does not execute
-  archive-provided code or shell commands.
+- `GET /api/admin/updates` — `{enabled, apply_supported: false, staged, limits}`.
+  `enabled` is `false` until `AI_SERVER_UPDATE_PUBLIC_KEYS` is configured.
+  Expired staged releases are purged on each call.
+- `POST /api/admin/updates` — body is the raw `.aibundle`
+  (`Content-Type: application/octet-stream`, streamed to a private incoming
+  file with a hard size cap). Returns `201` and the staged record
+  (`release_id`, `version`, `created_at`, `signer`, `payload_sha256`,
+  `payload_size`, `file_count`, `unpacked_bytes`, `staged_at`, `expires_at`,
+  `status: "verified"`). Errors: `503` not configured, `400` empty/invalid
+  length, `409` busy or already staged, `413` too large, `422` failed
+  verification (the message names the failed check, never file contents),
+  `507` insufficient disk space.
+- `GET /api/admin/updates/{release_id}` — one staged record, or `404`.
+- `DELETE /api/admin/updates/{release_id}` — discard a staged release.
 
-These routes, request/response shapes, size limits, signing-key management,
-status persistence, and updater communication are design targets only; no
-update endpoint or upload is currently available.
+Verification requires, in order: exactly the three expected outer members as
+regular files; an Ed25519 signature over the raw manifest bytes by a key in
+`AI_SERVER_UPDATE_PUBLIC_KEYS`; a manifest with exactly the supported fields
+and in canonical JSON form (`requires_data_migration` must be `false`); a
+payload whose size and SHA-256 match the signed manifest; and a payload tar
+that has no links, special files, absolute or traversing paths, duplicates,
+secrets or database/key files, excessive entries or expansion, and that
+contains `Containerfile` and `ai-backend/main.py`. Staged releases live in a
+private directory (default beside the auth database, `updates/`) for
+`AI_SERVER_UPDATE_EXPIRY_HOURS`.
+
+The `.aibundle` format is for the allow-listed application source tree only; it
+does not carry GGUF model weights. Model files live separately in the persistent
+`AI_SERVER_MODEL_DIR` and can be much larger than the current 128 MiB upload and
+256 MiB unpacked limits. A separate signed model-package flow is planned for
+admin-managed installation into that directory. It must verify model metadata
+and content independently, preserve existing model files, and remain separate
+from application-release rollback. No model upload or installation API exists
+yet.
+
+There is deliberately no `POST /api/admin/updates/{release_id}/apply` route;
+it returns `403` through the dashboard role gate. The apply step, the
+separate privileged updater, and an OCI image payload remain design targets
+(see the Linux/Proxmox transition guide). Known limit: nothing yet prevents
+replaying an older validly signed bundle (no rollback/downgrade protection
+beyond the operator's judgement).
 
 ## System Endpoints
 

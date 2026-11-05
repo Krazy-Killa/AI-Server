@@ -6,6 +6,14 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Diagnostics report download in the iOS Home Screen app now uses the native
+  file-sharing sheet when supported, avoiding the unreliable Blob URL
+  `download` behavior there. Browsers without file-sharing support keep the
+  regular download flow. Covered by frontend tests; not yet deployed to the
+  lab.
+
 ### In Development
 
 - Retrieval of similar historical incidents, semantic/vector search, and
@@ -13,10 +21,39 @@ principles and [Semantic Versioning](https://semver.org/).
 - Image-generation backend groundwork and later runtime integration.
 - Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
   validation on the target server.
-- Signed release-bundle build and the upload, verify, and apply flow behind the
-  disabled Firmware File placeholder in Settings → Setup / Deployment.
-- Lab confirmation of iPhone home-screen install (shipped in 0.9.0 but not yet
-  verified).
+- Separate signed model-package workflow for installing large model weights
+  into persistent storage without coupling them to application updates or
+  rollback; planned, not implemented.
+- Signed updater follow-up: lab verification of tampered/wrong-key rejection,
+  expiry purge, and a large upload through NGINX; Stage 2 apply and the
+  privileged updater are not started.
+
+## [0.9.2] - 2026-11-05
+
+Deployed to the nested Proxmox lab as release `20261106-updater-verify`.
+Stage 1 verification was tested with one signed bundle; see the runbook for
+the exact scope and remaining lab checks.
+
+### Added
+
+- Signed release-bundle **Stage 1 (verify-only)**: admin-only `.aibundle`
+  upload, Ed25519 signature and payload verification, hostile-archive checks,
+  staging, listing, and discard; includes the signing tool
+  `scripts/release/sign-release.py`, a dedicated NGINX upload location, and
+  `cryptography` as a pinned dependency. The dashboard displayed the verified
+  signer, payload digest, size, and expiry for a signed test bundle; Apply
+  remains disabled. The operator reported that Discard appeared to work.
+  Tampered/wrong-key rejection, expiry purge, and a large upload through NGINX
+  have not yet been verified on the lab. Stage 2 apply is not implemented.
+
+### Changed
+
+- Restyled the Virtual Machines inventory table: consistent type scale, more
+  padding and row separators, hover state, monospace VMID/node, and
+  colour-coded power-state, connection, and inventory status pills. On phones,
+  stat tiles display two per row, guest details use two-column cards, and the
+  header places the status pill beside Refresh. Covered by a Playwright test;
+  the on-device appearance was not separately recorded.
 
 ## [0.9.1] - 2026-11-05
 
@@ -29,6 +66,10 @@ Deployed to the nested Proxmox lab as release `20261106-nonblocking`.
   and other requests stalled, so the login form could hang on "Signing in…".
   The sample now runs in a worker thread, with a regression test. On the lab,
   30 consecutive requests to the backend returned in 1-3 ms afterwards.
+- Lab container health confirmed: both containers `healthy`, units `active`
+  with no restarts, probe endpoints returning 200. Documented that
+  `podman healthcheck run` / `podman exec` through `runuser` fail with a cgroup
+  permission error and must not be used to judge health.
 
 ## [0.9.0] - 2026-11-05
 
@@ -37,7 +78,9 @@ serving, the new Content-Security-Policy, and the 404/401 behavior were checked
 over HTTPS. The shared-address lockout fix was confirmed on the lab: failed
 sign-ins from an iPhone hit the readable "Too many login attempts" message
 without locking the administrator out on a desktop. iPhone home-screen
-install is still awaiting manual confirmation.
+install was confirmed afterwards: the app icon appears once full trust is
+enabled for the lab certificate authority in iOS Certificate Trust Settings
+(until then iOS silently falls back to a letter icon).
 
 ### Added
 

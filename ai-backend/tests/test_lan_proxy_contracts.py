@@ -67,6 +67,15 @@ class LanProxyContractTests(unittest.TestCase):
         self.assertNotIn("proxy_set_header Origin", self.config)
         self.assertNotRegex(self.config, r"listen\s+(8000|8001|8080|11434)\b")
 
+    def test_release_upload_has_larger_unbuffered_body_on_exact_path_only(self):
+        upload = location_block(self.config, "= /api/admin/updates")
+        self.assertIn("client_max_body_size 130m;", upload)
+        self.assertIn("proxy_request_buffering off;", upload)
+        self.assertIn("http://127.0.0.1:8000", upload)
+        self.assertEqual(self.config.count("client_max_body_size 130m;"), 1)
+        self.assertIn("client_max_body_size 2m;", self.config)
+        self.assertNotIn("130m", location_block(self.config, "/api/"))
+
     def test_certificate_script_is_conservative(self):
         script = CERT_SCRIPT.read_text(encoding="utf-8")
         self.assertIn("set -euo pipefail", script)

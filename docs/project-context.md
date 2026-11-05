@@ -172,8 +172,11 @@ implemented.
   optional research service and must be installed/configured to search. The
   Discord bot is optional.
 - **Deployment:** rootless Podman/Quadlet definitions exist for backend and
-  dashboard containers. A signed `.tar.gz` application update flow and
-  separate updater are design-only.
+  dashboard containers. A verify-only signed-bundle upload (Stage 1) is
+  deployed to the nested lab and verified for one signed test bundle; the
+  apply flow and separate updater are design-only. Model weights stay in the
+  persistent model directory, not application bundles; a separate signed
+  model-package workflow is planned but not implemented.
 
 ## Environment Strategy
 
@@ -339,7 +342,8 @@ According to the roadmap's integration-priority order:
 4. **Deployment workflow:** after the preceding lab checks, explore a separate
    app-deployment installer with read-only preflight, explicit confirmation,
    protected configuration, pinned versions, health checks, and rollback.
-   The signed `.tar.gz` updater is design-only.
+   The signed-bundle updater is partly built: Stage 1 (verify-only) is
+   implemented and lab-verified for a basic upload; Apply is design-only.
 5. **Physical-host integration:** blocked until the planned physical Proxmox
    server is available. ROCm/HIP, production networking/proxy, GPU readings,
    reboot/recovery, and target acceptance cannot be established on Windows.

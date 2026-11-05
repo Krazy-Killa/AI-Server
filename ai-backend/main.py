@@ -10,6 +10,7 @@ from api.routes.chat import router as chat_router
 from api.routes.memory import router as memory_router
 from api.routes.operations import router as operations_router
 from api.routes.research import router as research_router
+from api.routes.updates import router as updates_router
 
 def create_app(enable_api_docs: bool) -> FastAPI:
     # The interactive docs and schema describe the full API surface to anonymous
@@ -21,5 +22,5 @@ def create_app(enable_api_docs: bool) -> FastAPI:
 
 app = create_app(settings.enable_api_docs)
 register_middleware(app)
-for router in (auth_router, memory_router, chat_router, research_router, operations_router):
+for router in (auth_router, memory_router, chat_router, research_router, operations_router, updates_router):
     app.include_router(router)

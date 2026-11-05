@@ -562,13 +562,14 @@
                     <div class="settings-grid">
                         <div class="settings-item settings-item-wide">
                             <div class="settings-label">Firmware File</div>
-                            <div class="settings-value">Release bundle (<code>.tar.gz</code>) to deploy to this server.</div>
-                            <input class="settings-file" id="setup-firmware-file" type="file" accept=".tar.gz,.tgz,application/gzip" aria-describedby="setup-firmware-status" disabled>
+                            <div class="settings-value">Signed release bundle (<code>.aibundle</code>) to verify and stage on this server.</div>
+                            <input class="settings-file" id="setup-firmware-file" type="file" accept=".aibundle" aria-describedby="setup-firmware-status" disabled>
                             <div class="settings-actions">
                                 <button class="btn" id="setup-firmware-verify" type="button" disabled>Verify</button>
-                                <button class="btn" id="setup-firmware-apply" type="button" disabled>Apply</button>
+                                <button class="btn" id="setup-firmware-apply" type="button" disabled title="Applying from the dashboard is not implemented yet">Apply</button>
                             </div>
-                            <div class="settings-value settings-status" id="setup-firmware-status">Not available. Upload, signature verification, and deployment are a planned design and are not implemented yet; deploy releases manually using the operator runbook.</div>
+                            <div class="settings-value settings-status" id="setup-firmware-status" role="status">Open this tab to check release verification status.</div>
+                            <div id="setup-firmware-staged"></div>
                         </div>
                     </div>
                 </div>

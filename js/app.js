@@ -1,5 +1,6 @@
 import { initializeBackendLogs } from './backend-logs.js';
 import { initializeOperations } from './operations.js';
+import { initializeReleaseUpdates } from './release-updates.js';
 import { initializeSystemMonitor } from './system-monitor.js';
 import { initializeUiPreferences } from './ui-preferences.js';
 import { setVisibleInterval } from './visibility.js';
@@ -1297,4 +1298,5 @@ initializeSystemMonitor({
     loadAdminInterface,
 });
 initializeUiPreferences();
+initializeReleaseUpdates({ API_BASE, apiFetch });
 restoreSession();

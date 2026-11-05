@@ -58,11 +58,16 @@ GPU / LLM / Bot / System Stats
 - Contains deterministic in-memory maintenance/remediation simulations and
   proposal-only Proxmox VM, network-service, and game-server contracts. They
   have no live service, process, shell, Proxmox, database, or scheduler adapter.
-- Application updates are planned, not implemented. The target design is an
-  admin-uploaded, signed prebuilt image bundle with validation before apply,
-  orchestrated by a separate rootless updater so the API can restart safely.
+- Application updates: Stage 1 (admin-uploaded, signed bundle verified and
+  staged, never applied) is implemented in `release_bundle.py` and
+  `api/routes/updates.py`; a signed test bundle verified on the nested lab
+  (2026-11-05). Applying is planned: the target
+  design uses a separate privileged updater so the API can restart safely.
   The updater is limited to the backend/dashboard services; host packages,
-  Proxmox, GPU runtimes, secrets, and persistent user data are out of scope.
+  Proxmox, GPU runtimes, secrets, persistent user data, and model weights are
+  out of scope. A separate signed model-package flow is planned to verify and
+  install model assets into the persistent model directory without coupling
+  them to application updates or rollback; it is not implemented.
 
 ## Web Research
 

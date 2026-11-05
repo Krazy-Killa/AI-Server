@@ -11,6 +11,7 @@ const assets = new Map([
     ['/js/app.js', ['js/app.js', 'text/javascript; charset=utf-8']],
     ['/js/backend-logs.js', ['js/backend-logs.js', 'text/javascript; charset=utf-8']],
     ['/js/operations.js', ['js/operations.js', 'text/javascript; charset=utf-8']],
+    ['/js/release-updates.js', ['js/release-updates.js', 'text/javascript; charset=utf-8']],
     ['/js/system-monitor.js', ['js/system-monitor.js', 'text/javascript; charset=utf-8']],
     ['/js/ui-preferences.js', ['js/ui-preferences.js', 'text/javascript; charset=utf-8']],
     ['/js/theme-init.js', ['js/theme-init.js', 'text/javascript; charset=utf-8']],
