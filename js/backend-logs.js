@@ -1,3 +1,5 @@
+import { setVisibleInterval } from './visibility.js';
+
 export function initializeBackendLogs({ API_BASE, apiFetch }) {
     const backendLogsPanel = document.getElementById('backend-logs-panel');
     const backendLogsWindow = document.getElementById('backend-log-window');
@@ -48,7 +50,7 @@ export function initializeBackendLogs({ API_BASE, apiFetch }) {
     }
 
     backendLogsRefreshButton.addEventListener('click', refreshBackendLogs);
-    setInterval(() => {
+    setVisibleInterval(() => {
         if (backendLogsPanel.style.display !== 'none') refreshBackendLogs();
     }, 5000);
 

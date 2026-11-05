@@ -6,19 +6,6 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-
-- Settings is now a tabbed page (Appearance, Account, Network & Access, Models,
-  Diagnostics, About) with an admin-only Setup / Deployment tab containing a
-  disabled Firmware File placeholder for the planned release-bundle updater.
-  Browser regression tests cover tab switching, keyboard navigation, and
-  role gating.
-- Prepared LAN access: an NGINX TLS reverse-proxy configuration
-  (`deploy/nginx/ai-server.conf`) and a local-CA certificate generator
-  (`scripts/proxmox/make-lan-cert.sh`) with name constraints, both in the lab
-  bundle and covered by contract tests. Documented in the Linux/Proxmox guide;
-  not yet installed or verified on the lab guest.
-
 ### In Development
 
 - Retrieval of similar historical incidents, semantic/vector search, and
@@ -26,6 +13,69 @@ principles and [Semantic Versioning](https://semver.org/).
 - Image-generation backend groundwork and later runtime integration.
 - Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
   validation on the target server.
+- Signed release-bundle build and the upload, verify, and apply flow behind the
+  disabled Firmware File placeholder in Settings → Setup / Deployment.
+- Lab confirmation of iPhone home-screen install (shipped in 0.9.0 but not yet
+  verified).
+
+## [0.9.1] - 2026-11-05
+
+Deployed to the nested Proxmox lab as release `20261106-nonblocking`.
+
+### Fixed
+
+- `/api/system` sampled CPU usage on the event loop, freezing the whole backend
+  for 0.5 s per request. With two dashboards open (each polls it twice), sign-in
+  and other requests stalled, so the login form could hang on "Signing in…".
+  The sample now runs in a worker thread, with a regression test. On the lab,
+  30 consecutive requests to the backend returned in 1-3 ms afterwards.
+
+## [0.9.0] - 2026-11-05
+
+Deployed to the nested Proxmox lab as release `20261106-frontend`. Asset
+serving, the new Content-Security-Policy, and the 404/401 behavior were checked
+over HTTPS. The shared-address lockout fix was confirmed on the lab: failed
+sign-ins from an iPhone hit the readable "Too many login attempts" message
+without locking the administrator out on a desktop. iPhone home-screen
+install is still awaiting manual confirmation.
+
+### Added
+
+- Self-hosted web fonts (no Google Fonts dependency; CSP no longer allows
+  third-party origins), a web-app manifest and home-screen icons, a banner
+  shown when the backend is unreachable, and a stacked Diagnostics header on
+  phones.
+- Polling timers pause while the browser tab is hidden.
+- Settings is now a tabbed page (Appearance, Account, Network & Access, Models,
+  Diagnostics, About) with an admin-only Setup / Deployment tab containing a
+  disabled Firmware File placeholder for the planned release-bundle updater.
+  Browser regression tests cover tab switching, keyboard navigation, and
+  role gating.
+- Settings → Account shows the signed-in identity and a Sign out button, so
+  phones (where the sidebar footer is hidden) can sign out. Chat's
+  "cannot reach llama.cpp" error no longer refers to a Windows batch file.
+- Login rate limiting is now correct behind the NGINX proxy. A new opt-in
+  `AI_SERVER_TRUST_PROXY_HEADERS` setting makes the backend use the proxy's
+  `X-Forwarded-For` client address. Before this, every LAN device appeared as
+  one address, so five failed sign-ins from one device locked out everyone.
+  The login throttle in NGINX also returns JSON now, and the dashboard shows
+  a readable message instead of Safari's "string did not match the expected
+  pattern".
+- LAN access: an NGINX TLS reverse-proxy configuration
+  (`deploy/nginx/ai-server.conf`) and a local-CA certificate generator
+  (`scripts/proxmox/make-lan-cert.sh`) with name constraints, both in the lab
+  bundle and covered by contract tests. Installed on the nested lab and
+  verified from a Windows PC and an iPhone; the `/ws/chat` connection works
+  through the proxy (streaming untested without llama.cpp), and the client
+  address seen behind the proxy is correct once
+  `AI_SERVER_TRUST_PROXY_HEADERS=true` is set (lab-tested).
+
+### Fixed
+
+- The header and System card CPU values were hardcoded at 18%; they now show
+  live data or N/A. A stale VRAM overwrite that could print "null / nullGB"
+  was removed.
+- Small mobile labels are larger and text fields no longer trigger iOS zoom.
 
 ## [0.8.0] - 2026-11-05
 

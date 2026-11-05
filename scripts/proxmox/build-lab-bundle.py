@@ -21,6 +21,7 @@ SINGLE_FILES = (
     "Containerfile",
     ".containerignore",
     "index.html",
+    "manifest.webmanifest",
     "deploy/quadlet/ai-server-backend.container",
     "deploy/quadlet/ai-server-dashboard.container",
     "deploy/boot-autostart/ai-server-backend.container.d/10-boot-autostart.conf",
@@ -34,9 +35,9 @@ SINGLE_FILES = (
 )
 TREES = (("ai-backend", "*.py"), ("ai-backend/api", "*.py"),
          ("ai-backend/api/routes", "*.py"), ("ai-backend/gpu", "*.py"),
-         ("css", "*"), ("js", "*"))
+         ("css", "*"), ("css/fonts", "*"), ("icons", "*"), ("js", "*"))
 TEXT_SUFFIXES = {".py", ".html", ".css", ".js", ".lock", ".container", ".conf",
-                 ".service", ".timer", ".sh", ""}
+                 ".service", ".timer", ".sh", ".svg", ".webmanifest", ""}
 
 
 def collect() -> list[Path]:

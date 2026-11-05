@@ -1,4 +1,50 @@
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap");
+@font-face {
+    font-family: "Barlow Condensed";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("fonts/barlow-condensed-500.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Barlow Condensed";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("fonts/barlow-condensed-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Barlow Condensed";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("fonts/barlow-condensed-700.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "DM Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("fonts/dm-mono-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "DM Mono";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("fonts/dm-mono-500.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("fonts/manrope-variable.woff2") format("woff2");
+}
 
 :root {
     color-scheme: dark;
@@ -2160,5 +2206,119 @@ header {
 @media (prefers-reduced-motion: reduce) {
     .panel.panel-enter {
         animation: none;
+    }
+}
+
+.connection-banner {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 8px 14px;
+    background: #5a1f24;
+    border-bottom: 1px solid #c4524f;
+    color: #ffe3e0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+.connection-banner[hidden] {
+    display: none;
+}
+
+#diagnostics-panel .panel-header {
+    flex-wrap: wrap;
+}
+
+#diagnostics-panel .panel-controls {
+    align-items: center;
+}
+
+@media (max-width: 760px), (max-height: 600px) {
+    #diagnostics-panel .panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #diagnostics-panel .panel-controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    #diagnostics-panel .panel-controls .pill {
+        flex: 1 0 100%;
+    }
+
+    #diagnostics-panel .panel-controls .btn,
+    #diagnostics-panel .panel-controls .btn-secondary {
+        flex: 1 1 auto;
+    }
+
+    .header-status,
+    #backend-status,
+    .metric-label,
+    .nav-section-title,
+    .pill,
+    .console-status,
+    .conversation-controls > label,
+    .shared-insight-meta,
+    .shared-insight-form > label,
+    .select-arrow,
+    .msg-label,
+    .msg-timestamp,
+    .research-sources-title,
+    .research-toggle,
+    .model-meta,
+    .model-filename,
+    .section-kicker,
+    .infra-icon,
+    .infra-notice,
+    .backend-logs-description,
+    .diagnostics-section-header h2,
+    .diagnostics-incident small,
+    .btn-secondary,
+    .conversation-controls .btn-secondary,
+    .bot-model-control,
+    .settings-label {
+        font-size: 11px;
+    }
+
+    .sidebar-footer,
+    .shared-admin-memory summary,
+    .shared-insight-empty,
+    #shared-insight-status,
+    #conversation-status,
+    .slider-label,
+    .btn-save,
+    .metric-card-label,
+    .metric-card-value,
+    .log-line,
+    .diagnostics-notice,
+    .diagnostics-empty,
+    .bot-feedback,
+    .bot-commands,
+    .settings-tab,
+    .auth-card label,
+    .metric-value,
+    .nav-item,
+    .console-notice {
+        font-size: 12px;
+    }
+}
+
+@media (pointer: coarse) {
+    input,
+    select,
+    textarea,
+    .chat-input,
+    .chat-input-row .chat-input,
+    .model-select,
+    .conversation-controls select,
+    .bot-model-control select,
+    .auth-card select,
+    .shared-insight-form textarea {
+        font-size: 16px;
     }
 }

@@ -71,7 +71,7 @@ def _http_error(error: HTTPError) -> LLMRuntimeError:
 def _unreachable_error() -> LLMRuntimeError:
     return LLMRuntimeError(
         "Cannot reach llama.cpp at "
-        f"{LLAMA_CPP_BASE_URL}. Start run-llama-server.bat and try again."
+        f"{LLAMA_CPP_BASE_URL}. Make sure the llama.cpp server is running and try again."
     )
 
 

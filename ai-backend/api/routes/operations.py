@@ -8,7 +8,8 @@ router = APIRouter()
 
 @router.get("/api/system")
 async def system_endpoint():
-    stats = runtime.get_system_stats()
+    # get_system_stats blocks (CPU sampling, sysfs reads); keep it off the event loop.
+    stats = await runtime.asyncio.to_thread(runtime.get_system_stats)
     stats["activity_mode"] = (
         "diagnostics" if runtime.diagnostics_monitor.is_running else None
     )

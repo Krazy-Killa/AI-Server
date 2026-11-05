@@ -2,6 +2,7 @@ import { initializeBackendLogs } from './backend-logs.js';
 import { initializeOperations } from './operations.js';
 import { initializeSystemMonitor } from './system-monitor.js';
 import { initializeUiPreferences } from './ui-preferences.js';
+import { setVisibleInterval } from './visibility.js';
 
 // ===============================
 // AI Dashboard — app.js (Expanded)
@@ -85,6 +86,7 @@ function applyAuthorizationUI(role, username, provider, csrf) {
     csrfToken = csrf;
     interfaceAuthor = `${username} (${provider})`;
     authIdentity.textContent = `${username} · ${role} · ${provider}`;
+    document.getElementById('settings-identity').textContent = authIdentity.textContent;
     document.querySelector('[data-panel="interface-panel"]').hidden = role !== 'admin';
     document.querySelector('[data-panel="chat-panel"]').hidden = role === 'viewer';
     document.querySelector('[data-panel="backend-logs-panel"]').hidden = role !== 'admin';
@@ -164,8 +166,20 @@ authForm.addEventListener('submit', async event => {
                 password: authPassword.value,
             }),
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.detail || `Sign-in failed (${response.status}).`);
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (parseError) {
+            result = {};
+        }
+        if (!response.ok) {
+            throw new Error(
+                result.detail
+                || (response.status === 429
+                    ? 'Too many login attempts. Try again later.'
+                    : `Sign-in failed (${response.status}).`)
+            );
+        }
         authPassword.value = '';
         applyAuthorizationUI(result.role, result.username, result.provider, result.csrf_token);
     } catch (error) {
@@ -177,8 +191,9 @@ authForm.addEventListener('submit', async event => {
     }
 });
 
-authLogout.addEventListener('click', async () => {
-    authLogout.disabled = true;
+const authLogoutButtons = [authLogout, document.getElementById('settings-logout')];
+authLogoutButtons.forEach(button => button.addEventListener('click', async () => {
+    authLogoutButtons.forEach(item => { item.disabled = true; });
     try {
         const response = await apiFetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
         if (!response.ok) throw new Error('Sign out failed.');
@@ -186,9 +201,9 @@ authLogout.addEventListener('click', async () => {
     } catch (error) {
         authNotice.textContent = error instanceof Error ? error.message : 'Sign out failed.';
     } finally {
-        authLogout.disabled = false;
+        authLogoutButtons.forEach(item => { item.disabled = false; });
     }
-});
+}));
 
 // Cache DOM elements
 const navItems = document.querySelectorAll('.nav-item');
@@ -681,6 +696,12 @@ sharedInsightForm.addEventListener('submit', async event => {
 });
 
 const backendStatusEl = document.getElementById('backend-status');
+const connectionBanner = document.getElementById('connection-banner');
+
+function setConnectionBanner(message) {
+    connectionBanner.textContent = message || '';
+    connectionBanner.hidden = !message;
+}
 
 async function pollBackendStatus() {
     try {
@@ -692,16 +713,20 @@ async function pollBackendStatus() {
         backendStatusEl.textContent = "Online";
         backendStatusEl.classList.remove("backend-offline");
         backendStatusEl.classList.add("backend-online");
+        setConnectionBanner('');
 
     } catch (err) {
         backendStatusEl.textContent = "Offline";
         backendStatusEl.classList.remove("backend-online");
         backendStatusEl.classList.add("backend-offline");
+        if (!dashboardApp.hidden) {
+            setConnectionBanner('The backend is unreachable. Live data is paused and will resume when it reconnects.');
+        }
     }
 }
 
-// Poll every 3 seconds
-setInterval(pollBackendStatus, 3000);
+// Poll every 3 seconds while the tab is visible
+setVisibleInterval(pollBackendStatus, 3000);
 pollBackendStatus();
 
 const WS_BASE = API_BASE.replace(/^http/, 'ws');
@@ -1133,7 +1158,7 @@ async function pollBotStatus() {
     }
 }
 
-setInterval(pollBotStatus, 3000);
+setVisibleInterval(pollBotStatus, 3000);
 pollBotStatus();
 
 // ===============================
@@ -1163,7 +1188,7 @@ async function pollBotLogs() {
     }
 }
 
-setInterval(pollBotLogs, 4000);
+setVisibleInterval(pollBotLogs, 4000);
 pollBotLogs();
 
 // ===============================

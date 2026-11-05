@@ -451,14 +451,25 @@ complete from Windows runs, mocks, or nested-lab results.
   CSRF/origin checks, HTTPS reverse proxy, firewall rules, and browser access
   from a separate LAN client. Keep the API and inference service private until
   this gate passes. See [authentication.md](../security/authentication.md).
-  Status: **prepared, not executed.** The NGINX TLS config, local-CA
-  certificate script, bundle entries, contract tests, and runbook section
-  exist; nothing is installed or verified on the nested lab guest yet. Next:
-  install on the lab, test from a separate LAN client, and check the client
-  address the backend sees behind the proxy.
+  Status: **executed on the nested lab (2026-11-05).** NGINX TLS with a local
+  CA was installed and verified from a Windows PC and an iPhone (HTTPS
+  redirect, trusted certificate, sign-in, loopback-only backend ports). The
+  `/ws/chat` WebSocket connects through the proxy; token streaming is untested
+  because the lab has no llama.cpp. A lockout test on the lab showed the
+  backend treats all LAN clients as one address; fixed with
+  `AI_SERVER_TRUST_PROXY_HEADERS`, deployed in `20261106-frontend`, and a
+  repeat test passed (an iPhone lockout no longer blocked the administrator
+  on the desktop).
+  Remaining: certificate renewal and the physical host.
 - Dashboard Settings is a tabbed page. Its admin-only Setup / Deployment tab
   holds a disabled Firmware File placeholder; the signed release bundle
   build, upload, verify, and apply flow remain planned (not implemented).
+- Frontend polish (implemented, tested in Playwright, deployed to the nested
+  lab as `20261106-frontend` and verified over HTTPS): live CPU values,
+  visibility-aware polling, self-hosted fonts, an
+  offline banner, a web-app manifest with icons, larger mobile labels, no iOS
+  input zoom, and a stacked Diagnostics header. Home-screen install on a real
+  iPhone and the phone layout are unverified.
 - Integrate the existing dashboard, backend, model discovery/switching, chat
   and streaming, SQLite history, logging, optional research/bot, and
   observe-only diagnostics. Verify Linux dependencies, permissions, service

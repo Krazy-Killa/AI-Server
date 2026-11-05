@@ -5,12 +5,25 @@ from api import runtime
 router = APIRouter()
 
 
+def _client_address(request: runtime.Request) -> str:
+    """Return the caller's address, honoring the proxy header only when opted in.
+
+    Enable AI_SERVER_TRUST_PROXY_HEADERS only when the backend is reachable
+    solely through a reverse proxy that overwrites X-Forwarded-For.
+    """
+    if runtime.settings.trust_proxy_headers:
+        forwarded = request.headers.get("x-forwarded-for", "").split(",")[-1].strip()
+        if forwarded:
+            return forwarded[:64]
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/api/auth/login")
 def auth_login(
     req: runtime.AuthLoginRequest, request: runtime.Request, response: runtime.Response
 ):
     store = runtime.get_auth_store()
-    client_host = request.client.host if request.client else "unknown"
+    client_host = _client_address(request)
     if store.is_rate_limited(req.username, client_host):
         raise runtime.HTTPException(
             status_code=429, detail="Too many login attempts. Try again later."

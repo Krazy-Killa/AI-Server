@@ -30,6 +30,7 @@ sync with `LLAMA_CPP_DEVICE`, `LLAMA_CPP_GPU_LAYERS`, and
 | `LLAMA_CPP_TIMEOUT_SECONDS` | Timeout for llama.cpp chat requests; defaults to `120`. |
 | `AI_SERVER_MAX_TOKENS` | Maximum tokens generated per chat reply; defaults to `256`. |
 | `AI_SERVER_MAX_CHAT_CHARS` | Maximum characters accepted per streamed chat message; defaults to `4000`. |
+| `AI_SERVER_TRUST_PROXY_HEADERS` | Defaults to `false`. Set `true` only when the backend is reachable solely through the NGINX LAN proxy, which overwrites `X-Forwarded-For`. The login rate limiter then counts failures per real client address instead of treating every LAN device as one. Never enable it if port 8000 is reachable by clients directly. |
 | `AI_SERVER_CORS_ORIGINS` | Comma-separated browser origins allowed to call the API and open `/ws/chat`; defaults to `http://127.0.0.1:8001,http://localhost:8001`. `*` is rejected. Add the dashboard's origin here before serving it from another host; behind the NGINX LAN proxy use the HTTPS origin, for example `https://LAB_HOST` (see the LAN section of the Linux/Proxmox transition guide). |
 | `AI_SERVER_LAN_HOST` | Optional private IPv4 address used only by `run-lan-backend.bat` and `run-lan-dashboard.bat`; the opt-in mobile test launchers reject loopback, wildcard, and public addresses. |
 | `AI_SERVER_LAN_TLS_CERT` / `AI_SERVER_LAN_TLS_KEY` | Certificate chain and matching private-key paths for the HTTPS-only LAN test launchers. The certificate must include `AI_SERVER_LAN_HOST`; keep the private key on the PC. |

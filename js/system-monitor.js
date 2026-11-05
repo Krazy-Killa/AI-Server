@@ -1,3 +1,5 @@
+import { setVisibleInterval } from './visibility.js';
+
 export function initializeSystemMonitor({
     API_BASE,
     apiFetch,
@@ -16,6 +18,7 @@ export function initializeSystemMonitor({
     const headerVram = document.querySelector('.header-metrics div:nth-child(2) .metric-value');
     const headerCpu = document.querySelector('.header-metrics div:nth-child(3) .metric-value');
     const gpuLoadValue = document.getElementById('gpu-load-value');
+    const cpuValue = document.getElementById('cpu-value');
     const gpuTelemetryStatus = document.getElementById('gpu-telemetry-status');
     const vramValue = document.getElementById('vram-value');
     const ramValue = document.getElementById('ram-value');
@@ -79,8 +82,11 @@ export function initializeSystemMonitor({
             gpuTelemetryStatus.title = data.gpu_status === 'ok'
                 ? `${data.gpu_adapter} · Peak engine: ${data.gpu_engine}`
                 : data.gpu_error || 'GPU utilization is unavailable.';
-            headerCpu.textContent = `${data.cpu}%`;
-            headerVram.textContent = `${data.vram_used} / ${data.vram_total}GB`;
+            const cpuText = typeof data.cpu === 'number' && Number.isFinite(data.cpu)
+                ? `${data.cpu}%`
+                : 'N/A';
+            headerCpu.textContent = cpuText;
+            cpuValue.textContent = cpuText;
 
         } catch (err) {
             console.error("System stats error:", err);
@@ -90,12 +96,15 @@ export function initializeSystemMonitor({
             updateSidebarMode();
             ramValue.textContent = 'N/A';
             setBarFill(ramBar, null);
+            setBarFill(cpuBar, null);
+            headerCpu.textContent = 'N/A';
+            cpuValue.textContent = 'N/A';
         }
     }
 
-    setInterval(pollSystemStats, 2000);
+    setVisibleInterval(pollSystemStats, 2000);
     pollSystemStats();
-    setInterval(() => {
+    setVisibleInterval(() => {
         if (shouldRefreshInterface()) loadAdminInterface();
     }, 5000);
 }

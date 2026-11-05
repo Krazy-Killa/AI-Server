@@ -86,6 +86,7 @@ class Settings:
     auth_database_path: Path
     memory_database_path: Path
     auth_cookie_secure: bool
+    trust_proxy_headers: bool
     enable_api_docs: bool
     proxmox_api_url: str
     proxmox_inventory_token_id: str
@@ -196,6 +197,7 @@ def load_settings() -> Settings:
         auth_database_path=auth_database_path,
         memory_database_path=memory_database_path,
         auth_cookie_secure=_boolean("AI_SERVER_AUTH_COOKIE_SECURE", True),
+        trust_proxy_headers=_boolean("AI_SERVER_TRUST_PROXY_HEADERS", False),
         enable_api_docs=_boolean("AI_SERVER_ENABLE_API_DOCS", False),
         proxmox_api_url=proxmox_api_url,
         proxmox_inventory_token_id=proxmox_inventory_token_id,

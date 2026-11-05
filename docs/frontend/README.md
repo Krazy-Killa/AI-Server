@@ -33,17 +33,39 @@ theme before first paint. Keep new code in external modules.
 defines the policy (`script-src 'self'`, `default-src 'none'`,
 `frame-ancestors 'none'`, `connect-src` limited to the dashboard origin and
 port `8000`) plus `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
-and `Cache-Control: no-store`. It serves only `index.html`, `css/`, and `js/`
+and `Cache-Control: no-store`. It serves only `index.html`,
+`manifest.webmanifest`, `css/` (including `css/fonts/`), `icons/`, and `js/`
 with directory listings disabled. The Quadlet dashboard unit,
 `run-dashboard.bat`, and `lan_dashboard_server.py` use it; the Playwright
 static server sends an equivalent policy and the module-loading test fails on
-any policy violation. `css/style.css` still imports Google Fonts, so the policy
-allows `fonts.googleapis.com` and `fonts.gstatic.com`; self-hosting the fonts
-would remove that third-party dependency. A `window.AI_SERVER_API_BASE`
+any policy violation. Fonts (Barlow Condensed, DM Mono and Manrope, Latin
+subsets under the SIL Open Font License) are self-hosted in `css/fonts/`, so
+the policy allows no third-party origins (`style-src 'self'`,
+`font-src 'self'`, `manifest-src 'self'`). A `window.AI_SERVER_API_BASE`
 override to another origin or port must also be added to `connect-src`.
-HSTS and TLS headers belong to the future HTTPS proxy and are not implemented.
-The lab dashboard container must be rebuilt to pick up this server; that has
-not been done or validated in the nested lab.
+HSTS and TLS headers are sent by the NGINX proxy, not by this server.
+
+### Mobile and installable-app behavior
+
+- The header and System-card CPU values are live (`#cpu-header`, `#cpu-value`)
+  and show `N/A` when telemetry is missing or the backend is unreachable.
+- `js/visibility.js` (`setVisibleInterval`) pauses every polling timer while
+  the browser tab is hidden and refreshes once when it becomes visible again.
+- A red banner (`#connection-banner`) appears when the backend status poll
+  fails and clears when it recovers. An expired session still returns to the
+  sign-in screen with its own notice.
+- On phones, the smallest 9-10px labels are raised to 11-12px, and on
+  touch devices form fields use 16px text so iOS Safari does not zoom on
+  focus. Pinch zoom is not disabled.
+- The Diagnostics header stacks on phones: the status pill sits on its own
+  row above the full-width Refresh, Download report and Run observation
+  buttons.
+- `manifest.webmanifest` and `icons/` (SVG, 192/512 PNG, 180 px Apple touch
+  icon) let phones add the dashboard to the home screen in standalone mode.
+  This does not add offline support or a service worker. Install behavior on
+  an iPhone against the nested lab is unverified until the next deploy.
+  The rebuilt dashboard container is required to serve these assets; the
+  lab has not yet been redeployed with them.
 
 ## Browser regression tests
 
@@ -65,7 +87,9 @@ for setup and execution.
 - Virtual Machines
 - Network Services
 - Discord Bot
-- Settings, organized as sub-tabs: Appearance (theme, accent), Account,
+- Settings, organized as sub-tabs: Appearance (theme, accent), Account
+  (signed-in identity and Sign out, which is the only sign-out on phone
+  layouts because the sidebar footer is hidden there),
   Network & Access (read-only origin and HTTPS status), Models and Diagnostics
   (links to their panels), About, and an admin-only Setup / Deployment tab
 - Setup / Deployment contains a disabled **Firmware File** release-bundle

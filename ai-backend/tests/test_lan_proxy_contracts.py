@@ -37,6 +37,14 @@ class LanProxyContractTests(unittest.TestCase):
         self.assertIn("limit_req zone=ai_server_login", login)
         self.assertIn("http://127.0.0.1:8000", login)
 
+    def test_login_throttle_returns_json_not_html(self):
+        login = location_block(self.config, "= /api/auth/login")
+        self.assertIn("error_page 429 = @login_limited;", login)
+        limited = location_block(self.config, "@login_limited")
+        self.assertIn("default_type application/json;", limited)
+        self.assertIn("return 429", limited)
+        self.assertNotIn("add_header", limited)
+
     def test_websocket_upgrade_is_forwarded(self):
         websocket = location_block(self.config, "/ws/")
         self.assertIn("proxy_set_header Upgrade $http_upgrade;", websocket)

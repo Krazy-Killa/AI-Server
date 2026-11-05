@@ -1,7 +1,7 @@
 """Serve the static dashboard with browser security headers.
 
 Replaces ``python -m http.server`` for the dashboard: only the dashboard
-entry page and its ``css/`` and ``js/`` assets are served, directory listings
+entry page, manifest and its ``css/``, ``js/`` and ``icons/`` assets are served, directory listings
 are disabled, and every response carries a restrictive Content-Security-Policy.
 """
 
@@ -14,16 +14,16 @@ import posixpath
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-# Google Fonts are still imported by css/style.css; remove those two origins
-# when the fonts are self-hosted. API access is limited to the dashboard origin
-# or port 8000 of the host serving the dashboard.
+# Fonts are self-hosted under css/fonts/. API access is limited to the
+# dashboard origin or port 8000 of the host serving the dashboard.
 CONTENT_SECURITY_POLICY = "; ".join(
     (
         "default-src 'none'",
         "script-src 'self'",
-        "style-src 'self' https://fonts.googleapis.com",
-        "font-src https://fonts.gstatic.com",
+        "style-src 'self'",
+        "font-src 'self'",
         "img-src 'self' data:",
+        "manifest-src 'self'",
         "connect-src 'self' http://*:8000 https://*:8000 ws://*:8000 wss://*:8000",
         "base-uri 'none'",
         "form-action 'none'",
@@ -39,11 +39,19 @@ SECURITY_HEADERS = {
     "Cache-Control": "no-store",
 }
 
-_SERVED_PREFIXES = ("/css/", "/js/")
-_SERVED_PAGES = ("/", "/index.html")
+_SERVED_PREFIXES = ("/css/", "/js/", "/icons/")
+_SERVED_PAGES = ("/", "/index.html", "/manifest.webmanifest")
 
 
 class DashboardRequestHandler(SimpleHTTPRequestHandler):
+    extensions_map = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        ".webmanifest": "application/manifest+json",
+        ".woff2": "font/woff2",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+    }
+
     def end_headers(self) -> None:
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)

@@ -82,6 +82,25 @@ class DiagnosticsApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.json()["activity_mode"])
 
+    def test_system_stats_are_sampled_off_the_event_loop(self):
+        import asyncio
+
+        on_event_loop = []
+
+        def fake_stats():
+            try:
+                asyncio.get_running_loop()
+                on_event_loop.append(True)
+            except RuntimeError:
+                on_event_loop.append(False)
+            return {"cpu": 1.0}
+
+        with patch.object(self.main.runtime, "get_system_stats", fake_stats):
+            response = self.client.get("/api/system")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(on_event_loop, [False])
+
     def test_status_and_incidents_are_available_only_from_explicit_observations(self):
         status = self.client.get("/api/diagnostics/status")
         observations = self.client.get("/api/diagnostics/observations")

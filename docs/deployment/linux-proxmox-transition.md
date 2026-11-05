@@ -473,11 +473,40 @@ in the backup directory are for manual recovery only. Boot auto-start is not par
 of this procedure; see the next section.
 
 The first run of this procedure on 2026-11-05 (nested lab only) built the image,
-passed the import gate, and switched both services to healthy. Record the result
-of every later run, including any failure and its cause, before treating
+passed the import gate, and switched both services to healthy. Record the result of every later run, including any failure and its cause, before treating
 deployment as verified.
 
-### Boot auto-start and post-boot cleanup (opt-in; lab procedure)
+A frontend-only release (`20261106-settings`, tabbed Settings page) was deployed
+with this procedure on the nested lab on 2026-11-05: build, import gate and
+switch succeeded; the new dashboard was served over the HTTPS proxy with the
+docs routes still 404 and the backend ports still loopback-only. In the
+browser (Windows and iPhone), the Setup / Deployment tab appeared for an
+admin and not for a viewer, and the mobile layout was acceptable. Container
+health was not re-checked after this switch.
+
+A combined release (`20261106-frontend`) followed the same procedure on the
+nested lab on 2026-11-05 with no step failing. It carried the frontend polish
+(self-hosted fonts, manifest and icons, offline banner, live CPU values,
+visibility-aware polling, mobile readability), the Account sign-out, the JSON
+login throttle response, `AI_SERVER_TRUST_PROXY_HEADERS` support, and the
+updated NGINX configuration. Verified over HTTPS afterwards: `/`, the manifest,
+icons, fonts, and `js/visibility.js` return 200 with correct content types; the
+CSP header shows `style-src 'self'`, `font-src 'self'`, and `manifest-src 'self'`
+with no Google origins; `/docs` and `/openapi.json` return 404 and `/api/memory`
+returns 401. The backend answers on loopback. The shared-address lockout test
+then passed: failed sign-ins with a made-up username on an iPhone produced the
+readable "Too many login attempts" message, and `labadmin` still signed in on
+the desktop, so the client address behind the proxy is now seen correctly. Not
+yet verified: container `healthcheck` output and home-screen install on an
+iPhone.
+
+A follow-up release (`20261106-nonblocking`) fixed `/api/system` blocking the
+backend's event loop. With two dashboards open, the backend stalled long enough
+for sign-in to hang on "Signing in…" and for requests to time out. The release
+used the same procedure and no step failed. Afterwards, 30 consecutive
+requests to the backend's auth status endpoint on loopback returned 200 in
+1-3 ms. `/api/system` itself was not probed directly (it needs a session); the
+open dashboard's polling kept the backend responsive. and post-boot cleanup (opt-in; lab procedure)
 
 Auto-start is deliberately not in the base Quadlet units. It is an explicit
 Quadlet drop-in (`deploy/boot-autostart/*.container.d/10-boot-autostart.conf`,
@@ -605,10 +634,18 @@ testing. Until the deployment contract, pinned artifacts, and recovery path
 are verified in the lab, keep the installer planned and perform deployment
 steps manually.
 
-### LAN access via NGINX with TLS (prepared; not yet executed)
+### LAN access via NGINX with TLS (executed on the nested lab 2026-11-05)
 
-Status: files and contract tests exist; nothing has been installed or verified
-on the nested lab guest. Scope is a trusted single-LAN household audience,
+Status: installed on the nested lab guest and verified from a Windows PC and
+an iPhone on the same LAN, after each imported the local CA. Verified: HTTP
+redirects to HTTPS, the certificate validates against the imported CA,
+dashboard sign-in works over HTTPS, 8000 and 8001 are unreachable from the LAN,
+and `/docs` stays 404. The `/ws/chat` WebSocket connects through the proxy
+(origin and session cookie accepted; the lab has no llama.cpp, so a chat
+message returns the backend's "Cannot reach llama.cpp" error and token
+streaming is untested). Not yet verified: the client address the backend sees
+and renewal. Scope is a trusted
+single-LAN household audience,
 using a local CA. The backend (`8000`) and dashboard (`8001`) stay bound to
 `127.0.0.1`; NGINX is the only listener exposed to the LAN, on 80 (redirect)
 and 443.
@@ -639,7 +676,12 @@ nginx -t && systemctl enable --now nginx
 Use `--dns NAME` instead of, or in addition to, `--ip`. Then, as the operator
 (the file holds secrets, so edit it directly), set
 `AI_SERVER_CORS_ORIGINS=https://LAB_HOST` in `/opt/ai-server/.env` and restart
-the backend unit. Copy only `/etc/ai-server/tls/ca.crt` to client devices
+the backend unit. Also set `AI_SERVER_TRUST_PROXY_HEADERS=true` in the same file. Without it the
+backend sees every LAN device as one address, and five failed logins from any
+device lock out all sign-ins for 15 minutes (observed on the lab 2026-11-05).
+Restart the backend afterwards.
+
+Copy only `/etc/ai-server/tls/ca.crt` to client devices
 and import it as a trusted root. Never copy `ca.key` or `server.key`.
 
 Verification (all unverified until run):
@@ -651,6 +693,14 @@ Verification (all unverified until run):
 4. Check which client address the backend sees behind NGINX and rootless
    Podman port forwarding. The backend login limiter keys on
    `request.client.host`; NGINX limits per client address as a mitigation.
+
+Lessons from the lab run: `apt install nginx` starts NGINX with the Debian
+default site, so use `systemctl restart nginx` (not only `enable --now`) after
+installing the conf. The CA certificate is `/etc/ai-server/tls/ca.crt` (only
+the key is under `ca/`). On iPhone, installing the profile is not enough: enable
+full trust under Settings → General → About → Certificate Trust Settings. On
+Windows, `curl` may need `--ssl-no-revoke`, because the local CA has no
+revocation endpoint.
 
 Rollback: `systemctl disable --now nginx`, remove
 `/etc/nginx/conf.d/ai-server.conf`, and restore `AI_SERVER_CORS_ORIGINS`.

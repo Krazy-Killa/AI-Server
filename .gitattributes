@@ -8,3 +8,5 @@ Containerfile text eol=lf
 *.timer text eol=lf
 deploy/boot-autostart/**/*.conf text eol=lf
 deploy/nginx/*.conf text eol=lf
+*.woff2 binary
+*.png binary

@@ -21,6 +21,8 @@ COPY --chown=999:990 ai-backend/api/routes/*.py /opt/ai-server/ai-backend/api/ro
 COPY --chown=999:990 index.html /opt/ai-server/www/index.html
 COPY --chown=999:990 css/ /opt/ai-server/www/css/
 COPY --chown=999:990 js/ /opt/ai-server/www/js/
+COPY --chown=999:990 icons/ /opt/ai-server/www/icons/
+COPY --chown=999:990 manifest.webmanifest /opt/ai-server/www/manifest.webmanifest
 
 EXPOSE 8000 8001
 USER 999:990

@@ -4,11 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#080c12">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="AI Server">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <title>AI Server // Command Interface</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<div class="connection-banner" id="connection-banner" role="alert" hidden></div>
 <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
     <form class="auth-card" id="auth-form">
         <div class="auth-preview-header">
@@ -48,7 +56,7 @@
         <div class="header-metrics" aria-label="System metrics">
             <div><span class="metric-label">GPU LOAD / PEAK ENGINE</span><span class="metric-value" id="gpu-load-header">N/A</span></div>
             <div><span class="metric-label">VRAM / LIVE</span><span class="metric-value" id="vram-header">N/A</span></div>
-            <div><span class="metric-label">CPU LOAD</span><span class="metric-value">18%</span></div>
+            <div><span class="metric-label">CPU LOAD</span><span class="metric-value" id="cpu-header">N/A</span></div>
         </div>
     </header>
 
@@ -223,7 +231,7 @@
                     <article class="metric-card">
                         <div class="metric-card-heading">
                             <span class="metric-card-label">CPU</span>
-                            <span class="metric-card-value">18%</span>
+                            <span class="metric-card-value" id="cpu-value">N/A</span>
                         </div>
                         <div class="metric-bar"><div class="metric-bar-fill cpu"></div></div>
                     </article>
@@ -516,6 +524,8 @@
                     <div class="settings-grid">
                         <div class="settings-item">
                             <div class="settings-label">Dashboard Account</div>
+                            <div class="settings-value" id="settings-identity">Signed in</div>
+                            <button class="btn" id="settings-logout" type="button">Sign out</button>
                             <div class="settings-value">Account creation, role changes, and password resets are managed on the backend host.</div>
                         </div>
                     </div>

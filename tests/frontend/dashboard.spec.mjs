@@ -116,6 +116,7 @@ test('loads every native module and keeps protected polling behind sign-in', asy
         '/js/system-monitor.js',
         '/js/theme-init.js',
         '/js/ui-preferences.js',
+        '/js/visibility.js',
     ]);
     expect(api.requestedPaths()).toEqual(['/api/auth/status']);
     expect(pageErrors).toEqual([]);
@@ -209,6 +210,61 @@ test('settings sub-tabs switch views and gate the deployment tab to admins', asy
     await page.locator('#settings-tab-diagnostics').click();
     await page.locator('[data-settings-goto="diagnostics-panel"]').click();
     await expect(page.locator('#diagnostics-panel')).toBeVisible();
+});
+
+test('settings sign-out works from the Account tab on a phone viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await installApiMocks(page);
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await expect(page.locator('#auth-logout')).toBeHidden();
+    await page.locator('[data-panel="settings-panel"]').click();
+    await page.locator('#settings-tab-account').click();
+    await expect(page.locator('#settings-identity')).toContainText('admin');
+    await page.locator('#settings-logout').click();
+    await expect(page.locator('#auth-screen')).toBeVisible();
+});
+
+test('shows a readable message when sign-in gets a non-JSON throttle response', async ({ page }) => {
+    await installApiMocks(page);
+    await page.route('**/api/auth/login', route =>
+        route.fulfill({ status: 429, contentType: 'text/html', body: '<html>429</html>' }));
+    await page.goto('/');
+    await page.getByLabel('Username').fill('test-user');
+    await page.getByLabel('Password').fill('wrong-password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.locator('#auth-notice')).toHaveText('Too many login attempts. Try again later.');
+});
+
+test('shows live CPU values instead of placeholders and a banner when the backend goes offline', async ({ page }) => {
+    await installApiMocks(page);
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await expect(page.locator('#cpu-header')).toHaveText('5%');
+    await expect(page.locator('#cpu-value')).toHaveText('5%');
+    await expect(page.locator('#connection-banner')).toBeHidden();
+
+    await page.route('**/api/system', route => route.fulfill({ status: 503, body: '{}' }));
+    await expect(page.locator('#connection-banner')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#connection-banner')).toContainText('backend is unreachable');
+    await expect(page.locator('#cpu-header')).toHaveText('N/A');
+});
+
+test('serves self-hosted fonts and a web-app manifest without external requests', async ({ page }) => {
+    const external = [];
+    page.on('request', request => {
+        if (!request.url().startsWith('http://127.0.0.1:4173')) external.push(request.url());
+    });
+    await installApiMocks(page);
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', 'manifest.webmanifest');
+    const manifest = await (await page.request.get('/manifest.webmanifest')).json();
+    expect(manifest.display).toBe('standalone');
+    for (const icon of manifest.icons) {
+        expect((await page.request.get(icon.src)).ok()).toBe(true);
+    }
+    expect(external).toEqual([]);
 });
 
 test('hides the deployment settings tab from non-admin users', async ({ page }) => {

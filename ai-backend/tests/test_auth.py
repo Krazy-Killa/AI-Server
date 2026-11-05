@@ -156,6 +156,32 @@ class AuthApiTests(unittest.TestCase):
             {"origin": TEST_ORIGIN, "x-csrf-token": response.json()["csrf_token"]}
         )
 
+    def failed_login(self, username, forwarded_for=None):
+        headers = {"origin": TEST_ORIGIN}
+        if forwarded_for:
+            headers["x-forwarded-for"] = forwarded_for
+        return self.client.post(
+            "/api/auth/login",
+            json={"provider": "local", "username": username, "password": "wrong-password"},
+            headers=headers,
+        )
+
+    def test_forwarded_address_is_ignored_unless_proxy_trust_is_enabled(self):
+        for attempt in range(5):
+            self.assertEqual(self.failed_login(f"nobody{attempt}", f"10.0.0.{attempt}").status_code, 401)
+        self.assertEqual(self.failed_login("another", "10.0.0.99").status_code, 429)
+
+    def test_proxy_trust_keeps_lan_clients_from_locking_each_other_out(self):
+        trusted = replace(self.main.runtime.settings, trust_proxy_headers=True)
+        with patch.object(self.main.runtime, "settings", trusted):
+            for attempt in range(5):
+                self.assertEqual(
+                    self.failed_login(f"nobody{attempt}", "192.0.2.10").status_code, 401
+                )
+            self.assertEqual(self.failed_login("another", "192.0.2.10").status_code, 429)
+            self.assertEqual(self.failed_login("another", "192.0.2.11").status_code, 401)
+            self.assertEqual(self.login().status_code, 200)
+
     def test_protected_endpoints_require_login_and_status_is_public(self):
         self.assertEqual(self.client.get("/api/system").status_code, 401)
         self.assertEqual(
