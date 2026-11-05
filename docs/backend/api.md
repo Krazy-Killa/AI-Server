@@ -13,6 +13,12 @@ valid session and a role allowed for that route. Cookie-authenticated
 state-changing requests require `X-CSRF-Token` from `/api/auth/status` and an
 allowed `Origin`. Browser clients must use `credentials: "include"`.
 
+The interactive API documentation (`/docs`, `/redoc`) and schema
+(`/openapi.json`) are **disabled by default** and return 404, because they
+describe the whole API to anonymous callers. Set
+`AI_SERVER_ENABLE_API_DOCS=true` only for local development. Container health
+probes use `GET /` instead of `/openapi.json`.
+
 `POST /api/auth/login`
 
 ```json

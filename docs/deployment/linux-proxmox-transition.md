@@ -343,6 +343,10 @@ is an initial, deliberately conservative bootstrap:
   make the same read-only request to AMD's public compatibility matrix as
   `--check`. Review it before sharing. It supports implementation planning but
   does not replace live integration tests or prove that host features work.
+  Nested-lab status: `--check` and `--report` ran on the Proxmox VE 9.1.1 guest
+  on 2026-11-05 as a non-root user without changing the system; `--check`
+  exited 2 (gate `blocked`, expected without the GPU). Physical-host runs are
+  still pending.
 - Run `sudo bash scripts/proxmox/prepare-ai-host.sh --install-base` only on
   the server, after reviewing its simulated apt plan. It installs common
   build/runtime and host tools and adds headers for the exact running kernel
@@ -379,6 +383,171 @@ Content-Security-Policy and framing/sniffing protections and serves only the
 dashboard assets. Rebuild the lab image and restart the dashboard unit to apply
 it, then confirm the headers from a browser or `curl -I` on loopback; this
 nested-lab check has not been performed. Add HSTS at the planned HTTPS proxy.
+
+### Lab release procedure (manual; executed once on the nested lab 2026-11-05)
+
+The 2026-10-19 deployment attempt left the backend unreachable and the cause was
+never isolated. The Containerfile has since been found to omit the backend
+`api/` and `api/routes/` packages: an image built from it fails at startup with
+`ModuleNotFoundError: No module named 'api'`. The Containerfile now copies both
+packages, and a contract test fails if any backend package directory is not
+copied. That is the most likely cause, but it was reproduced only by simulating
+the image contents on Windows; it was not confirmed against the failed image.
+
+Also, the Windows working tree uses CRLF while the guest needs LF; a CRLF
+Containerfile or Quadlet unit breaks parsing. Never copy the working tree
+directly. `.gitattributes` now pins LF for these files, and
+`scripts/proxmox/build-lab-bundle.py` builds an allow-listed, LF-normalized
+bundle with no `.env` files, tests, databases, or logs.
+
+Stage (from Windows, as the non-root `ai-deploy` account; no root needed):
+
+```powershell
+python scripts\proxmox\build-lab-bundle.py $env:TEMP\ai-server-RELEASE.tar.gz   # prints sha256
+ssh ai-deploy@GUEST "mkdir -p ~/releases/RELEASE"
+scp $env:TEMP\ai-server-RELEASE.tar.gz ai-deploy@GUEST:releases/RELEASE/
+ssh ai-deploy@GUEST "cd ~/releases/RELEASE && echo 'SHA256  ai-server-RELEASE.tar.gz' | sha256sum -c - && mkdir -p src && tar -xzf ai-server-RELEASE.tar.gz -C src"
+```
+
+Deploy (operator, as root on the guest; take a guest checkpoint first). The
+import gate runs in the new image before any service is switched, and every step
+after the backup can be reversed with the rollback block:
+
+```bash
+cd /   # rootless podman warns "cannot chdir to /root" when run from root's home
+set -euo pipefail
+ID=RELEASE
+AS() { runuser -u ai-server -- env XDG_RUNTIME_DIR=/run/user/999 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/999/bus HOME=/var/lib/ai-server "$@"; }
+Q=/var/lib/ai-server/.config/containers/systemd   # confirm this path exists first
+B=/var/lib/ai-server/deploy-backups/$ID
+[ -d "$Q" ] && [ -d /home/ai-deploy/releases/$ID/src ]
+
+# 1. Stop, then retain the current image, units, and data.
+AS systemctl --user stop ai-server-dashboard ai-server-backend
+install -d -o ai-server -g ai-server -m 700 "$B" "$B/data"
+AS podman tag localhost/ai-server:lab localhost/ai-server:rollback-$ID
+cp -a "$Q" "$B/quadlet"
+find /var/lib/ai-server -maxdepth 3 -name '*.sqlite3' -not -path '*/deploy-backups/*' \
+  -exec cp -a --parents {} "$B/data" \; 2>/dev/null || true
+
+# 2. Build the new image from the staged bundle.
+cp -r /home/ai-deploy/releases/$ID/src /var/lib/ai-server/build-$ID
+chown -R ai-server:ai-server /var/lib/ai-server/build-$ID
+LOG=/var/lib/ai-server/build-$ID.log   # owned by ai-server so the housekeeping job can prune it later
+rc=0
+AS podman build -t localhost/ai-server:$ID -f /var/lib/ai-server/build-$ID/Containerfile /var/lib/ai-server/build-$ID > "$LOG" 2>&1 || rc=$?
+chown ai-server:ai-server "$LOG"
+echo "build exit=$rc"; tail -n 5 "$LOG"; [ "$rc" -eq 0 ]
+
+# 3. Gate: the image must import the app with the docs routes disabled. The app
+# creates and chmods 0700 the parent directory of its databases, so they must
+# live in a subdirectory, not directly in the root-owned /tmp.
+AS podman run --rm --read-only --tmpfs /tmp --userns=keep-id --user 999:990 \
+  -e AI_SERVER_AUTH_DB_PATH=/tmp/gate/a.db -e AI_SERVER_MEMORY_DB_PATH=/tmp/gate/m.db -e AI_SERVER_LOG_DIR=/tmp/gate/logs \
+  localhost/ai-server:$ID python -c "import main; assert main.app.openapi_url is None; print('import ok')"
+
+# 4. Switch: retag, install the new units, restart.
+AS podman tag localhost/ai-server:$ID localhost/ai-server:lab
+install -o ai-server -g ai-server -m 644 /var/lib/ai-server/build-$ID/deploy/quadlet/*.container "$Q"/
+AS systemctl --user daemon-reload
+AS systemctl --user reset-failed ai-server-backend ai-server-dashboard || true
+AS systemctl --user start ai-server-backend ai-server-dashboard
+```
+
+Verify from `ai-deploy` on the guest: both services healthy
+(`podman healthcheck run`), `GET /` returns 200, `/openapi.json` and `/docs`
+return 404, anonymous API routes return 401, and the dashboard response has a
+`Content-Security-Policy` header. If any step or check fails, roll back:
+
+```bash
+AS systemctl --user stop ai-server-dashboard ai-server-backend
+AS podman tag localhost/ai-server:rollback-$ID localhost/ai-server:lab
+cp -a "$B/quadlet/." "$Q"/ && chown -R ai-server:ai-server "$Q"
+AS systemctl --user daemon-reload
+AS systemctl --user reset-failed ai-server-backend ai-server-dashboard || true
+AS systemctl --user start ai-server-backend ai-server-dashboard
+```
+
+Rollback never touches `/var/lib/ai-server` application data; the SQLite copies
+in the backup directory are for manual recovery only. Boot auto-start is not part
+of this procedure; see the next section.
+
+The first run of this procedure on 2026-11-05 (nested lab only) built the image,
+passed the import gate, and switched both services to healthy. Record the result
+of every later run, including any failure and its cause, before treating
+deployment as verified.
+
+### Boot auto-start and post-boot cleanup (opt-in; lab procedure)
+
+Auto-start is deliberately not in the base Quadlet units. It is an explicit
+Quadlet drop-in (`deploy/boot-autostart/*.container.d/10-boot-autostart.conf`,
+`WantedBy=default.target`), so removing the drop-in returns the guest to
+manual start. The `ai-server` account already has lingering enabled in the
+nested lab (`/var/lib/systemd/linger/ai-server`), so its user manager starts at
+boot without a login. Check that before relying on this on another host.
+
+A separate, optional user timer prunes old lab build directories and build logs.
+`deploy/systemd/ai-server-housekeeping.timer` runs 15 minutes after the user
+manager starts and then daily. The root-owned script
+`scripts/proxmox/ai-server-housekeeping.sh` exits without deleting anything
+unless both containers report `healthy`. It only removes `build-YYYYMMDD-<id>`
+directories and `build-YYYYMMDD-<id>.log` files directly under
+`/var/lib/ai-server` that are older than 7 days, always keeps the newest build,
+never follows symlinks, and never touches `deploy-backups`, SQLite files,
+application logs, or images. Use `--dry-run` to list what it would remove.
+Logs written to `/tmp` by older runs are root-owned and are not covered; remove
+them manually.
+
+Install (operator, as root on the guest; take a guest checkpoint first). Stage a
+release bundle first so the files are under `~ai-deploy/releases/$ID/src`:
+
+```bash
+cd /
+ID=RELEASE
+S=/home/ai-deploy/releases/$ID/src
+AS() { runuser -u ai-server -- env XDG_RUNTIME_DIR=/run/user/999 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/999/bus HOME=/var/lib/ai-server "$@"; }
+Q=/var/lib/ai-server/.config/containers/systemd
+U=/var/lib/ai-server/.config/systemd/user
+test -f /var/lib/systemd/linger/ai-server && echo "linger on"
+
+install -d -o root -g root -m 755 /usr/local/libexec/ai-server
+install -o root -g root -m 755 $S/scripts/proxmox/ai-server-housekeeping.sh /usr/local/libexec/ai-server/
+for n in backend dashboard; do
+  install -d -o ai-server -g ai-server -m 755 "$Q/ai-server-$n.container.d"
+  install -o ai-server -g ai-server -m 644 $S/deploy/boot-autostart/ai-server-$n.container.d/10-boot-autostart.conf "$Q/ai-server-$n.container.d/"
+done
+install -d -o ai-server -g ai-server -m 755 "$U"
+install -o ai-server -g ai-server -m 644 $S/deploy/systemd/ai-server-housekeeping.* "$U"/
+AS systemctl --user daemon-reload
+AS systemctl --user enable --now ai-server-housekeeping.timer
+AS /usr/local/libexec/ai-server/ai-server-housekeeping.sh --dry-run
+ls /run/user/999/systemd/generator/default.target.wants/ 2>&1
+```
+
+The generator directory should list both `ai-server-*.service` units. Then reboot
+the guest and verify from `ai-deploy` without touching the services: uptime is
+small, both containers are `healthy` with no manual start, `GET /` returns 200,
+`/docs` returns 404, and the dashboard still sends CSP. Also confirm
+`systemctl --user list-timers` (as `ai-server`) shows the housekeeping timer.
+
+Disable and return to manual start:
+
+```bash
+AS systemctl --user disable --now ai-server-housekeeping.timer
+rm -f "$Q"/ai-server-*.container.d/10-boot-autostart.conf
+AS systemctl --user daemon-reload
+```
+
+Status: executed on the nested guest on 2026-11-05 (nested-lab evidence only).
+After install and a guest reboot with no manual start, both containers were
+`healthy` within about 2 minutes, ports 8000/8001 were bound to loopback only,
+`/` returned 200, `/docs` and `/openapi.json` returned 404, the dashboard sent
+CSP and `X-Frame-Options: DENY`, both Quadlet units reported `generated`, and
+the housekeeping timer was scheduled. The first housekeeping run after boot
+(about 13 minutes later) was not yet observed; the pre-reboot `--dry-run`
+removed nothing, as expected. A single reboot is not host-reboot acceptance:
+unclean power loss, boot ordering against network/storage, and the physical
+host remain untested.
 
 Before implementing the installer, define and test the following behavior:
 

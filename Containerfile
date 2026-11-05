@@ -16,6 +16,8 @@ RUN python -m pip install \
 RUN mkdir -p /opt/ai-server/www
 COPY --chown=999:990 ai-backend/*.py /opt/ai-server/ai-backend/
 COPY --chown=999:990 ai-backend/gpu/*.py /opt/ai-server/ai-backend/gpu/
+COPY --chown=999:990 ai-backend/api/*.py /opt/ai-server/ai-backend/api/
+COPY --chown=999:990 ai-backend/api/routes/*.py /opt/ai-server/ai-backend/api/routes/
 COPY --chown=999:990 index.html /opt/ai-server/www/index.html
 COPY --chown=999:990 css/ /opt/ai-server/www/css/
 COPY --chown=999:990 js/ /opt/ai-server/www/js/

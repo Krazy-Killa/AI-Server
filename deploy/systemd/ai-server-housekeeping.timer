@@ -1,0 +1,9 @@
+[Unit]
+Description=Run AI Server housekeeping after boot and daily
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=1d
+
+[Install]
+WantedBy=timers.target

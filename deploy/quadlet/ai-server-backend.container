@@ -18,7 +18,7 @@ Volume=/var/lib/ai-server:/var/lib/ai-server:rw
 Volume=/opt/ai-server/.env:/opt/ai-server/.env:ro
 Volume=/etc/ai-server/proxmox-root-ca.pem:/etc/ai-server/proxmox-root-ca.pem:ro
 Environment=HOME=/var/lib/ai-server
-Environment=AI_SERVER_HEALTH_URL=http://127.0.0.1:8000/openapi.json
+Environment=AI_SERVER_HEALTH_URL=http://127.0.0.1:8000/
 HealthCmd=python /opt/ai-server/ai-backend/container_healthcheck.py
 HealthInterval=30s
 HealthTimeout=5s

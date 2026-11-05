@@ -275,24 +275,40 @@ environment, not the deployment target.
    The rollback baseline is the current build, not a previous application
    release. Portable tests now guard the checked-in Containerfile and Quadlet
    lifecycle/security contract and exercise the HTTP health probe. These tests
-   do not invoke Podman/systemd. Next validate deployment-script behavior and
-   recovery after a guest reboot. Do not enable boot auto-start until
-   separately reviewed; reboot recovery and physical-host acceptance remain
-   unverified.
+   do not invoke Podman/systemd. **Boot auto-start and reboot recovery
+   (done 2026-11-05, nested lab only):** an opt-in Quadlet drop-in and an
+   optional post-boot housekeeping timer (prunes old build directories/logs
+   only when both containers are healthy) were installed on the guest. After a
+   clean reboot both containers came up `healthy` without a manual start and
+   the docs routes stayed 404. Not yet verified: the first timer-driven
+   cleanup run, unclean power loss, and physical-host acceptance.
 2. **Proxmox identity and dashboard authorization — subsequent priority.**
    Exercise the live Proxmox ticket login and identity-to-role mapping in the
    nested lab, then verify cookie, CSRF/origin, viewer/operator/admin
    boundaries. Use a least-privilege test identity; do not grant mutation
    permissions or treat lab success as physical-host acceptance.
-3. **Linux application smoke coverage — after the service design.** Verify
-   backend startup, SQLite paths/permissions, logs, authentication,
-   read-only diagnostics, and API health as the service account. Add llama.cpp,
+3. **Linux application smoke coverage — partial (2026-11-05).** An
+   unauthenticated loopback check passed: both ports bound to `127.0.0.1`, all
+   32 non-parameterized protected routes returned 401 anonymously, and login
+   enforced the `Origin` check. Still unverified: SQLite paths/permissions,
+   logs, authenticated reads, diagnostics, and container health, which need
+   `ai-server` account access that `ai-deploy` lacks. Decision: `/docs`,
+      `/redoc`, and `/openapi.json` are now disabled by default
+      (`AI_SERVER_ENABLE_API_DOCS`, implemented and tested; not yet deployed to
+      the lab). Add llama.cpp,
    SearXNG, bot, and proxy checks only when those services are installed and
    configured.
-4. **Deployment-script lab checks — not yet run.** Exercise
-   `--check` and `--report` on the nested Proxmox guest, inspect their output
-   and side effects, and record version/platform limits. Do not run installer
-   modes or claim physical-target validation from the nested guest. A separate
+4. **Deployment-script lab checks — `--check` and `--report` run on the
+   nested guest (2026-11-05); installer modes not run.** Both read-only modes
+   ran as the non-root `ai-deploy` account on the Proxmox VE 9.1.1 guest
+   (kernel 6.17.2-1-pve). `--check` exited 2 and reported the ROCm gate
+   `blocked` as designed (no RX 6800 XT in the guest, and the AMD matrix lists
+   neither the GPU nor Proxmox VE 9); `--report` wrote an owner-only (`0600`)
+   file, exited 0, and omitted hostnames and addresses. No packages or
+   configuration changed. A cosmetic memory-label defect (`MemTotal::`) seen
+   in the first run was fixed and re-verified on the guest. Nested-lab evidence
+   only; it does not validate physical hardware, GPU/ROCm, or the installer
+   modes, which must not be run from the nested guest. A separate
    application deployment installer is **planned, not started**: explore it
    after the lab checks, keeping it distinct from `prepare-ai-host.sh`. Initial
    scope is only the existing rootless backend/dashboard image and Quadlet
@@ -300,7 +316,16 @@ environment, not the deployment target.
    secret/config handling, pinned versions, health checks, and rollback that
    preserves persistent data. Keep SearXNG optional; exclude ROCm and the
    inference stack until their separate compatibility/version gates are met.
-   See the [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
+   **Lab redeploy (done 2026-11-05, nested lab only):** the manual release
+   procedure in the runbook was executed on the nested guest. A Containerfile
+   gap (missing `api/` packages) was fixed; the build and import gate passed
+   and the switch brought both services up (image `02a3f7cebac4`, rollback tag
+   retained). Verified: `/` 200; `/docs`, `/redoc`, `/openapi.json` 404;
+   dashboard CSP and `X-Frame-Options: DENY`; 8000/8001 bound to loopback;
+   protected routes 401 anonymously.    Both containers reported `healthy`
+      about 2 minutes after the switch (backend was `starting` at 25 s).
+   Boot auto-start and reboot recovery remain unverified. See the
+   [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).
    The planned deployment workflow now includes an admin-uploaded signed
    `.tar.gz` release containing a prebuilt architecture-specific OCI image and
    manifest, verified before apply. A separate rootless updater is required to

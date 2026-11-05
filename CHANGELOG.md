@@ -18,9 +18,22 @@ principles and [Semantic Versioning](https://semver.org/).
 - Proxmox dashboard login now rejects accounts whose ticket response signals a
   pending second factor (`NeedTFA` or a `PVE:!tfa!` ticket) instead of
   creating a session from the password alone. Covered by mocked tests only.
+- The interactive API docs and schema are now off by default; see Added.
+
+### Fixed
+
+- The Containerfile did not copy the backend `api/` and `api/routes/` packages,
+  so an image built from it failed at startup with `ModuleNotFoundError: No
+  module named 'api'` (reproduced by simulating the image contents; the likely
+  cause of the failed 2026-10-19 lab deployment, not confirmed against that
+  image). It now copies both, and a contract test fails if any backend package
+  directory is not copied. LF line endings are now pinned for the Containerfile,
+  `.containerignore`, Quadlet units, and lock files.
 
 ### Changed
 
+- Removed 19 committed `.pyc` bytecode files from Git tracking; the existing
+  `.gitignore` rules already cover them, and the files remain on disk.
 - Added high-level `README.md` guides to the documentation subfolders that
   lacked them and linked those summaries from the documentation index.
 - Renamed folder-matching documentation files in `docs/` to `README.md` and
@@ -68,6 +81,39 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added an opt-in boot auto-start path (Quadlet drop-ins under
+  `deploy/boot-autostart/`; base units remain manual-start) and an optional
+  post-boot housekeeping timer (`deploy/systemd/`,
+  `scripts/proxmox/ai-server-housekeeping.sh`) that prunes build directories
+  and build logs older than 7 days only when both containers are healthy.
+  The lab release procedure now writes build logs to an `ai-server`-owned
+  path. Unit-tested and the script exercised in WSL with a stub `podman`.
+  Installed on the nested guest; a clean reboot recovered both containers to
+  healthy without a manual start. The first timer-driven cleanup run is not
+  yet observed.
+- Disabled the interactive API docs and schema (`/docs`, `/redoc`,
+  `/openapi.json`) by default; they now return 404 unless
+  `AI_SERVER_ENABLE_API_DOCS=true` is set for local development. The Quadlet
+  backend health probe now uses `GET /`. Covered by new unit tests; not yet
+  deployed to the nested lab.
+- Added `scripts/proxmox/build-lab-bundle.py` (allow-listed, LF-normalized lab
+  release bundle) and a written manual lab release procedure with an import
+  gate before switching services and an explicit rollback block, in the
+  Linux/Proxmox runbook. Executed on the nested lab on 2026-11-05: build,
+  import gate, and switch succeeded (nested-lab evidence only); `/docs`,
+  `/redoc`, and `/openapi.json` return 404, the dashboard sends CSP and
+  `X-Frame-Options: DENY`, and ports 8000/8001 stay bound to `127.0.0.1`.
+- Ran an unauthenticated read-only loopback smoke check on the nested guest:
+  32 protected routes returned 401 anonymously, login enforced the `Origin`
+  check, and both ports were bound to `127.0.0.1`. Found that the lab dashboard
+  still lacks the CSP headers (image not rebuilt) and that `/docs`, `/redoc`,
+  and `/openapi.json` are publicly readable. Nested-lab evidence only.
+- Ran `prepare-ai-host.sh --check` and `--report` on the nested Proxmox VE 9.1.1
+  guest as the non-root `ai-deploy` account. Both were read-only; `--check`
+  exited 2 with the ROCm gate `blocked` as designed, and `--report` wrote an
+  owner-only report. Nested-lab evidence only; installer modes and physical-host
+  runs are still pending. Fixed a cosmetic `MemTotal::` double-colon label in
+  the `--report` memory section and re-verified it on the guest.
 - Recorded the 2026-11-04 live Windows browser smoke test: local
   Qwen2.5 1.5B chat and Research Web through WSL SearXNG to llama.cpp both
   returned successfully, with source links in the research response. Kept the

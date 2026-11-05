@@ -24,6 +24,7 @@ CONFIG_VARIABLES = (
     "AI_SERVER_AUTH_DB_PATH",
     "AI_SERVER_MEMORY_DB_PATH",
     "AI_SERVER_AUTH_COOKIE_SECURE",
+    "AI_SERVER_ENABLE_API_DOCS",
     "PROXMOX_API_URL",
     "PROXMOX_INVENTORY_TOKEN_ID",
     "PROXMOX_INVENTORY_TOKEN_SECRET",
@@ -46,6 +47,7 @@ class LoadSettingsTests(unittest.TestCase):
         self.assertEqual(settings.log_level, "INFO")
         self.assertIn("http://127.0.0.1:8001", settings.cors_origins)
         self.assertTrue(settings.auth_cookie_secure)
+        self.assertFalse(settings.enable_api_docs)
         self.assertEqual(settings.proxmox_api_url, "")
         self.assertEqual(settings.proxmox_inventory_token_id, "")
         self.assertEqual(settings.proxmox_inventory_token_secret, "")

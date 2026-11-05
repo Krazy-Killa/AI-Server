@@ -238,7 +238,7 @@ if [[ "$MODE" == "report" ]]; then
 
     GENERATED_AT="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
     CPU_INFO="$(lscpu 2>/dev/null | grep -E '^(Architecture|CPU\(s\)|Thread\(s\) per core|Core\(s\) per socket|Socket\(s\)|Vendor ID|Model name|Virtualization|Virtualization type):' || true)"
-    MEMORY_INFO="$(awk '/^(MemTotal|MemAvailable|SwapTotal|SwapFree):/ {printf "%s: %.1f GiB\n", $1, $2 / 1048576}' /proc/meminfo 2>/dev/null || true)"
+    MEMORY_INFO="$(awk '/^(MemTotal|MemAvailable|SwapTotal|SwapFree):/ {printf "%s %.1f GiB\n", $1, $2 / 1048576}' /proc/meminfo 2>/dev/null || true)"
     STORAGE_INFO="$(lsblk -dn -e 7 -o SIZE,TYPE,ROTA,TRAN,MODEL 2>/dev/null || true)"
     ROOT_FILESYSTEM_INFO="$(df -hP / 2>/dev/null | awk 'NR == 2 {printf "Size: %s, used: %s, available: %s (%s used)\n", $2, $3, $4, $5}')"
     DISPLAY_INFO=""

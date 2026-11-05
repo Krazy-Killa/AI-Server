@@ -1,0 +1,6 @@
+[Unit]
+Description=Prune old AI Server lab build directories and logs
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/ai-server/ai-server-housekeeping.sh

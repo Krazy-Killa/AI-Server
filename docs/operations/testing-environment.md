@@ -127,6 +127,28 @@ hardware, GPU/ROCm, network/storage topology, sustained performance, or
 recovery behavior. The non-root `ai-deploy` SSH account is intended for
 deployment work and has no sudo access.
 
+On 2026-11-05, after the guest rebooted (about 11 minutes before the check) and
+the operator manually started the backend and dashboard services as root, a
+read-only, unauthenticated smoke check ran from `ai-deploy` against the loopback
+ports. Both ports were bound only to `127.0.0.1` and returned HTTP 200. Every
+non-parameterized protected GET (16 routes) and every non-parameterized
+mutating route (16 routes, empty JSON body) returned 401 without a session;
+`POST /api/auth/login` returned 403 without an `Origin` header and with a
+disallowed `Origin`. The public routes were `/` (`{"status":"AI backend
+online"}`) and `/api/auth/status` (`{"authenticated":false}`, which also sends
+an expiring `HttpOnly; SameSite=strict` cookie). Findings: the dashboard still
+serves through the old `SimpleHTTP` server with no CSP or frame headers (the lab
+image predates the CSP change), and `/docs`, `/redoc`, and `/openapi.json` are
+publicly readable. Decision (2026-11-05): disable them by default
+(`AI_SERVER_ENABLE_API_DOCS`) and move the backend health probe to `GET /`;
+this is implemented and unit-tested but not yet deployed to the lab. This did
+not cover SQLite
+paths and permissions, logs, authenticated reads, or container health status,
+because `ai-deploy` cannot read `/var/lib/ai-server` or the `ai-server`
+account's journal. Services did not start on their own after the reboot, which
+matches the documented absence of boot auto-start but was not observed as a
+controlled recovery test.
+
 ## Setup
 
 Run `setup-windows.bat` from the project root. It creates the isolated Python
@@ -190,8 +212,20 @@ Pop-Location
 These are portable source-contract tests, not Linux integration tests. They do
 not validate Quadlet parsing/generation, service-account permissions, Podman
 runtime behavior, service enablement, or reboot recovery. The host preparation
-script's `--check` and `--report` modes also remain unvalidated on the nested
-guest or physical server.
+script's `--check` and `--report` modes were run on the nested guest on
+2026-11-05 (see below) but remain unvalidated on the physical server.
+
+On 2026-11-05 both modes were run over SSH as the non-root `ai-deploy` account
+(key authentication through ssh-agent) by piping the script to `bash -s`. On the
+Proxmox VE 9.1.1 guest (Debian 13, kernel 6.17.2-1-pve): `--check` exited 2 with
+the ROCm gate `blocked` (no RX 6800 XT detected; GPU and Proxmox VE 9 not in
+AMD's matrix), which is the expected fail-closed result; `--report` exited 0
+and wrote an owner-only file with no hostnames or addresses. Neither mode
+changed packages or configuration, and the temporary report was deleted from the
+guest. The memory-label defect (`MemTotal::`) seen in the first run was fixed
+and the corrected output was confirmed on the guest. This is
+nested-lab evidence only; `lspci` is not installed on the guest, so display
+details were unavailable, and installer modes were not run.
 
 Start the backend with `run-backend.bat`. It listens on
 `http://127.0.0.1:8000`.
