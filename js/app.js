@@ -271,9 +271,22 @@ let botRestartPending = false;
 // Model panel elements
 const modelList = document.getElementById('model-list');
 const modelRegistryStatus = document.getElementById('model-registry-status');
-const activeModelLabel = document.getElementById('active-model-label');
 const activeModelSelect = document.getElementById('active-model-select');
+const householdAiStatus = document.getElementById('household-ai-status');
+const householdAiStatusValue = document.getElementById('household-ai-status-value');
 let modelSwitchInProgress = false;
+
+function setHouseholdAIStatus(state, detail) {
+    const labels = {
+        checking: 'Checking…',
+        switching: 'Switching',
+        online: 'Online',
+        offline: 'Offline',
+    };
+    householdAiStatus.dataset.state = state;
+    householdAiStatusValue.textContent = labels[state] || labels.offline;
+    householdAiStatus.title = detail;
+}
 
 // ===============================
 // PANEL SWITCHING
@@ -956,9 +969,18 @@ function renderModelInventory(inventory) {
     const models = Array.isArray(inventory.models) ? inventory.models : [];
     const activeModel = models.find(model => model.id === inventory.active_model);
 
-    activeModelLabel.textContent = activeModel
-        ? `${modelSwitchInProgress ? 'Switching to' : 'Model:'} ${activeModel.name}`
-        : 'Model: None loaded';
+    if (modelSwitchInProgress) {
+        setHouseholdAIStatus('switching', 'The selected model is changing.');
+    } else if (inventory.runtime_status === 'online' && activeModel?.loaded) {
+        setHouseholdAIStatus('online', `Local inference is ready with ${activeModel.name}.`);
+    } else {
+        setHouseholdAIStatus(
+            'offline',
+            inventory.runtime_error || (inventory.runtime_status === 'online'
+                ? 'llama.cpp is reachable, but no installed model is loaded.'
+                : 'The local inference runtime is unavailable.'),
+        );
+    }
     modelRegistryStatus.textContent = modelSwitchInProgress
         ? 'Switching Model…'
         : `${models.length} ${models.length === 1 ? 'Model' : 'Models'} Installed`;
@@ -1046,7 +1068,7 @@ async function loadModelInventory() {
         const message = err instanceof Error ? err.message : 'Unknown inventory error.';
         modelRegistryStatus.textContent = 'Inventory Unavailable';
         modelRegistryStatus.title = message;
-        activeModelLabel.textContent = 'Model: Unavailable';
+        setHouseholdAIStatus('offline', message);
         activeModelSelect.replaceChildren();
         const option = document.createElement('option');
         option.textContent = 'Unable to load model inventory';
@@ -1061,6 +1083,36 @@ async function loadModelInventory() {
     }
 }
 
+async function pollHouseholdAIStatus() {
+    if (modelSwitchInProgress) {
+        setHouseholdAIStatus('switching', 'The selected model is changing.');
+        return;
+    }
+
+    try {
+        const response = await apiFetch(`${API_BASE}/api/models`);
+        if (!response.ok) throw new Error(`Model status request failed: ${response.status}`);
+        const inventory = await response.json();
+        const activeModel = Array.isArray(inventory.models)
+            ? inventory.models.find(model => model.id === inventory.active_model)
+            : null;
+        const online = inventory.runtime_status === 'online' && Boolean(activeModel?.loaded);
+        setHouseholdAIStatus(
+            online ? 'online' : 'offline',
+            online
+                ? `Local inference is ready with ${activeModel.name}.`
+                : inventory.runtime_error || (inventory.runtime_status === 'online'
+                    ? 'llama.cpp is reachable, but no installed model is loaded.'
+                    : 'The local inference runtime is unavailable.'),
+        );
+    } catch (error) {
+        setHouseholdAIStatus(
+            'offline',
+            error instanceof Error ? error.message : 'Could not check local inference status.',
+        );
+    }
+}
+
 async function requestModelSwitch(modelId) {
     if (
         !modelId
@@ -1071,6 +1123,7 @@ async function requestModelSwitch(modelId) {
     ) return;
 
     modelSwitchInProgress = true;
+    setHouseholdAIStatus('switching', 'The selected model is changing.');
     activeModelSelect.disabled = true;
     sendBtn.disabled = true;
     chatInput.disabled = true;
@@ -1126,6 +1179,8 @@ modelList.addEventListener('click', event => {
 });
 
 loadModelInventory();
+setVisibleInterval(pollHouseholdAIStatus, 10000);
+pollHouseholdAIStatus();
 
 // ===============================
 // BOT STATUS POLLING

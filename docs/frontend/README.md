@@ -130,6 +130,11 @@ for setup and execution.
 - AI Chat keeps saved conversations scoped to the signed-in account, with
   resume, new-chat, and confirmed delete controls; the most recently updated
   chat resumes after sign-in
+- The AI Chat header places the installed-model selector on the right beside a
+  Household AI readiness tile. The tile is online only when the local
+  llama.cpp runtime responds and an installed model is loaded; it refreshes
+  every 10 seconds while the browser tab is visible and shows offline when no
+  loaded model or runtime is available.
 - Admin-only shared operational notes with explicit publish/remove
   confirmations, distinct from private chat transcripts
 - Sidebar navigation

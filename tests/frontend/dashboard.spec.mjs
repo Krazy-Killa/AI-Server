@@ -5,6 +5,13 @@ async function installApiMocks(page, {
     rejectLogin = false,
     diagnosticsObservation = null,
     diagnosticsReportStatus = 200,
+    modelInventory = {
+        models: [],
+        active_model: null,
+        runtime_status: 'offline',
+        runtime_error: 'llama.cpp is unavailable.',
+        model_directory: 'test-models',
+    },
 } = {}) {
     let sessionRole = null;
     let requestedPaths = [];
@@ -53,7 +60,7 @@ async function installApiMocks(page, {
                 activity_mode: null,
             };
         } else if (url.pathname === '/api/models') {
-            body = { models: [], active_model: null };
+            body = modelInventory;
         } else if (url.pathname === '/api/bot/status') {
             body = {
                 online: false,
@@ -330,6 +337,40 @@ test('settings sub-tabs switch views and gate the deployment tab to admins', asy
     await page.locator('#settings-tab-diagnostics').click();
     await page.locator('[data-settings-goto="diagnostics-panel"]').click();
     await expect(page.locator('#diagnostics-panel')).toBeVisible();
+});
+
+test('AI Chat header contains the model picker and reports Household AI readiness', async ({ page }) => {
+    await installApiMocks(page, {
+        modelInventory: {
+            models: [{
+                id: 'test-model.gguf',
+                name: 'Test Model',
+                filename: 'test-model.gguf',
+                format: 'GGUF',
+                size_gib: 1,
+                loaded: true,
+            }],
+            active_model: 'test-model.gguf',
+            runtime_status: 'online',
+            runtime_error: null,
+            model_directory: 'test-models',
+        },
+    });
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="chat-panel"]').click();
+
+    await expect(page.locator('#chat-panel > .panel-header #active-model-select')).toHaveValue('test-model.gguf');
+    await expect(page.locator('#household-ai-status-value')).toHaveText('Online');
+});
+
+test('AI Chat reports Household AI offline when no loaded model is available', async ({ page }) => {
+    await installApiMocks(page);
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="chat-panel"]').click();
+
+    await expect(page.locator('#household-ai-status-value')).toHaveText('Offline');
 });
 
 test('verifies and discards a signed release bundle without offering apply', async ({ page }) => {

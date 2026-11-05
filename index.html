@@ -121,20 +121,25 @@
         <section class="panel" id="chat-panel" aria-label="Chat interface">
             <div class="panel-header">
                 <div class="panel-title">AI Chat</div>
-                <div class="panel-controls">
-                    <div class="pill pill-accent" id="active-model-label">Model: Checking…</div>
-                    <div class="pill">Response: Local LLM</div>
-                </div>
-            </div>
-
-            <div class="panel-body">
-                <div class="chat-header-row">
-                    <label class="select" for="active-model-select">
+                <div class="panel-controls chat-panel-header-controls">
+                    <label class="select chat-model-select" for="active-model-select">
                         <span>MODEL</span>
                         <select class="model-select" id="active-model-select" aria-label="Available models">
                             <option>Loading installed models…</option>
                         </select>
                     </label>
+                    <div class="chat-ai-status" id="household-ai-status" data-state="checking" role="status" aria-live="polite" title="Checking local inference readiness">
+                        <span class="chat-ai-status-dot" aria-hidden="true"></span>
+                        <span class="chat-ai-status-copy">
+                            <span class="chat-ai-status-label">HOUSEHOLD AI</span>
+                            <strong id="household-ai-status-value">Checking…</strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-body">
+                <div class="chat-header-row">
                     <div class="slider-label">TEMP: 0.7</div>
                     <input type="range" min="0" max="1" step="0.1" value="0.7" class="slider" aria-label="Temperature">
                 </div>

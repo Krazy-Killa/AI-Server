@@ -11,6 +11,9 @@ principles and [Semantic Versioning](https://semver.org/).
 - Expanded Settings → About with the current dashboard release, a concise
   capability overview, privacy and operational-boundary notes, and links to
   the source repository, documentation, and release notes.
+- Moved the AI Chat model selector into the panel header and added a live
+  Household AI readiness tile based on local runtime availability and loaded
+  model state.
 
 ### Fixed
 
