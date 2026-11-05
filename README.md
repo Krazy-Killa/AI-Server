@@ -4,6 +4,13 @@ A local AI and homelab dashboard with a browser-based interface, FastAPI
 backend, and optional Discord bot. This project is being developed and tested
 on Windows before deployment to a dedicated Linux/Proxmox server.
 
+Current development and deployment planning targets AMD GPUs. The Windows
+test environment uses an RX 6800 XT for Vulkan inference through llama.cpp.
+The planned Proxmox deployment is centered around ROCm/HIP on AMD hardware;
+that path has not yet been validated on the target host. NVIDIA-specific
+deployment, acceleration, and validation paths have not been designed,
+implemented, or tested.
+
 ## Project status
 
 ### Working in the Windows test environment
@@ -27,8 +34,9 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
   host-gateway mapping was verified with a live in-container Proxmox inventory
   read. Stop/start, controlled restart/limit behavior, and recovery from an
   unavailable deployment candidate were verified against a retained snapshot;
-  rollback between distinct releases, boot/reboot recovery, and physical-host
-  acceptance remain outstanding.
+  rollback between distinct releases and physical-host acceptance remain
+  outstanding. Boot/reboot recovery was verified in the nested lab before the
+  latest release and should be re-checked.
 
 ### Not yet operational
 
@@ -36,8 +44,10 @@ on Windows before deployment to a dedicated Linux/Proxmox server.
 - Linux AMD GPU telemetry has a sysfs-backed provider with deterministic
   fixture tests; live Linux/Proxmox readings and the production inference
   stack still need target-host implementation/validation.
-- A signed tar.gz one-click application update workflow is planned, but no
-  archive uploader, verifier, updater service, or update UI is implemented.
+- Signed application-update Stage 1 verification is implemented and deployed
+  to the nested lab; one signed test bundle was verified. Automatic Apply and
+  the privileged updater (Stage 2) remain unimplemented. Model-weight delivery
+  is planned as a separate signed asset flow.
 - Vision and image generation are not yet integrated with production models.
 - Game-server and network-service panels remain planning views. The Discord
   page reports live bot heartbeats and operational logs and supports restart,
