@@ -321,6 +321,12 @@ test('settings sub-tabs switch views and gate the deployment tab to admins', asy
     await expect(page.locator('#setup-firmware-file')).toBeDisabled();
     await expect(page.locator('#setup-firmware-apply')).toBeDisabled();
 
+    await page.locator('#settings-tab-about').click();
+    await expect(page.locator('#settings-view-about')).toBeVisible();
+    await expect(page.locator('#about-version')).toHaveText('0.9.2');
+    await expect(page.locator('#settings-view-about')).toContainText('read-only');
+    await expect(page.locator('#settings-view-about a[href*="CHANGELOG.md"]')).toHaveAttribute('target', '_blank');
+
     await page.locator('#settings-tab-diagnostics').click();
     await page.locator('[data-settings-goto="diagnostics-panel"]').click();
     await expect(page.locator('#diagnostics-panel')).toBeVisible();

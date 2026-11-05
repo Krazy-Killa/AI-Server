@@ -586,9 +586,40 @@
 
                 <div class="settings-view" id="settings-view-about" role="tabpanel" aria-labelledby="settings-tab-about" hidden>
                     <div class="settings-grid">
+                        <div class="settings-item settings-item-wide">
+                            <div class="settings-label">About this project</div>
+                            <div class="settings-value about-summary">AI Command Interface is a local-first dashboard for household AI and server operations. It brings local chat, system visibility, and carefully scoped infrastructure tools together in one place. Available features depend on the connected server and its configuration.</div>
+                        </div>
                         <div class="settings-item">
-                            <div class="settings-label">AI Command Interface</div>
-                            <div class="settings-value">Local-first household AI and operations dashboard. Release notes are in the project CHANGELOG.</div>
+                            <div class="settings-label">Dashboard release</div>
+                            <div class="settings-value about-version" id="about-version">0.9.2</div>
+                            <div class="settings-value">Released November 5, 2026</div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-label">Capabilities</div>
+                            <ul class="about-list">
+                                <li>Local AI chat, with optional cited web research.</li>
+                                <li>Private account conversations and a separate admin-shared operations console.</li>
+                                <li>System telemetry and read-only Proxmox VM/container inventory.</li>
+                                <li>Manually triggered, observe-only diagnostics and incident history.</li>
+                            </ul>
+                        </div>
+                        <div class="settings-item settings-item-wide">
+                            <div class="settings-label">Privacy and operational boundaries</div>
+                            <ul class="about-list">
+                                <li>Conversations and diagnostic history are stored by the configured backend. Shared operational notes are published explicitly by an administrator.</li>
+                                <li>Research Web sends queries to the configured SearXNG service, which may forward them to its search providers. Do not include passwords, secrets, or private household data.</li>
+                                <li>Diagnostics run only when requested and are read-only. The dashboard does not provide live repair, arbitrary server commands, or VM management.</li>
+                                <li>Backend authorization enforces account roles; hiding a dashboard control is not the security boundary.</li>
+                            </ul>
+                        </div>
+                        <div class="settings-item settings-item-wide">
+                            <div class="settings-label">Project resources</div>
+                            <div class="about-links">
+                                <a href="https://github.com/Krazy-Killa/AI-Server" target="_blank" rel="noopener noreferrer">Source repository</a>
+                                <a href="https://github.com/Krazy-Killa/AI-Server/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation</a>
+                                <a href="https://github.com/Krazy-Killa/AI-Server/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Release notes</a>
+                            </div>
                         </div>
                     </div>
                 </div>

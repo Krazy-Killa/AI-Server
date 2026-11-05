@@ -6,6 +6,12 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Expanded Settings → About with the current dashboard release, a concise
+  capability overview, privacy and operational-boundary notes, and links to
+  the source repository, documentation, and release notes.
+
 ### Fixed
 
 - Diagnostics report download in the iOS Home Screen app now uses the native

@@ -102,7 +102,9 @@ for setup and execution.
   (signed-in identity and Sign out, which is the only sign-out on phone
   layouts because the sidebar footer is hidden there),
   Network & Access (read-only origin and HTTPS status), Models and Diagnostics
-  (links to their panels), About, and an admin-only Setup / Deployment tab
+  (links to their panels), About (current dashboard release, capabilities,
+  privacy/operational boundaries, and source/documentation/release-note links),
+  and an admin-only Setup / Deployment tab
 - Setup / Deployment contains the **Firmware File** picker and Verify button
   (verify-only, Stage 1). Opening the tab checks `GET /api/admin/updates`; the
   controls stay disabled with an explanation when no signing key is configured
