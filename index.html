@@ -479,29 +479,107 @@
                 <div class="panel-controls"><div class="pill">Configuration</div></div>
             </div>
             <div class="panel-body">
-                <div class="settings-grid">
-                    <div class="settings-item">
-                        <div class="settings-label">Interface Theme</div>
-                        <div class="settings-value" id="theme-label">Dark / Command</div>
-                        <button class="btn theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+                <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+                    <button class="settings-tab active" id="settings-tab-appearance" type="button" role="tab" aria-selected="true" aria-controls="settings-view-appearance" data-settings-tab="appearance">Appearance</button>
+                    <button class="settings-tab" id="settings-tab-account" type="button" role="tab" aria-selected="false" aria-controls="settings-view-account" tabindex="-1" data-settings-tab="account">Account</button>
+                    <button class="settings-tab" id="settings-tab-network" type="button" role="tab" aria-selected="false" aria-controls="settings-view-network" tabindex="-1" data-settings-tab="network">Network &amp; Access</button>
+                    <button class="settings-tab" id="settings-tab-models" type="button" role="tab" aria-selected="false" aria-controls="settings-view-models" tabindex="-1" data-settings-tab="models">Models</button>
+                    <button class="settings-tab" id="settings-tab-setup" type="button" role="tab" aria-selected="false" aria-controls="settings-view-setup" tabindex="-1" data-settings-tab="setup" hidden>Setup / Deployment</button>
+                    <button class="settings-tab" id="settings-tab-diagnostics" type="button" role="tab" aria-selected="false" aria-controls="settings-view-diagnostics" tabindex="-1" data-settings-tab="diagnostics">Diagnostics</button>
+                    <button class="settings-tab" id="settings-tab-about" type="button" role="tab" aria-selected="false" aria-controls="settings-view-about" tabindex="-1" data-settings-tab="about">About</button>
+                </div>
+
+                <div class="settings-view" id="settings-view-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance">
+                    <div class="settings-grid">
+                        <div class="settings-item">
+                            <div class="settings-label">Interface Theme</div>
+                            <div class="settings-value" id="theme-label">Dark / Command</div>
+                            <button class="btn theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-label">Accent Spectrum</div>
+                            <div class="settings-value">Choose a system accent</div>
+                            <div class="color-swatches" aria-label="Accent colors">
+                                <button class="swatch blue" type="button" aria-label="Blue accent"></button>
+                                <button class="swatch green" type="button" aria-label="Green accent"></button>
+                                <button class="swatch purple" type="button" aria-label="Purple accent"></button>
+                                <button class="swatch orange" type="button" aria-label="Orange accent"></button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="settings-item">
-                        <div class="settings-label">Dashboard Account</div>
-                        <div class="settings-value">Account creation, role changes, and password resets are managed on the backend host.</div>
+                    <div class="settings-footer">
+                        <button class="btn-save" id="save-config" type="button">Save Configuration</button>
                     </div>
-                    <div class="settings-item">
-                        <div class="settings-label">Accent Spectrum</div>
-                        <div class="settings-value">Choose a system accent</div>
-                        <div class="color-swatches" aria-label="Accent colors">
-                            <button class="swatch blue" type="button" aria-label="Blue accent"></button>
-                            <button class="swatch green" type="button" aria-label="Green accent"></button>
-                            <button class="swatch purple" type="button" aria-label="Purple accent"></button>
-                            <button class="swatch orange" type="button" aria-label="Orange accent"></button>
+                </div>
+
+                <div class="settings-view" id="settings-view-account" role="tabpanel" aria-labelledby="settings-tab-account" hidden>
+                    <div class="settings-grid">
+                        <div class="settings-item">
+                            <div class="settings-label">Dashboard Account</div>
+                            <div class="settings-value">Account creation, role changes, and password resets are managed on the backend host.</div>
                         </div>
                     </div>
                 </div>
-                <div class="settings-footer">
-                    <button class="btn-save" id="save-config" type="button">Save Configuration</button>
+
+                <div class="settings-view" id="settings-view-network" role="tabpanel" aria-labelledby="settings-tab-network" hidden>
+                    <div class="settings-grid">
+                        <div class="settings-item">
+                            <div class="settings-label">Dashboard Address</div>
+                            <div class="settings-value" id="settings-origin">—</div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-label">Connection</div>
+                            <div class="settings-value" id="settings-connection">—</div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-label">LAN Access</div>
+                            <div class="settings-value">Read-only. LAN access, HTTPS certificates, and allowed origins are configured on the server by an operator.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-view" id="settings-view-models" role="tabpanel" aria-labelledby="settings-tab-models" hidden>
+                    <div class="settings-grid">
+                        <div class="settings-item">
+                            <div class="settings-label">Models</div>
+                            <div class="settings-value">Model discovery and switching live in the Models panel.</div>
+                            <button class="btn" type="button" data-settings-goto="models-panel">Open Models</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-view" id="settings-view-setup" role="tabpanel" aria-labelledby="settings-tab-setup" hidden>
+                    <div class="settings-grid">
+                        <div class="settings-item settings-item-wide">
+                            <div class="settings-label">Firmware File</div>
+                            <div class="settings-value">Release bundle (<code>.tar.gz</code>) to deploy to this server.</div>
+                            <input class="settings-file" id="setup-firmware-file" type="file" accept=".tar.gz,.tgz,application/gzip" aria-describedby="setup-firmware-status" disabled>
+                            <div class="settings-actions">
+                                <button class="btn" id="setup-firmware-verify" type="button" disabled>Verify</button>
+                                <button class="btn" id="setup-firmware-apply" type="button" disabled>Apply</button>
+                            </div>
+                            <div class="settings-value settings-status" id="setup-firmware-status">Not available. Upload, signature verification, and deployment are a planned design and are not implemented yet; deploy releases manually using the operator runbook.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-view" id="settings-view-diagnostics" role="tabpanel" aria-labelledby="settings-tab-diagnostics" hidden>
+                    <div class="settings-grid">
+                        <div class="settings-item">
+                            <div class="settings-label">Diagnostics</div>
+                            <div class="settings-value">Observe-only host and service diagnostics live in the Diagnostics panel.</div>
+                            <button class="btn" type="button" data-settings-goto="diagnostics-panel">Open Diagnostics</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-view" id="settings-view-about" role="tabpanel" aria-labelledby="settings-tab-about" hidden>
+                    <div class="settings-grid">
+                        <div class="settings-item">
+                            <div class="settings-label">AI Command Interface</div>
+                            <div class="settings-value">Local-first household AI and operations dashboard. Release notes are in the project CHANGELOG.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

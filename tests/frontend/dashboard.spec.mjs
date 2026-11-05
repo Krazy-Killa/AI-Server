@@ -187,6 +187,40 @@ test('allows operator chat while keeping administrator controls hidden', async (
     await expect(page.locator('#bot-restart')).toBeHidden();
 });
 
+test('settings sub-tabs switch views and gate the deployment tab to admins', async ({ page }) => {
+    await installApiMocks(page);
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await page.locator('[data-panel="settings-panel"]').click();
+
+    await expect(page.locator('#settings-view-appearance')).toBeVisible();
+    await page.locator('#settings-tab-network').click();
+    await expect(page.locator('#settings-view-network')).toBeVisible();
+    await expect(page.locator('#settings-view-appearance')).toBeHidden();
+    await expect(page.locator('#settings-origin')).not.toHaveText('—');
+    await page.locator('#settings-tab-network').press('ArrowRight');
+    await expect(page.locator('#settings-tab-models')).toHaveAttribute('aria-selected', 'true');
+
+    await page.locator('#settings-tab-setup').click();
+    await expect(page.locator('#settings-view-setup')).toBeVisible();
+    await expect(page.locator('#setup-firmware-file')).toBeDisabled();
+    await expect(page.locator('#setup-firmware-apply')).toBeDisabled();
+
+    await page.locator('#settings-tab-diagnostics').click();
+    await page.locator('[data-settings-goto="diagnostics-panel"]').click();
+    await expect(page.locator('#diagnostics-panel')).toBeVisible();
+});
+
+test('hides the deployment settings tab from non-admin users', async ({ page }) => {
+    await installApiMocks(page, { loginRole: 'operator' });
+    await page.goto('/');
+    await signIn(page, 'operator');
+    await page.locator('[data-panel="settings-panel"]').click();
+
+    await expect(page.locator('#settings-tab-setup')).toBeHidden();
+    await expect(page.locator('#settings-tab-appearance')).toBeVisible();
+});
+
 test('persists theme, accent, and sidebar preferences across reloads', async ({ page }) => {
     await installApiMocks(page);
     await page.goto('/');

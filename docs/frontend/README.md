@@ -65,8 +65,13 @@ for setup and execution.
 - Virtual Machines
 - Network Services
 - Discord Bot
-- Settings
-- Planned admin-only application updates; no updater UI is implemented
+- Settings, organized as sub-tabs: Appearance (theme, accent), Account,
+  Network & Access (read-only origin and HTTPS status), Models and Diagnostics
+  (links to their panels), About, and an admin-only Setup / Deployment tab
+- Setup / Deployment contains a disabled **Firmware File** release-bundle
+  picker with disabled Verify and Apply buttons. It is a design placeholder
+  only: no upload, verification, or apply endpoint exists (see the planned
+  update design in the Linux/Proxmox transition guide)
 - A conversational household voice interface is a future concept; local STT/TTS
   and voice-driven requests are not implemented
 

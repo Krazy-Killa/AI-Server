@@ -456,6 +456,9 @@ complete from Windows runs, mocks, or nested-lab results.
   exist; nothing is installed or verified on the nested lab guest yet. Next:
   install on the lab, test from a separate LAN client, and check the client
   address the backend sees behind the proxy.
+- Dashboard Settings is a tabbed page. Its admin-only Setup / Deployment tab
+  holds a disabled Firmware File placeholder; the signed release bundle
+  build, upload, verify, and apply flow remain planned (not implemented).
 - Integrate the existing dashboard, backend, model discovery/switching, chat
   and streaming, SQLite history, logging, optional research/bot, and
   observe-only diagnostics. Verify Linux dependencies, permissions, service

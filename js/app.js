@@ -88,6 +88,11 @@ function applyAuthorizationUI(role, username, provider, csrf) {
     document.querySelector('[data-panel="interface-panel"]').hidden = role !== 'admin';
     document.querySelector('[data-panel="chat-panel"]').hidden = role === 'viewer';
     document.querySelector('[data-panel="backend-logs-panel"]').hidden = role !== 'admin';
+    const setupTab = document.getElementById('settings-tab-setup');
+    if (setupTab.getAttribute('aria-selected') === 'true' && role !== 'admin') {
+        document.dispatchEvent(new CustomEvent('settings:reset-tab'));
+    }
+    setupTab.hidden = role !== 'admin';
     document.getElementById('diagnostics-run').hidden = role === 'viewer';
     document.getElementById('bot-restart').hidden = role !== 'admin';
     botApplyModelButton.disabled = role === 'viewer';

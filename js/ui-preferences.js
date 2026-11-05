@@ -90,4 +90,57 @@ export function initializeUiPreferences() {
     applyTheme(prefs.theme);
     applyAccent(prefs.accent);
     applySidebar(prefs.sidebarCollapsed);
+    initializeSettingsTabs();
+}
+
+function initializeSettingsTabs() {
+    const tabs = Array.from(document.querySelectorAll('.settings-tab'));
+    const views = document.querySelectorAll('.settings-view');
+    const origin = document.getElementById('settings-origin');
+    const connection = document.getElementById('settings-connection');
+
+    function selectTab(name, { focus = false } = {}) {
+        tabs.forEach(tab => {
+            const active = tab.dataset.settingsTab === name;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+            if (active && focus) tab.focus();
+        });
+        views.forEach(view => {
+            view.hidden = view.id !== `settings-view-${name}`;
+        });
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => selectTab(tab.dataset.settingsTab));
+        tab.addEventListener('keydown', event => {
+            const visible = tabs.filter(candidate => !candidate.hidden);
+            const index = visible.indexOf(tab);
+            const target = {
+                ArrowRight: visible[(index + 1) % visible.length],
+                ArrowLeft: visible[(index - 1 + visible.length) % visible.length],
+                Home: visible[0],
+                End: visible[visible.length - 1],
+            }[event.key];
+            if (!target) return;
+            event.preventDefault();
+            selectTab(target.dataset.settingsTab, { focus: true });
+        });
+    });
+
+    document.querySelectorAll('[data-settings-goto]').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelector(`[data-panel="${button.dataset.settingsGoto}"]`)?.click();
+        });
+    });
+
+    if (origin) origin.textContent = window.location.origin;
+    if (connection) {
+        connection.textContent = window.location.protocol === 'https:'
+            ? 'Encrypted (HTTPS)'
+            : 'Not encrypted (HTTP) — acceptable only on this machine';
+    }
+
+    document.addEventListener('settings:reset-tab', () => selectTab('appearance'));
 }

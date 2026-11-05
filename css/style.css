@@ -1483,6 +1483,64 @@ header {
     margin-top: 18px;
 }
 
+.settings-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.settings-tab {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.settings-tab:hover,
+.settings-tab:focus-visible {
+    color: var(--text-main);
+}
+
+.settings-tab.active {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+}
+
+.settings-item .btn {
+    margin-top: 14px;
+}
+
+.settings-item-wide {
+    grid-column: 1 / -1;
+}
+
+.settings-file {
+    display: block;
+    max-width: 100%;
+    margin-top: 14px;
+    color: var(--text-muted);
+}
+
+.settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.settings-status {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 [hidden] {
     display: none !important;
 }

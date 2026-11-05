@@ -8,6 +8,11 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Settings is now a tabbed page (Appearance, Account, Network & Access, Models,
+  Diagnostics, About) with an admin-only Setup / Deployment tab containing a
+  disabled Firmware File placeholder for the planned release-bundle updater.
+  Browser regression tests cover tab switching, keyboard navigation, and
+  role gating.
 - Prepared LAN access: an NGINX TLS reverse-proxy configuration
   (`deploy/nginx/ai-server.conf`) and a local-CA certificate generator
   (`scripts/proxmox/make-lan-cert.sh`) with name constraints, both in the lab

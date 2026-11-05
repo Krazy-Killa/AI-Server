@@ -713,7 +713,12 @@ disk policy; never remove the only known-good version or the most recent
 database backup. If rollback or recovery checks fail, report an actionable
 failed state and require out-of-band operator recovery.
 
-This is a design, not an implemented feature. Release signing/key rotation,
+This is a design, not an implemented feature. The only implemented piece is a
+disabled placeholder in the dashboard (Settings → Setup / Deployment →
+Firmware File, admin-only) that reserves the place for the upload, verify, and
+apply flow; its controls do nothing. Building the signed release bundle from
+this repository (a build script producing the manifest, image archive, and
+signature) is a separate future step that is not started. Release signing/key rotation,
 the updater's host integration and permissions, upload/staging boundaries,
 archive parser limits, disk retention, database backup/compatibility behavior,
 and user-visible status/error contract require implementation and adversarial
