@@ -547,7 +547,27 @@ the housekeeping timer was scheduled. The first housekeeping run after boot
 (about 13 minutes later) was not yet observed; the pre-reboot `--dry-run`
 removed nothing, as expected. A single reboot is not host-reboot acceptance:
 unclean power loss, boot ordering against network/storage, and the physical
-host remain untested.
+host remain untested. A forced power-off of the guest (Hyper-V Turn Off, no
+clean shutdown) was also tested the same day: both containers returned
+`healthy` unattended, the docs routes stayed 404, the dashboard kept CSP and
+`X-Frame-Options: DENY`, and `PRAGMA integrity_check` returned `ok` for all four
+SQLite files under `/var/lib/ai-server`. A hypervisor power-off is not
+physical power loss (no disk write-cache loss). The `ai-server` journal could
+not be read by the checking account, so startup logs were not reviewed.
+
+Database location finding (nested lab, 2026-11-05): after the docs-off redeploy
+the backend used empty databases under `/var/lib/ai-server/AI-Server/`, while
+the real data (a local user, a Proxmox mapping, a session, conversations, and
+diagnostics) remained under `/var/lib/ai-server/data/`. Cause: since the
+backend routes moved into the `api/` package (commit `cb525a4`),
+`api/runtime.py` loaded `.env` from `ai-backend/` instead of the project root.
+The mounted `/opt/ai-server/.env` was therefore never read, so its path and
+Proxmox settings did not apply and the defaults (`HOME`-based) were used. The
+loader is fixed (`PROJECT_ROOT`, with tests), but the fix is not yet deployed
+to the lab. Until it is, the lab backend runs without its `.env` settings. Do
+not archive or delete either database set; the `/var/lib/ai-server/data/` pair
+is the live one, and the `AI-Server/` pair is empty. Whether the `.env` pins the
+paths could not be confirmed (only variable names were listed, not values).
 
 Before implementing the installer, define and test the following behavior:
 

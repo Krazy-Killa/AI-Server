@@ -327,8 +327,9 @@ According to the roadmap's integration-priority order:
    loopback-only binds). Whether the missing-`api/` bug caused the 2026-10-19
    failure remains unconfirmed. Boot auto-start and a post-boot housekeeping
    timer were installed and a clean guest reboot recovered both containers to
-   healthy without manual start (nested lab only; unclean power loss and the
-   physical host remain untested).
+   healthy without manual start (nested lab only; a forced guest power-off also
+   recovered with intact SQLite files; physical power loss and the physical
+   host remain untested).
 2. **Proxmox identity and authorization:** test live Proxmox ticket login,
    explicit identity-to-role mapping, cookies, CSRF/origin checks, and role
    boundaries in the nested lab with least-privilege access.

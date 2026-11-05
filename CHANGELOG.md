@@ -22,6 +22,12 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Fixed `.env` not being loaded by the backend since the routes moved into the
+  `api/` package: `api/runtime.py` looked in `ai-backend/` instead of the
+  project root, so database paths, Proxmox settings, and other `.env` values
+  silently fell back to defaults. In the nested lab this made the redeployed
+  backend use empty databases. Covered by new tests; not yet redeployed to the
+  lab.
 - The Containerfile did not copy the backend `api/` and `api/routes/` packages,
   so an image built from it failed at startup with `ModuleNotFoundError: No
   module named 'api'` (reproduced by simulating the image contents; the likely
@@ -89,7 +95,8 @@ principles and [Semantic Versioning](https://semver.org/).
   The lab release procedure now writes build logs to an `ai-server`-owned
   path. Unit-tested and the script exercised in WSL with a stub `podman`.
   Installed on the nested guest; a clean reboot recovered both containers to
-  healthy without a manual start. The first timer-driven cleanup run is not
+  healthy without a manual start, as did a forced guest power-off (SQLite
+  integrity checks passed). The first timer-driven cleanup run is not
   yet observed.
 - Disabled the interactive API docs and schema (`/docs`, `/redoc`,
   `/openapi.json`) by default; they now return 404 unless

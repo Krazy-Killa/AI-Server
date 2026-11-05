@@ -280,8 +280,10 @@ environment, not the deployment target.
    optional post-boot housekeeping timer (prunes old build directories/logs
    only when both containers are healthy) were installed on the guest. After a
    clean reboot both containers came up `healthy` without a manual start and
-   the docs routes stayed 404. Not yet verified: the first timer-driven
-   cleanup run, unclean power loss, and physical-host acceptance.
+   the docs routes stayed 404. A forced guest power-off also recovered both
+      containers to `healthy` with all four SQLite files passing
+      `integrity_check`. Not yet verified: the first timer-driven cleanup run,
+      physical power loss, and physical-host acceptance.
 2. **Proxmox identity and dashboard authorization — subsequent priority.**
    Exercise the live Proxmox ticket login and identity-to-role mapping in the
    nested lab, then verify cookie, CSRF/origin, viewer/operator/admin
@@ -322,7 +324,11 @@ environment, not the deployment target.
    and the switch brought both services up (image `02a3f7cebac4`, rollback tag
    retained). Verified: `/` 200; `/docs`, `/redoc`, `/openapi.json` 404;
    dashboard CSP and `X-Frame-Options: DENY`; 8000/8001 bound to loopback;
-   protected routes 401 anonymously.    Both containers reported `healthy`
+   protected routes 401 anonymously. **Caveat (found 2026-11-05):** the
+   redeployed backend did not load its `.env` (a loader-path regression, fixed
+   in code but not yet redeployed) and so used empty default databases;
+   existing lab data is untouched under `/var/lib/ai-server/data/`. Authenticated
+   behavior in the lab has not been verified since the redeploy.    Both containers reported `healthy`
       about 2 minutes after the switch (backend was `starting` at 25 s).
    Boot auto-start and reboot recovery remain unverified. See the
    [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md).

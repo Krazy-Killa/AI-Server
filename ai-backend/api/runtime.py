@@ -20,7 +20,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 # Load project configuration before importing modules that read environment variables.
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+# This module lives in ai-backend/api/, so the project root is two levels up.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env")
 
 from config import settings
 from auth import AuthStore, AuthStoreError
