@@ -38,9 +38,10 @@ admin-shared notes, observe-only diagnostics, backend logs, Discord bot
 status/control, and read-only Proxmox VM/container inventory.
 
 Future concepts include network-aware household diagnostics, infrastructure
-inventory, a conversational voice interface, and possible separation of
-user-facing and maintenance AI workloads, plus a household file-storage
-service. These concepts are not implemented integrations; see
+inventory, a conversational voice interface, request-scoped operational
+context for Maintenance AI, and possible separation of user-facing and
+maintenance AI workloads, plus a household file-storage service. These
+concepts are not implemented integrations; see
 [Future Capabilities](#future-capabilities).
 
 ### Core architectural principles
@@ -421,6 +422,12 @@ These are plans or concepts, not implemented behavior:
   The single-GPU Utility/Household/Maintenance model-profile architecture is
   planned separately; this delegated workflow and runbook execution remain
   unimplemented.
+- **Maintenance AI Context Inference Layer (Planned):** provide a future
+  Maintenance AI with bounded, request-scoped platform state and historical
+  operational knowledge so responses can use current evidence without
+  permanently expanding model context or VRAM. The general context layer,
+  historical-case retrieval, and model-assisted diagnosis are not implemented;
+  see the [roadmap concept](./roadmap/README.md#candidate-backlog--not-scheduled).
 - **Network-Aware Diagnostics (Concept):** extend Maintenance AI from server
   health to configured, read-only network and infrastructure evidence.
   Maintenance AI would correlate WAN, LAN, wireless, service, and client

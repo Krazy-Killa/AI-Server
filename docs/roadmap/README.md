@@ -682,6 +682,61 @@ validated on the physical target.
   and execution path must preserve the project's authorization, audit, and
   observe-first constraints.
 
+- **Maintenance AI Context Inference Layer (Concept)**
+
+  **Status:** Planned
+
+  **Phase:** Future Development
+
+  **Priority:** Medium-High
+
+  **Overview:** Provide the future Maintenance AI with relevant operational
+  context on demand, so responses can be grounded in current platform state
+  and historical operational knowledge rather than conversation history and
+  static system prompts alone. Keep retrieval request-scoped and bounded; the
+  goal is to avoid permanently expanding model context requirements, VRAM use,
+  or prompt size. Retrieved context may add tokens to an individual request,
+  but must not become permanently resident model context.
+
+  **Objectives:**
+
+  - Improve Maintenance AI accuracy by supplying relevant current evidence
+    before generation.
+  - Help distinguish resource pressure from model-management, process-state,
+    or tracking issues using actual telemetry and operational records.
+  - Reuse historical operational knowledge when relevant without loading an
+    unbounded conversation or history into every request.
+
+  **Illustrative example:** These values are hypothetical, not live readings.
+
+  - **Current response:** “VRAM usage appears high. Consider upgrading to a
+    GPU with more VRAM.”
+  - **Desired response:** “Current VRAM utilization is 9.2 GB out of 16 GB.
+    Available headroom remains approximately 6.8 GB. The reported issue is
+    more likely related to model management or process tracking than GPU
+    memory availability.”
+
+  **Design notes:**
+
+  - Candidate context includes current telemetry, model/runtime state, reviewed
+    runbooks, and relevant historical incidents. Source selection, freshness,
+    retrieval method, context budget, and integration with the future
+    diagnostic retriever remain to be designed.
+  - Retrieved evidence must be bounded and attributable to its source. Missing
+    or stale data must be reported as unavailable rather than inferred.
+  - Context retrieval does not grant authority to execute commands, change
+    configuration, or perform repairs.
+  - The Maintenance AI role itself is planned, not implemented. Existing
+    diagnostics are manually triggered and observe-only; local lexical runbook
+    retrieval does not invoke the model, and historical-case retrieval and
+    model-assisted diagnosis remain unimplemented.
+  - See the [AI Diagnostics design](../diagnostics/ai-diagnostics-self-healing.md)
+    for the broader future retriever and diagnostics workflow.
+
+  **Implementation status:** Planned concept only. No general
+  Maintenance AI context inference layer or historical operational retrieval
+  is implemented.
+
 - **Shared Incident Reporting and Administrative Visibility (Concept)**
 
   **Status:** Concept

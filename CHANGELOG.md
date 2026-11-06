@@ -45,8 +45,10 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### In Development
 
-- Retrieval of similar historical incidents, semantic/vector search, and
-  model-assisted diagnostics.
+- Maintenance AI Context Inference Layer: request-scoped platform state and
+  historical operational retrieval for grounded responses. Planned for future
+  development at medium-high priority; historical-case retrieval,
+  semantic/vector search, and model-assisted diagnosis remain unimplemented.
 - Image-generation backend groundwork and later runtime integration.
 - Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
   validation on the target server.
