@@ -19,7 +19,8 @@ implemented, or tested.
 - Installed GGUF model discovery and model switching from the dashboard.
   Switching restarts llama.cpp and confirms the new model is loaded.
 - Live CPU and system RAM usage, plus Windows GPU load and dedicated VRAM
-  telemetry.
+  telemetry. The System Monitor shows one-hour, session-only trend charts for
+  GPU load, VRAM, CPU, and RAM.
 - ONNX Runtime DirectML setup and a synthetic inference smoke test.
 - Explicit web-research UI and backend integration for SearXNG.
 - User authentication with local accounts and optional Proxmox identity integration.
@@ -45,6 +46,9 @@ implemented, or tested.
 - Linux AMD GPU telemetry has a sysfs-backed provider with deterministic
   fixture tests; live Linux/Proxmox readings and the production inference
   stack still need target-host implementation/validation.
+- The Utility/Household/Maintenance single-GPU profile design is planned but
+  not implemented. The current model manager runs one active llama.cpp model;
+  concurrent Utility/profile residency and VRAM headroom are unverified.
 - Signed application-update Stage 1 verification is implemented and deployed
   to the nested lab; one signed test bundle was verified. Automatic Apply and
   the privileged updater (Stage 2) remain unimplemented. Model-weight delivery
@@ -94,6 +98,15 @@ validated server components. AMD's published support matrix currently does
 not list this GPU and Proxmox combination as officially supported, so GPU
 installation remains gated on compatibility verification for the actual
 Proxmox release, kernel, and component versions.
+
+The proposed single-GPU inference design keeps a Qwen2.5 1.5B Utility AI
+resident while Household mode loads Qwen3 8B or Maintenance mode loads
+Qwen2.5 Coder 7B. Profile routing and simultaneous Utility/profile residency
+are planned, not implemented. The current model manager runs one active
+llama.cpp model and restarts it when switching. The estimate that Utility uses
+about 1 GB of VRAM and the combined VRAM/RAM headroom for either profile must
+be measured; Windows tests loaded the larger models individually, not alongside
+the Utility model.
 
 The initial host-preparation script is a preflight and optional base-tools
 installer, not an inference-stack installer:

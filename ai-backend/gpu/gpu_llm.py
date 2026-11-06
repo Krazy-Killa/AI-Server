@@ -10,6 +10,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from config import settings
+from reasoning_filter import ReasoningFilter, strip_reasoning_blocks
 
 LLAMA_CPP_BASE_URL = settings.llama_cpp_base_url
 LLAMA_CPP_TIMEOUT_SECONDS = settings.llama_cpp_timeout_seconds
@@ -41,7 +42,14 @@ def _build_request(
         messages.append({"role": "system", "content": system_prompt})
     if history:
         messages.extend(
-            {"role": message["role"], "content": message["content"]}
+            {
+                "role": message["role"],
+                "content": (
+                    strip_reasoning_blocks(message["content"])
+                    if message["role"] == "assistant"
+                    else message["content"]
+                ),
+            }
             for message in history
         )
     messages.append({"role": "user", "content": prompt})
@@ -86,6 +94,7 @@ def stream_llm(
     Closing the generator closes the HTTP connection, which stops generation.
     """
     request = _build_request(prompt, system_prompt, stream=True, history=history)
+    reasoning_filter = ReasoningFilter()
     produced_text = False
 
     try:
@@ -103,13 +112,19 @@ def stream_llm(
                 except (json.JSONDecodeError, KeyError, IndexError, TypeError, AttributeError) as error:
                     raise LLMRuntimeError("llama.cpp sent an invalid streaming chunk.") from error
                 if isinstance(text, str) and text:
-                    produced_text = True
-                    yield text
+                    visible_text = reasoning_filter.feed(text)
+                    if visible_text:
+                        produced_text = True
+                        yield visible_text
     except HTTPError as error:
         raise _http_error(error) from error
     except (URLError, TimeoutError, OSError) as error:
         raise _unreachable_error() from error
 
+    trailing_text = reasoning_filter.finish()
+    if trailing_text:
+        produced_text = True
+        yield trailing_text
     if not produced_text:
         raise LLMRuntimeError("llama.cpp returned an empty chat reply.")
 
@@ -137,6 +152,8 @@ def run_llm(
         reply = result["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as error:
         raise LLMRuntimeError("llama.cpp response did not contain a chat reply.") from error
+    if isinstance(reply, str):
+        reply = strip_reasoning_blocks(reply)
     if not isinstance(reply, str) or not reply.strip():
         raise LLMRuntimeError("llama.cpp returned an empty chat reply.")
 

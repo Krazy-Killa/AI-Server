@@ -54,6 +54,12 @@ service. These concepts are not implemented integrations; see
 - Keep providers and operating-system-specific telemetry behind explicit
   contracts; report unavailable data rather than fabricating readings.
 - Treat external research content as untrusted evidence.
+- Never expose raw model reasoning to users. Standard and streaming replies
+  are filtered server-side, and saved assistant history is filtered before
+  storage, display, and model reuse. Future Maintenance summaries may be
+  optional, but raw chain-of-thought remains unavailable. Full reasoning
+  visibility is reserved for a future, explicitly gated developer/debug mode;
+  no such mode is implemented.
 - Use narrow, read-only infrastructure integrations first. Never infer
   permission to make changes from inventory or monitoring access.
 - Validate shared behavior on Windows, then separately validate Linux,
@@ -169,7 +175,9 @@ implemented.
   No VM mutation or guest-console controls are implemented.
 - **Network services:** DHCP/DNS/web/routing views are planning UI. There is no
   network telemetry provider or network-changing integration.
-- **External services:** llama.cpp is used for local inference. SearXNG is an
+- **External services:** llama.cpp is used for local inference. The current
+  model manager runs one active model; the Utility/Household/Maintenance
+  single-GPU profile design is planned but not implemented. SearXNG is an
   optional research service and must be installed/configured to search. The
   Discord bot is optional.
 - **Deployment:** rootless Podman/Quadlet definitions exist for backend and
@@ -239,10 +247,13 @@ and recovery. Phase 5 is waiting for this physical server.
 The host monitor reports CPU and RAM telemetry. On the Windows development
 machine, it also reports RX 6800 XT load and dedicated VRAM using Windows
 performance counters. A Linux `amdgpu` sysfs provider exists and is covered by
-fixture tests, but live Linux readings have not been validated. The platform
-does not currently integrate external network telemetry or correlate WAN, LAN,
-wireless, service, and client evidence. Network-aware diagnostics remain a
-future observe-only concept and are not implemented.
+fixture tests, but live Linux readings have not been validated. The dashboard's
+System Monitor displays one-hour in-memory GPU, VRAM, CPU, and
+RAM trends, sampled every ten seconds and reset when the page reloads. These
+trend samples are not persisted by the backend. The project does not currently
+integrate external network telemetry or correlate WAN, LAN, wireless, service,
+and client evidence. Network-aware diagnostics remain a future observe-only
+concept and are not implemented.
 
 ## Server Hardware Plans
 
@@ -255,10 +266,11 @@ telemetry. The repository does not establish its motherboard or CPU model.
 ### Planned server platform and GPU
 
 The planned platform is a **Z590 motherboard + Intel Core i9-11900KF**, with
-an RX 6800 XT as the initial GPU. The RX 6800 XT is intended to be dedicated
-strictly to maintenance AI, where its 16 GB VRAM is more important than
-inference speed. The exact motherboard model and delivered physical hardware
-still need confirmation; this is a plan, not verified inventory.
+an RX 6800 XT as the initial GPU. The card is intended to serve a proposed
+single-GPU Utility/Household/Maintenance inference architecture, not a
+Maintenance-only workload. The exact motherboard model and delivered
+physical hardware still need confirmation; this is a plan, not verified
+inventory.
 
 The RX 6800 XT has 16 GB VRAM according to the deployment planning guide. The
 host is planned for 32 GB system RAM initially, with a possible 64 GB upgrade;
@@ -267,26 +279,52 @@ workloads. These are provisional plans, not a finalized bill of materials.
 The storage layout, redundancy, backup strategy, exact motherboard model, and
 physical inventory must be confirmed.
 
-### Planned AI workload roles and possible second GPU
+### Proposed single-GPU AI roles and profiles — not implemented
 
-The intended role for the RX 6800 XT is **Maintenance AI GPU**: diagnostics,
-incident analysis, runbook workflows, system-health and network diagnostics,
-and scheduled maintenance. It is not intended for household-facing AI.
+The planned initial RX 6800 XT design uses three model roles on one GPU:
 
-If a second GPU is added, it would be dedicated to **User AI**: household chat,
-research, Discord integrations, vision, and conversational interaction. The
-possible second-GPU candidates are the **Radeon RX 7900 XT/XTX** or **Radeon
-RX 9070 XT**. The 7900 XT/XTX is favored if additional VRAM capacity is the
-main requirement; the 9070 XT is a candidate for its newer RDNA 4 architecture
-and potential speed/efficiency advantages. The exact 7900 model and
-comparative workload performance are not established.
+- **Utility AI — Qwen2.5 1.5B Instruct:** intended to stay resident as the
+  first-response service for Discord interactions, status and notification
+  requests, summaries, lightweight chat, and fallback responses. The roughly
+  1 GB VRAM figure is an estimate, not a measured resident allocation.
+- **Household AI — Qwen3 8B:** intended for general household chat, research,
+  and planning in Household mode.
+- **Maintenance AI — Qwen2.5 Coder 7B Instruct:** intended for diagnostics,
+  log/runbook assistance, configuration review, infrastructure analysis, and
+  operational reporting in Maintenance mode.
 
-The second card is not selected or acquired. Until a second GPU and runtime
-arrangement are validated, the existing single-GPU, single-llama.cpp model
-handoff remains the interim design; the intended dedicated roles do not
-establish that both AIs can operate concurrently. Power/cooling, compatibility,
-isolation, and performance remain unvalidated. See the
-[GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference).
+Each operating profile is intended to keep Utility AI available while loading
+one larger profile model: Household mode pairs Utility with Qwen3 8B, while
+Maintenance mode pairs Utility with Qwen2.5 Coder 7B. Discord status and
+notification requests route to Utility; infrastructure analysis routes to
+Maintenance; general conversation and research route to Household. Role
+routing, persistent Utility residency, profile switching, and graceful
+recovery are design goals, not current behavior.
+
+The current model manager runs one active llama.cpp model and restarts that
+server when switching. The Windows smoke tests loaded Qwen3 8B and Qwen2.5
+Coder 7B individually; neither was tested while Utility remained resident.
+The profile process/endpoint arrangement, VRAM and system-RAM headroom
+(including context/KV cache and runtime overhead), latency, and failure
+recovery must be designed and measured before this architecture is treated as
+operational. ROCm/HIP on the planned Proxmox host remains separately
+unvalidated.
+
+### Possible future dual-GPU service separation
+
+The proposed future split assigns the planned RX 6800 XT to Operations:
+Qwen2.5 1.5B Utility AI would remain resident alongside Qwen2.5 Coder 7B
+Maintenance AI. A future, unselected second GPU would serve Household AI with
+Qwen3 8B and possible household-specific models. The goal is simultaneous,
+service-oriented operation rather than model selection and swapping between
+Household and Maintenance.
+
+The RX 9070 XT and RX 9090 XT (or an equivalent future flagship) are
+unselected candidates. Selection depends on ROCm support, VRAM, power/cooling,
+and measured local AI performance. The physical server is not built, and the
+current model manager still supports one active model; concurrent residency,
+per-GPU routing, compatibility, and recovery are unimplemented and unverified.
+See the [GPU plan](./gpu/gpu-plan.md#potential-future-dual-gpu-service-separation).
 
 ## Completed Milestones
 
@@ -380,7 +418,9 @@ These are plans or concepts, not implemented behavior:
   runbook execution. Maintenance AI would primarily communicate through the
   AI Interface/Dashboard, while Household AI could request diagnostics for a
   user and translate persisted findings into audience-appropriate responses.
-  This delegated workflow and runbook execution are not implemented.
+  The single-GPU Utility/Household/Maintenance model-profile architecture is
+  planned separately; this delegated workflow and runbook execution remain
+  unimplemented.
 - **Network-Aware Diagnostics (Concept):** extend Maintenance AI from server
   health to configured, read-only network and infrastructure evidence.
   Maintenance AI would correlate WAN, LAN, wireless, service, and client
@@ -420,13 +460,13 @@ These are plans or concepts, not implemented behavior:
   candidates, not selected products. Desired capabilities include device
   inventory, client statistics, events, and supported least-privilege
   telemetry.
-- **Multi-GPU Workload Separation (Concept):** dedicate the planned RX 6800
-  XT to Maintenance AI and evaluate a possible second GPU for household-facing
-  User AI. The RX 7900 XT/XTX and RX 9070 XT remain unselected candidates.
-  Until hardware and runtime support are validated, the interim design is
-  single-GPU/single-runtime model handoff; concurrent operation is not
-  implemented or validated. See the
-  [GPU plan](./gpu/gpu-plan.md#potential-future-multi-gpu-inference) and the
+- **Dual-GPU Service Separation (Concept):** keep Utility and Maintenance AI
+  on the planned RX 6800 XT Operations GPU, with Household AI on a future
+  second GPU. The RX 9070 XT and RX 9090 XT (or an equivalent future flagship)
+  are unselected candidates. Concurrent residency, routing, and hardware
+  compatibility are not implemented or validated. See the
+  [GPU plan](./gpu/gpu-plan.md#potential-future-dual-gpu-service-separation)
+  and the
   [roadmap candidate backlog](./roadmap/README.md#candidate-backlog--not-scheduled).
 - **Infrastructure Awareness:** add verified read-only inventory and health
   sources for network and household services, starting with explicit scope

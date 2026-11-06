@@ -67,7 +67,7 @@
                 <button class="nav-item active" type="button" data-panel="interface-panel" aria-current="page"><span class="nav-icon" aria-hidden="true">◎</span>AI Interface</button>
                 <button class="nav-item" type="button" data-panel="chat-panel"><span class="nav-icon" aria-hidden="true">◌</span>AI Chat</button>
                 <button class="nav-item" type="button" data-panel="models-panel"><span class="nav-icon" aria-hidden="true">◉</span>Models</button>
-                <button class="nav-item" type="button" data-panel="system-panel"><span class="nav-icon" aria-hidden="true">◈</span>Host Monitor</button>
+                <button class="nav-item" type="button" data-panel="system-panel"><span class="nav-icon" aria-hidden="true">◈</span>System Monitor</button>
                 <button class="nav-item" type="button" data-panel="vms-panel"><span class="nav-icon" aria-hidden="true">▣</span>Virtual Machines</button>
                 <button class="nav-item" type="button" data-panel="games-panel"><span class="nav-icon" aria-hidden="true">ϟ</span>Game Servers</button>
                 <button class="nav-item" type="button" data-panel="network-panel"><span class="nav-icon" aria-hidden="true">⌘</span>Network Services</button>
@@ -242,6 +242,87 @@
                         <div class="metric-bar"><div class="metric-bar-fill ram"></div></div>
                     </article>
                 </div>
+                <section class="system-trends" aria-labelledby="system-trends-heading">
+                    <div class="system-trends-header">
+                        <div>
+                            <div class="section-kicker">Resource history</div>
+                            <h2 id="system-trends-heading">System Health Trends</h2>
+                        </div>
+                        <p class="system-trends-note" id="system-trends-status" role="status" aria-live="polite">
+                            Samples every 10 seconds. History stays in this open dashboard for up to one hour.
+                        </p>
+                    </div>
+                    <div class="system-trends-grid">
+                        <article class="system-trend-card">
+                            <div class="system-trend-card-heading">
+                                <h3>GPU Load</h3>
+                                <strong id="gpu-trend-current">Collecting…</strong>
+                            </div>
+                            <svg class="system-trend-chart" viewBox="0 0 320 88" role="img"
+                                aria-labelledby="gpu-trend-title gpu-trend-description">
+                                <title id="gpu-trend-title">GPU load over the last hour</title>
+                                <desc id="gpu-trend-description">No telemetry samples collected yet.</desc>
+                                <line class="system-trend-gridline" x1="0" y1="12" x2="320" y2="12"></line>
+                                <line class="system-trend-gridline" x1="0" y1="44" x2="320" y2="44"></line>
+                                <line class="system-trend-gridline" x1="0" y1="76" x2="320" y2="76"></line>
+                                <path class="system-trend-line trend-gpu" id="gpu-trend-line"></path>
+                                <circle class="system-trend-point trend-gpu" id="gpu-trend-point" r="3" cx="-10" cy="-10"></circle>
+                            </svg>
+                            <div class="system-trend-time"><span>1h ago</span><span>Now</span></div>
+                        </article>
+                        <article class="system-trend-card">
+                            <div class="system-trend-card-heading">
+                                <h3>VRAM Used</h3>
+                                <strong id="vram-trend-current">Collecting…</strong>
+                            </div>
+                            <svg class="system-trend-chart" viewBox="0 0 320 88" role="img"
+                                aria-labelledby="vram-trend-title vram-trend-description">
+                                <title id="vram-trend-title">VRAM use over the last hour</title>
+                                <desc id="vram-trend-description">No telemetry samples collected yet.</desc>
+                                <line class="system-trend-gridline" x1="0" y1="12" x2="320" y2="12"></line>
+                                <line class="system-trend-gridline" x1="0" y1="44" x2="320" y2="44"></line>
+                                <line class="system-trend-gridline" x1="0" y1="76" x2="320" y2="76"></line>
+                                <path class="system-trend-line trend-vram" id="vram-trend-line"></path>
+                                <circle class="system-trend-point trend-vram" id="vram-trend-point" r="3" cx="-10" cy="-10"></circle>
+                            </svg>
+                            <div class="system-trend-time"><span>1h ago</span><span>Now</span></div>
+                        </article>
+                        <article class="system-trend-card">
+                            <div class="system-trend-card-heading">
+                                <h3>CPU Load</h3>
+                                <strong id="cpu-trend-current">Collecting…</strong>
+                            </div>
+                            <svg class="system-trend-chart" viewBox="0 0 320 88" role="img"
+                                aria-labelledby="cpu-trend-title cpu-trend-description">
+                                <title id="cpu-trend-title">CPU load over the last hour</title>
+                                <desc id="cpu-trend-description">No telemetry samples collected yet.</desc>
+                                <line class="system-trend-gridline" x1="0" y1="12" x2="320" y2="12"></line>
+                                <line class="system-trend-gridline" x1="0" y1="44" x2="320" y2="44"></line>
+                                <line class="system-trend-gridline" x1="0" y1="76" x2="320" y2="76"></line>
+                                <path class="system-trend-line trend-cpu" id="cpu-trend-line"></path>
+                                <circle class="system-trend-point trend-cpu" id="cpu-trend-point" r="3" cx="-10" cy="-10"></circle>
+                            </svg>
+                            <div class="system-trend-time"><span>1h ago</span><span>Now</span></div>
+                        </article>
+                        <article class="system-trend-card">
+                            <div class="system-trend-card-heading">
+                                <h3>RAM Load</h3>
+                                <strong id="ram-trend-current">Collecting…</strong>
+                            </div>
+                            <svg class="system-trend-chart" viewBox="0 0 320 88" role="img"
+                                aria-labelledby="ram-trend-title ram-trend-description">
+                                <title id="ram-trend-title">RAM load over the last hour</title>
+                                <desc id="ram-trend-description">No telemetry samples collected yet.</desc>
+                                <line class="system-trend-gridline" x1="0" y1="12" x2="320" y2="12"></line>
+                                <line class="system-trend-gridline" x1="0" y1="44" x2="320" y2="44"></line>
+                                <line class="system-trend-gridline" x1="0" y1="76" x2="320" y2="76"></line>
+                                <path class="system-trend-line trend-ram" id="ram-trend-line"></path>
+                                <circle class="system-trend-point trend-ram" id="ram-trend-point" r="3" cx="-10" cy="-10"></circle>
+                            </svg>
+                            <div class="system-trend-time"><span>1h ago</span><span>Now</span></div>
+                        </article>
+                    </div>
+                </section>
             </div>
         </section>
 

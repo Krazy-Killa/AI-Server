@@ -62,6 +62,36 @@ class ConversationStoreTests(unittest.TestCase):
         self.assertLessEqual(sum(len(item["content"]) for item in context), MAX_CONTEXT_CHARS)
         self.assertEqual(context[-1]["content"], f"Reply {MAX_CONTEXT_MESSAGES + 3}")
 
+    def test_reasoning_is_not_saved_returned_or_reused_from_legacy_messages(self):
+        conversation_id = self.store.create_conversation(self.owner)["conversation_id"]
+        self.store.begin_user_turn(self.owner, conversation_id, "Hello")
+        self.store.append_assistant_message(
+            self.owner,
+            conversation_id,
+            "Visible <think>private reasoning</think>final",
+        )
+
+        with closing(sqlite3.connect(self.store.path)) as connection:
+            saved_content = connection.execute(
+                "SELECT content FROM conversation_messages WHERE role = 'assistant'"
+            ).fetchone()[0]
+            connection.execute(
+                """UPDATE conversation_messages SET content = ?
+                   WHERE role = 'assistant'""",
+                ("Legacy <think>private reasoning</think>final",),
+            )
+            connection.commit()
+
+        self.assertEqual(saved_content, "Visible final")
+        self.assertEqual(
+            self.store.get_conversation(self.owner, conversation_id)["messages"][1][
+                "content"
+            ],
+            "Legacy final",
+        )
+        history = self.store.begin_user_turn(self.owner, conversation_id, "Continue")
+        self.assertEqual(history[-1], {"role": "assistant", "content": "Legacy final"})
+
     def test_context_character_limit_keeps_newest_messages(self):
         conversation_id = self.store.create_conversation(self.owner)["conversation_id"]
         for _ in range(3):

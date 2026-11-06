@@ -130,6 +130,7 @@ gpu/gpu_rocm.py
 model_manager.py  
 - Discovers installed GGUF files and reports their disk size and load status  
 - Restarts only the verified loopback llama.cpp process when switching installed models  
+- On Windows, resolves PID-0 listener entries through the matching socket-owner row, then still verifies executable, arguments, port, and loaded model before stopping a process
 - Waits for `/props` confirmation and attempts to restore the previous model after a failed load  
 
 bot_manager.py  

@@ -30,6 +30,44 @@ See [the Windows test setup](../operations/testing-environment.md) for exact env
 details. See the [Linux/Proxmox transition runbook](../deployment/linux-proxmox-transition.md)
 for deployment blockers, decisions, and acceptance checks.
 
+## Proposed single-GPU inference profiles — planned, not implemented
+
+The proposed initial RX 6800 XT runtime keeps a small Utility AI resident while
+one larger role model is loaded for the active operating profile:
+
+| Role | Model | Intended responsibilities |
+|---|---|---|
+| Utility AI (resident) | Qwen2.5 1.5B Instruct | Discord interactions, status/notification requests, incident/diagnostic/update summaries, lightweight chat, and fallback responses |
+| Household AI (Household mode) | Qwen3 8B | General household chat, research, planning, and future family-facing interactions |
+| Maintenance AI (Maintenance mode) | Qwen2.5 Coder 7B Instruct | Diagnostics, log/runbook assistance, configuration review, infrastructure analysis, and operational reporting |
+
+Household mode is intended to keep Utility AI available alongside Qwen3 8B.
+Maintenance mode is intended to keep Utility AI available alongside Qwen2.5
+Coder 7B. Discord status and notification requests route to Utility AI,
+infrastructure analysis to Maintenance AI, and general conversation/research
+to Household AI. During a profile transition, Utility AI is intended to
+continue handling first-response requests while the larger model is loaded
+and health-checked.
+
+This is a target architecture, not current runtime behavior. The implemented
+model manager currently controls one llama.cpp server and one loaded model;
+switching models restarts that server. There is no resident Utility process,
+profile selector/router, or concurrent model serving. The process/port
+arrangement and request queue/failure policy still need design. The estimated
+~1 GB Utility VRAM use is a planning estimate, not a measured residency
+figure. The Qwen3 and Qwen2.5 Coder models have been smoke-tested individually
+on Windows/Vulkan, but not while the Utility model is also resident. Measure
+VRAM, system RAM, context/KV-cache, runtime overhead, latency, swap recovery,
+and sustained behavior before treating either two-model profile as feasible
+on the 16 GB card. The RX 6800 XT/Proxmox ROCm path remains unvalidated.
+
+All roles must follow the platform's server-side reasoning policy: Utility and
+Household replies never expose raw reasoning, and a future Maintenance
+reasoning summary must not reveal raw chain-of-thought. Full reasoning
+visibility is reserved for a future, explicitly gated developer/debug mode;
+none is implemented. See the [backend API contract](../backend/api.md) for the
+current output filter.
+
 ## Linux/Proxmox deployment
 
 DirectML is Windows-specific and will not be the deployment backend. For the
@@ -141,31 +179,34 @@ idle and inference load/VRAM readings, optional sensor behavior, and reads
 from the chosen container/service arrangement. This telemetry path does not
 establish that ROCm/HIP inference works on the RX 6800 XT or Proxmox.
 
-### Potential future: multi-GPU inference
+### Potential future: dual-GPU service separation
 
-After the final server GPU configuration and Linux runtime are known, evaluate
-using multiple GPUs for LLM inference. The options are to split one model
-across supported GPUs, or run a separate instance of the same model on each
-GPU and route dashboard and Discord requests independently. The latter can
-improve concurrent throughput but duplicates model memory; splitting may
-increase the model size that fits but does not combine VRAM without runtime
-support and may add inter-GPU communication overhead. Neither option is
-implemented or assumed to improve performance. Compare supported hardware and
-runtime combinations, VRAM use, throughput, latency, power, and stability
-against the single-GPU setup before deciding.
+This future concept separates operational and household AI services so that
+Household AI and Maintenance AI can remain available simultaneously without
+swapping their models. Users would interact with services and roles rather
+than choosing model files.
 
-The intended workload-role design is to dedicate the RX 6800 XT strictly to
-maintenance AI (diagnostics, incident analysis, runbooks, and scheduled
-maintenance), and use a possible second GPU for household-facing AI. Candidate
-second-GPU choices are the Radeon RX 7900 XT/XTX, if greater VRAM capacity is
-the priority, or the RX 9070 XT, for its RDNA 4 architecture and potential
-speed/efficiency advantages. The exact 7900 variant is undecided, and these
-tradeoffs have not been benchmarked with the intended workloads. The second
-GPU is not selected or acquired. Until it is validated, the interim design is
-single-GPU/single-runtime model handoff, not concurrent operation of both
-roles. Power/cooling, compatibility, and performance are unvalidated. See the
-multi-GPU workload separation concept in the
-[project roadmap](../roadmap/README.md).
+| GPU | Planned role | Intended models and workloads |
+| --- | --- | --- |
+| GPU 0 — RX 6800 XT | Operations | Qwen2.5 1.5B Utility AI remains resident; Qwen2.5 Coder 7B Maintenance AI handles diagnostics, runbooks, infrastructure analysis, and Discord operations |
+| GPU 1 — future upgrade | Household | Qwen3 8B and future household-specific models handle general chat, research, voice, and family-facing services |
+
+For example, Utility AI could acknowledge a Discord incident request and route
+the analysis to Maintenance AI while Household AI remains available for
+dashboard conversations and research. No model unloading would be required
+between Household and Maintenance services.
+
+The RX 9070 XT and RX 9090 XT (or an equivalent future flagship) are candidate
+second GPUs, not selections or claims of confirmed availability. Final
+selection depends on ROCm support, VRAM capacity, power/cooling, and measured
+local AI performance.
+
+This is a concept, not current runtime behavior. The physical server has not
+been built, no second GPU has been selected or acquired, and the current model
+manager still runs one active model and restarts it when switching. Simultaneous
+Utility and Maintenance residency on the RX 6800 XT, a separate Household
+runtime, service routing, ROCm compatibility, and failure recovery all require
+design and validation before this architecture can be adopted.
 
 ## Strategy
 
@@ -177,11 +218,15 @@ multi-GPU workload separation concept in the
 5. Record the Proxmox/OS layout and verify the exact kernel, GPU, and runtime
    combination against current upstream support information.
 6. Install and smoke-test ROCm/HIP, llama.cpp `llama-server`, ONNX Runtime
-   ROCm EP, and ComfyUI against the selected Linux host.
+   ROCm EP, and ComfyUI against the selected Linux host; measure whether
+   Utility AI can remain resident alongside each profile model.
 7. Validate the implemented Linux `amdgpu` telemetry provider against the
    target GPU and kernel through the existing dashboard API contract.
 8. Deploy NGINX, Qdrant, and supported application services with Podman/
    Quadlet where appropriate; validate host inference and telemetry,
    model-switch recovery, and remote dashboard access.
-9. If multiple GPUs are installed, benchmark supported model-splitting and
-   per-GPU model-instance routing approaches against the single-GPU baseline.
+9. After measuring the single-GPU baseline, evaluate the proposed
+   dual-GPU service split. Validate supported runtimes, simultaneous Utility
+   and Maintenance residency on the Operations GPU, Household inference on the
+   second GPU, routing, VRAM/RAM, throughput, latency, power/cooling, and
+   recovery before enabling concurrent services.

@@ -173,9 +173,11 @@ The Playwright suite exercises the native browser modules using mocked API
 responses. It covers module loading, sign-in gating and rejected credentials,
 administrator/operator/viewer UI controls, panel navigation, and persisted
 theme, accent, and sidebar preferences; it also checks VM inventory rendering,
-signed release staging controls, and Diagnostics report download/native-share
-behavior. The native-share test mocks the platform API and does not verify the
-iOS Home Screen app on a physical device. These tests do not replace backend
+signed release staging controls, System Health Trends rendering, and
+Diagnostics report download/native-share behavior. The trends test verifies
+the current-session sample from mocked telemetry, not long-term storage. The
+native-share test mocks the platform API and does not verify the iOS Home
+Screen app on a physical device. These tests do not replace backend
 authorization tests or validate the nested Proxmox guest. From PowerShell, run:
 
 ```powershell
@@ -450,6 +452,11 @@ each model and offloaded all 37 Qwen3 or all 29 Qwen2.5-Coder layers to the
 RX 6800 XT. These smoke tests confirm the GPU execution path, not sustained
 performance or quality benchmarks.
 
+These are individual-model tests with the current single-model llama.cpp
+server. The proposed deployment architecture keeps Qwen2.5 1.5B Utility AI
+resident alongside either Qwen3 8B or Qwen2.5 Coder 7B; that simultaneous
+residency, routing, and combined VRAM/RAM use have not been tested.
+
 To start one of the installed models instead of the default Qwen2.5 1.5B model
 without using the dashboard, pass the exact filename to the launcher:
 
@@ -464,6 +471,11 @@ token context. For Qwen3, it selects llama.cpp's built-in ChatML template
 because the current pinned Jinja engine does not support an operation in
 Qwen3's embedded template. Verify actual GPU offload and available VRAM in
 the llama.cpp startup log and system monitor when testing each larger model.
+Both launch paths request `--reasoning off --reasoning-format deepseek`.
+Because `--no-jinja` bypasses Qwen3's embedded template, generation-time
+suppression is not treated as reliable; the backend's standard/streaming
+filter is authoritative. Do not use `--reasoning-format none`, which leaves
+thought text in `message.content`.
 
 To rebuild, open an x64 Visual Studio 2022 Developer Command Prompt and run:
 

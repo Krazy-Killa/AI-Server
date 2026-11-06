@@ -11,6 +11,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Literal, TypedDict
 
+from reasoning_filter import strip_reasoning_blocks
+
 MAX_CONTEXT_MESSAGES = 20
 MAX_CONTEXT_CHARS = 12_000
 MAX_CONVERSATION_LIST = 100
@@ -121,9 +123,12 @@ class ConversationStore:
     @staticmethod
     def _record(row: sqlite3.Row) -> dict[str, object]:
         sources = json.loads(row["sources_json"]) if row["sources_json"] else []
+        content = row["content"]
+        if row["role"] == "assistant":
+            content = strip_reasoning_blocks(content)
         record = {
             "role": row["role"],
-            "content": row["content"],
+            "content": content,
             "sources": sources,
             "created_at": row["created_at"],
         }
@@ -281,7 +286,9 @@ class ConversationStore:
             total_chars = 0
             for row in rows:
                 content = row["content"]
-                if row["role"] == "user" and row["author_id"]:
+                if row["role"] == "assistant":
+                    content = strip_reasoning_blocks(content)
+                elif row["role"] == "user" and row["author_id"]:
                     content = f"[Admin {row['author_id']}] {content}"
                 message_length = len(content)
                 if total_chars + message_length > MAX_CONTEXT_CHARS:
@@ -302,6 +309,7 @@ class ConversationStore:
         sources: list[dict[str, str]] | None = None,
     ) -> None:
         timestamp = int(time.time())
+        content = strip_reasoning_blocks(content)
         sources_json = json.dumps(sources, ensure_ascii=True) if sources else None
         try:
             with self._connect() as connection:

@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import model_manager
@@ -41,6 +42,51 @@ class ModelSwitchTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp_directory.cleanup()
+
+    def test_find_server_process_uses_windows_owner_row_when_listener_pid_is_zero(self):
+        address = SimpleNamespace(ip="127.0.0.1", port=8080)
+        connections = [
+            SimpleNamespace(
+                status=model_manager.psutil.CONN_LISTEN,
+                laddr=address,
+                raddr=(),
+                pid=0,
+            ),
+            SimpleNamespace(
+                status=model_manager.psutil.CONN_NONE,
+                laddr=address,
+                raddr=(),
+                pid=37412,
+            ),
+        ]
+        process = MagicMock()
+        with (
+            patch.object(model_manager, "os", SimpleNamespace(name="nt")),
+            patch.object(model_manager.psutil, "net_connections", return_value=connections),
+            patch.object(model_manager.psutil, "Process", return_value=process) as process_factory,
+        ):
+            result = model_manager._find_server_process(8080)
+
+        self.assertIs(result, process)
+        process_factory.assert_called_once_with(37412)
+
+    def test_find_server_process_does_not_use_windows_owner_row_on_other_platforms(self):
+        address = SimpleNamespace(ip="127.0.0.1", port=8080)
+        connection = SimpleNamespace(
+            status=model_manager.psutil.CONN_NONE,
+            laddr=address,
+            raddr=(),
+            pid=37412,
+        )
+        with (
+            patch.object(model_manager, "os", SimpleNamespace(name="posix")),
+            patch.object(model_manager.psutil, "net_connections", return_value=[connection]),
+            patch.object(model_manager.psutil, "Process") as process_factory,
+        ):
+            result = model_manager._find_server_process(8080)
+
+        self.assertIsNone(result)
+        process_factory.assert_not_called()
 
     def _switch_patches(self, start_server, server_process=None):
         return (
@@ -121,6 +167,19 @@ class ModelSwitchTests(unittest.TestCase):
         )
 
         self.assertEqual(command[-3:], ["--no-jinja", "--chat-template", "chatml"])
+
+    def test_server_command_disables_reasoning_and_separates_reasoning_output(self):
+        command = model_manager._server_command(
+            self.executable,
+            self.model_directory / "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+            "127.0.0.1",
+            8080,
+        )
+
+        self.assertEqual(command[command.index("--reasoning") + 1], "off")
+        self.assertEqual(
+            command[command.index("--reasoning-format") + 1], "deepseek"
+        )
 
     def test_refuses_to_stop_unrecognized_process(self):
         process = MagicMock()

@@ -29,6 +29,10 @@ Explicitly curated, admin-only shared operational notes are also implemented.
 AI Chat transcripts remain private to each account. The AI Interface is a
 separate, single admin-shared operational transcript with attributed turns;
 its context does not load private AI Chat history.
+User-facing AI replies are filtered server-side for raw `<think>` blocks in
+standard and streaming output. Assistant transcripts are sanitized on write,
+read, and reuse as model context; generation-time llama.cpp suppression is
+defense-in-depth, not the Qwen3 safety boundary in the current no-Jinja setup.
 Proxmox API integration and HTTPS access through NGINX have been exercised in
 the nested lab; physical-host and production acceptance remain outstanding.
 The dashboard, Windows backend foundation, operational logging, and interface
@@ -39,7 +43,9 @@ persistent incident history are implemented locally. A reviewed, local
 lexical runbook-retrieval prototype and disconnected maintenance/remediation
 simulations are also implemented; semantic/vector retrieval and live
 remediation remain outstanding. The production Linux/Proxmox stack is
-unvalidated.
+unvalidated. The proposed single-GPU Utility AI plus Household/Maintenance
+profile architecture is planned, not implemented; persistent model residency,
+request routing, and combined VRAM feasibility remain unverified.
 
 ## Sequencing and portability rule
 
@@ -184,8 +190,9 @@ shared-application build environment, not the deployment target.
   controls horizontal, place Research Web beside the input, and trim vertical
   spacing to reserve conversation space, with Transmit beside the message field.
 - System Monitor telemetry is arranged in a responsive two-column metric grid,
-  collapsing to one column on very narrow screens; values still use the
-  existing telemetry update flow.
+  collapsing to one column on very narrow screens. Four line charts show
+  one-hour, session-only GPU, VRAM, CPU, and RAM trends sampled from the
+  existing telemetry poll; no historical samples are persisted.
 - Collapsed desktop sidebar navigation icons are centered within the narrow
   rail.
 - Tablet navigation uses a full-width grid, with six columns in landscape and
@@ -468,6 +475,13 @@ complete from Windows runs, mocks, or nested-lab results.
 - Build and validate ROCm/HIP and ROCm llama.cpp/`llama-server` for the exact
   host; record device identity, build flags, versions, and smoke-test results.
   This remains experimental for the planned RX 6800 XT/Proxmox combination.
+- Implement the proposed single-GPU runtime profiles: keep Qwen2.5 1.5B
+  Utility AI resident while Household mode loads Qwen3 8B or Maintenance mode
+  loads Qwen2.5 Coder 7B. The current model manager only supports one active
+  llama.cpp model; persistent Utility residency, profile routing, and
+  concurrent VRAM use are not implemented. Measure combined VRAM/RAM,
+  context/KV-cache, latency, swap recovery, and failure behavior before
+  enabling either profile on the target host.
 - Integrate the Linux telemetry provider with the actual GPU and validate
   adapter identity, utilization, and VRAM against a host tool during idle and
   inference. Return unavailable/null if the deployed source cannot provide
@@ -544,9 +558,11 @@ been demonstrated on the target host.
 - Integrate the selected game-server manager; start with the family Minecraft
   use case only after edition/version, isolation, resource limits, allowlists,
   backups, world restore, and family-safety requirements are settled.
-- Evaluate multi-model and multi-GPU routing against a measured single-GPU
-  baseline; compare compatibility, VRAM, throughput, latency, power, and
-  stability before enabling concurrent workloads.
+- After validating the planned single-GPU Utility/profile routing, evaluate
+  the dual-GPU service-separation concept against that baseline: Utility and
+  Maintenance AI on the Operations GPU, Household AI on a future second GPU.
+  Compare runtime/ROCm support, VRAM, throughput, latency, power, isolation,
+  and recovery before enabling concurrent workloads.
 - Enable any real repair or scheduled maintenance actions only after
   independent executor validation, per-action policy/approval, audit evidence,
   and tested rollback. Model output or prior user feedback never grants
@@ -659,10 +675,11 @@ validated on the physical target.
   - Household AI translates operational findings into audience-appropriate
     responses.
 
-  **Implementation status:** Concept only. The backend does not yet provide
-  this delegated two-role workflow, and runbook execution remains
-  unimplemented. Any future diagnostic request, operational record, and
-  execution path must preserve the project's authorization, audit, and
+  **Implementation status:** The single-GPU Utility/Household/Maintenance
+  model-profile architecture is planned separately, but the backend does not
+  provide it yet. This broader delegated workflow and runbook execution also
+  remain unimplemented. Any future diagnostic request, operational record,
+  and execution path must preserve the project's authorization, audit, and
   observe-first constraints.
 
 - **Shared Incident Reporting and Administrative Visibility (Concept)**
@@ -736,12 +753,12 @@ validated on the physical target.
   - Findings, evidence, and incident history should support trend and
     recurring-issue analysis; recommendations must remain separate from
     operational actions.
-  - Until a separate runtime is selected and validated, an on-demand
-    household diagnostic request is planned to gate household inference,
-    switch the single llama.cpp runtime to an approved installed Maintenance
-    AI model, then restore the prior household model and reopen service only
-    after health checks. This is separate from scheduled maintenance and
-    does not itself authorize remediation.
+  - The proposed single-GPU runtime keeps Utility AI available while an
+    on-demand diagnostic request activates the Maintenance profile. The current
+    one-model llama.cpp manager cannot do this: profile routing, resident
+    Utility availability, and safe transitions are not implemented or
+    validated. This is separate from scheduled maintenance and does not itself
+    authorize remediation.
   - Any guided or automated recovery requires separately reviewed
     authorization, confirmation, audit, verification, and recovery controls.
     The AI must not change network configuration or promote its own
@@ -815,42 +832,44 @@ validated on the physical target.
   STT/TTS integration, household enrollment/authorization workflow, or
   notification channel has been selected or implemented.
 
-- **Multi-GPU Workload Separation (Concept)**
+- **Dual-GPU Service Separation (Concept)**
 
   **Status:** Concept
 
-  **Objective:** Evaluate separate GPU capacity for the Maintenance AI and
-  household-facing User AI so each role could operate independently without
-  switching models on one shared runtime.
+  **Objective:** Evolve from a single runtime that swaps models to separate,
+  simultaneously available Utility, Maintenance, and Household AI services.
+  Avoid model swapping between Household and Maintenance workloads.
 
   **Responsibilities:**
 
-  - **Maintenance AI:** use the planned RX 6800 XT exclusively, prioritizing
-    its 16 GB VRAM capacity over inference speed for lower-frequency
-    diagnostics and maintenance workloads.
-  - **User AI:** use a possible second GPU for household chat, research,
-    Discord integrations, vision, and conversational interaction.
+  - GPU 0, the planned RX 6800 XT Operations GPU, would keep Qwen2.5 1.5B
+    Utility AI resident alongside Qwen2.5 Coder 7B Maintenance AI. Its
+    responsibilities include Discord operations, diagnostics, runbooks, and
+    infrastructure analysis.
+  - GPU 1 would be a future, unselected Household GPU running Qwen3 8B and
+    possible household-specific models for chat, research, voice, and
+    family-facing services.
+  - Users would select services and roles rather than model files. Utility AI
+    could acknowledge an operational request and route analysis to Maintenance
+    AI while Household AI remains available.
 
   **Design notes:**
 
-  - Candidate second GPUs are Radeon RX 7900 XT/XTX, if additional VRAM
-    capacity is the priority, or RX 9070 XT, for its newer RDNA 4 architecture
-    and potential speed/efficiency advantages.
-  - The exact RX 7900 variant and comparative workload performance remain
-    unresolved; these are not benchmark results or a hardware selection.
-    The second GPU is not selected or acquired.
-  - Until a second GPU and runtime arrangement are selected and validated,
-    the interim design remains single-GPU/single-runtime model handoff, not
-    concurrent operation of both roles. The current deployment plan remains
-    one RX 6800 XT.
-  - Power and cooling, host compatibility, runtime support, and workload
-    isolation require validation before adopting separate concurrent
-    workloads.
+  - Candidate second GPUs are RX 9070 XT and RX 9090 XT (or an equivalent
+    future flagship); availability and suitability are not assumed. Selection
+    depends on ROCm support, VRAM, power/cooling, and measured local AI
+    performance.
+  - This is a service-per-GPU workload split, not a proposal to combine VRAM
+    by splitting one model across both cards.
+  - The physical server is not built and the second GPU is not selected or
+    acquired. Simultaneous Utility/Maintenance residency on the RX 6800 XT,
+    Household inference on GPU 1, runtime compatibility, service routing, and
+    recovery have not been validated.
 
-  **Implementation status:** Concept only. No second GPU has been selected
-  or acquired, and independent concurrent operation of the two AI roles has
-  not been validated. See the
-  [GPU plan](../gpu/gpu-plan.md#potential-future-multi-gpu-inference).
+  **Implementation status:** Concept only. The current model manager runs one
+  active model and restarts it when switching. No dual-GPU routing or
+  concurrent service implementation exists. See the
+  [GPU plan](../gpu/gpu-plan.md#potential-future-dual-gpu-service-separation).
 
 ## Documentation References
 

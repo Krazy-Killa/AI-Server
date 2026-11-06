@@ -14,6 +14,13 @@ principles and [Semantic Versioning](https://semver.org/).
 - Moved the AI Chat model selector into the panel header and added a live
   Household AI readiness tile based on local runtime availability and loaded
   model state.
+- Added four System Health Trends line charts for GPU load, VRAM, CPU, and RAM.
+  They sample every 10 seconds and retain up to one hour in the current page
+  session only; history resets on reload and is not persisted. Renamed the
+  navigation item to System Monitor to match the panel title.
+- Added server-side filtering of `<think>` blocks in standard and streaming
+  model replies, with legacy assistant history sanitized before display and
+  model reuse.
 
 ### Changed
 
@@ -26,6 +33,10 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Windows model switching now handles `psutil` reporting PID 0 for the
+  listening socket by resolving the matching owner row, while preserving
+  executable/port/model verification before stopping llama.cpp. Covered by
+  model-manager tests.
 - Diagnostics report download in the iOS Home Screen app now uses the native
   file-sharing sheet when supported, avoiding the unreliable Blob URL
   `download` behavior there. Browsers without file-sharing support keep the
@@ -39,6 +50,16 @@ principles and [Semantic Versioning](https://semver.org/).
 - Image-generation backend groundwork and later runtime integration.
 - Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
   validation on the target server.
+- Single-GPU inference architecture plan: keep Qwen2.5 1.5B Utility AI
+  resident while Household mode uses Qwen3 8B or Maintenance mode uses
+  Qwen2.5 Coder 7B. Profile routing, co-resident serving, and VRAM/RAM
+  feasibility are design work only; implementation and hardware validation
+  remain outstanding.
+- Future dual-GPU service-separation concept: the planned RX 6800 XT Operations
+  GPU serves Utility and Maintenance AI, while an unselected second GPU serves
+  Household AI. The RX 9070 XT and RX 9090 XT (or equivalent future flagship)
+  remain candidates; concurrent operation and hardware compatibility are not
+  implemented or validated.
 - Separate signed model-package workflow for installing large model weights
   into persistent storage without coupling them to application updates or
   rollback; planned, not implemented.

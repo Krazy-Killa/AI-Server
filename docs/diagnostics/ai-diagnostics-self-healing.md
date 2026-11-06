@@ -245,35 +245,40 @@ evidence-gathering and diagnosis; any proposed remediation remains subject to
 the configured operating mode, authorization, approval, and action-safety
 policy above.
 
-Because the planned host has one shared GPU and one llama.cpp model loaded at a
-time, the coordinator uses an exclusive model handoff for this evaluation:
+The proposed single-GPU runtime keeps a small Utility AI resident while a
+Household or Maintenance profile model is loaded. An on-demand diagnostic
+evaluation would activate the Maintenance profile while leaving Utility
+available for first-response requests. This is a target design only: the
+current model manager has one active llama.cpp model and cannot provide this
+concurrent residency.
 
 1. Authenticate and authorize the request without treating voice recognition
    as identity or permission.
-2. Coordinate with any active maintenance work. Join an existing related
-   evaluation or return a clear busy/maintenance response; never overlap model
-   switches or interrupt an unsafe-to-stop action.
-3. Record the current household-facing model and service state, gate new
-   household-facing inference, and drain in-flight requests to a bounded
-   deadline. If draining fails, cancel the handoff and reopen service only
-   after confirming the prior state is healthy.
-4. Load an already installed, policy-approved maintenance/diagnostic model
-   with its matching versioned knowledge package. Do not fetch a model in
-   response to a household request. If the model or required context cannot
-   be loaded safely, skip model-dependent diagnosis and report that limitation.
+2. Coordinate with active work and serialize profile transitions. Join an
+   existing related evaluation or return a clear busy/maintenance response;
+   never overlap switches or interrupt an unsafe-to-stop action.
+3. Record the active profile and service state. Keep Utility requests available;
+   gate new requests that require the Household profile and drain in-flight
+   profile-specific requests to a bounded deadline. If draining fails, cancel
+   the transition and restore the prior profile after health checks.
+4. Load an already installed, policy-approved Maintenance model and its
+   matching versioned knowledge package while preserving Utility residency.
+   Do not fetch a model in response to a household request. If the required
+   co-residency cannot be maintained or the model/context cannot load safely,
+   skip model-dependent diagnosis and report that limitation.
 5. Collect only authorized, bounded evidence and produce an evidence-linked
    diagnostic response. No repair is implied or executed by the request to
    explain a symptom.
-6. Restore the previously selected household model and verify inference and
-   control-plane health before reopening household-facing requests. If
-   restoration cannot be verified, keep conflicting inference gated, retain
-   recovery access, and notify the responsible operator.
+6. Restore the previously selected profile model and verify both it and the
+   Utility runtime before reopening profile-specific requests. If restoration
+   cannot be verified, keep affected requests gated, retain recovery access,
+   and notify the responsible operator.
 
-Household requests arriving during the handoff receive a clear retry/busy
-response rather than running concurrently with the diagnostic model. This
-exclusive mode, the household identity/authorization mechanism, request
-classification, and restoration behavior are design requirements only; none
-of this handoff is implemented or validated on the target hardware.
+Utility-routable requests (for example status notifications) may continue
+during a profile transition. Requests requiring the Household model receive a
+clear retry/busy response while that profile is unavailable. The routing,
+profile switch, persistent Utility runtime, identity/authorization mechanism,
+and recovery behavior are not implemented or validated on target hardware.
 
 The real model-selection policy, maintenance scheduler, service gating,
 model restoration, and update rollback behavior require validation on the

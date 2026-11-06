@@ -35,11 +35,21 @@ GPU / LLM / Bot / System Stats
     operations endpoints by responsibility.
   - `system_stats.py`, `model_manager.py`, `bot_manager.py`, and
     `gpu/` provide focused service and platform modules.
+- The current model manager controls one loopback llama.cpp server and
+  restarts it when switching models. A resident Utility AI with routed
+  Household/Maintenance profiles is the proposed single-GPU design, not an
+  implemented capability; simultaneous VRAM use remains unverified.
 - Provides REST endpoints for the implemented dashboard features. The VM
   panel has a read-only Proxmox inventory endpoint using a backend-only,
   least-privilege API token; there are no VM management operations. Network
   service panels remain planning-only UI.
 - Streams local chat replies over WebSocket (`/ws/chat`)
+- Filters raw `<think>...</think>` blocks server-side from standard and
+  streaming assistant output. Assistant transcript writes, reads, and model
+  context use the same filter; future Utility, Household, and Maintenance
+  routing must preserve this policy. Raw chain-of-thought is not a user-facing
+  feature; full reasoning visibility is reserved for a future, explicitly
+  gated developer/debug mode, which is not implemented.
 - Enforces dashboard account roles for REST/WebSocket routes and uses a
   separate scoped bearer credential for designated Discord-bot routes
 - Persists private per-account conversation history and explicitly

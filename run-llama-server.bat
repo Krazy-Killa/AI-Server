@@ -26,4 +26,4 @@ if not exist "%LLAMA_MODEL%" (
 )
 
 for %%I in ("%LLAMA_MODEL_NAME%") do set "LLAMA_MODEL_ALIAS=%%~nI"
-"%LLAMA_SERVER%" --model "%LLAMA_MODEL%" --host 127.0.0.1 --port 8080 --device Vulkan0 --gpu-layers 99 --ctx-size 4096 %LLAMA_TEMPLATE_ARGS% --alias "%LLAMA_MODEL_ALIAS%"
+"%LLAMA_SERVER%" --model "%LLAMA_MODEL%" --host 127.0.0.1 --port 8080 --device Vulkan0 --gpu-layers 99 --ctx-size 4096 %LLAMA_TEMPLATE_ARGS% --reasoning off --reasoning-format deepseek --alias "%LLAMA_MODEL_ALIAS%"

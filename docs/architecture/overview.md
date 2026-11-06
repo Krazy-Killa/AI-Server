@@ -21,6 +21,10 @@ integration and HTTPS proxy access have been exercised in the nested lab;
 physical-host validation remains outstanding. Installed GGUF files are
 discovered and can be selected for model switching; the backend confirms
 which model is active and attempts recovery if a switch fails.
+The deployment plan now proposes a resident Qwen2.5 1.5B Utility AI alongside
+a Household or Maintenance profile model. This multi-model residency and
+request routing are not implemented; the current model manager runs one
+llama.cpp model and restarts it to switch.
 Discord heartbeat/status, operational logs, restart, command listing, and
 model selection are connected to the optional bot service. Vision and image
 generation still use placeholders. The VM panel has a backend-provided,

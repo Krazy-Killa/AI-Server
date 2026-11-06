@@ -170,10 +170,13 @@ for setup and execution.
   lifecycle is not implemented.
 - Model cards discovered from installed GGUF files, with load status and file size
 - Explicit web-research toggle and source links for research answers
-- System monitor with animated bars
+- System Monitor with live resource tiles and four rolling trend charts
 - System Monitor presents GPU load, live VRAM, CPU, and RAM in a responsive
   two-column metric-card grid that collapses to one column on very narrow
-  screens
+  screens. Below the tiles, four charts display GPU, VRAM, CPU, and RAM
+  history, sampled every 10 seconds over a rolling one-hour window. History is
+  held in memory for the current page session only and resets on reload; it is
+  not persisted or sent to the backend.
 - Discord bot log viewer
 
 ## JavaScript Responsibilities

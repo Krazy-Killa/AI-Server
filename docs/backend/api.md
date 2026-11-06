@@ -249,6 +249,17 @@ Returns:
 Returns HTTP 503 with a diagnostic message when the local llama.cpp server is
 not reachable or does not return a valid chat response.
 
+All user-facing assistant replies are filtered server-side to remove
+`<think>...</think>` reasoning blocks before JSON, WebSocket, or SSE content is
+returned. The shared LLM client applies the same filter to standard and
+streaming AI Chat, Research, and AI Interface responses. Discord uses
+`POST /api/chat` and receives the filtered reply. Assistant messages are also
+filtered before persistence, on transcript reads, and before reuse as model
+context; user messages are left unchanged. An unclosed reasoning block is
+dropped through the end of the response. No debug mode exposes raw reasoning;
+any future reasoning visibility is reserved for an explicitly gated
+developer/debug mode.
+
 Conversation history belongs to the authenticated account (provider plus
 username). Requests made using the Discord bot service credential are not
 persisted. An invalid, deleted, or another account's conversation ID returns
@@ -399,6 +410,11 @@ Selecting a model that is not installed returns HTTP 404. Unsafe or failed
 server restarts return HTTP 503; if loading the requested model fails, the
 backend attempts to restore the previously active model and reports that
 recovery outcome in the error detail.
+
+This is the current single-model selection API. It does not expose Utility,
+Household, or Maintenance roles, multiple active model servers, or
+per-request role routing. The proposed resident Utility/profile architecture
+remains unimplemented.
 
 ## Virtual Machines and Network Services
 

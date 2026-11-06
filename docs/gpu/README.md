@@ -14,4 +14,7 @@ experimental Linux/Proxmox compute and telemetry work.
 Windows Vulkan inference and Windows GPU telemetry have been exercised. The
 Linux `amdgpu` telemetry provider is implemented and fixture-tested, but live
 Linux readings and ROCm/HIP inference on the intended Proxmox host remain
-unverified. Windows GPU results do not establish Linux or Proxmox support.
+unverified. A resident Utility AI plus Household/Maintenance profile models is
+the proposed single-GPU architecture, but concurrent residency and model
+routing are not implemented or validated. Windows GPU results do not establish
+Linux or Proxmox support.

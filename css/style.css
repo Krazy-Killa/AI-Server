@@ -1083,6 +1083,145 @@ header {
     border-radius: inherit;
 }
 
+.system-trends {
+    display: grid;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.system-trends-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.system-trends-header h2 {
+    margin: 4px 0 0;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+}
+
+.system-trends-note {
+    margin: 0 0 2px;
+    color: var(--text-muted);
+    font-size: 10px;
+    text-align: right;
+}
+
+.system-trends-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.system-trend-card {
+    display: grid;
+    min-width: 0;
+    gap: 8px;
+    padding: 12px 14px 9px;
+    border: 1px solid var(--border-soft);
+    border-radius: 3px;
+    background: rgba(var(--surface-rgb), 0.72);
+}
+
+.system-trend-card-heading {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.system-trend-card-heading h3 {
+    margin: 0;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.system-trend-card-heading strong {
+    color: var(--text-main);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    text-align: right;
+}
+
+.system-trend-chart {
+    display: block;
+    width: 100%;
+    height: 92px;
+    overflow: visible;
+}
+
+.system-trend-gridline {
+    stroke: var(--border-soft);
+    stroke-dasharray: 3 5;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.system-trend-line {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.system-trend-point {
+    stroke: var(--bg-panel);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.trend-gpu {
+    stroke: var(--accent);
+}
+
+.trend-vram {
+    stroke: #5b9cff;
+}
+
+.trend-cpu {
+    stroke: #d69429;
+}
+
+.trend-ram {
+    stroke: #9c7ce0;
+}
+
+.system-trend-point.trend-gpu {
+    fill: var(--accent);
+}
+
+.system-trend-point.trend-vram {
+    fill: #5b9cff;
+}
+
+.system-trend-point.trend-cpu {
+    fill: #d69429;
+}
+
+.system-trend-point.trend-ram {
+    fill: #9c7ce0;
+}
+
+.system-trend-time {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+}
+
 .metric-bar {
     height: 5px;
     overflow: hidden;
@@ -1105,6 +1244,22 @@ header {
     .metric-card {
         gap: 12px;
         padding: 14px;
+    }
+}
+
+@media (max-width: 560px) {
+    .system-trends-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .system-trends-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .system-trends-note {
+        text-align: left;
     }
 }
 

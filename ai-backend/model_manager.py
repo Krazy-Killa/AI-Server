@@ -170,23 +170,40 @@ def _find_server_process(port: int) -> psutil.Process | None:
     except psutil.Error as error:
         raise ModelSwitchError(f"Cannot safely inspect the llama.cpp listener: {error}") from error
 
-    listener: psutil.Process | None = None
+    listener_pids: set[int] = set()
+    unidentified_listener = False
     for connection in connections:
-        if connection.status != psutil.CONN_LISTEN or not connection.laddr:
+        if not connection.laddr or connection.laddr.port != port:
             continue
-        if connection.laddr.port != port:
+        is_listener = connection.status == psutil.CONN_LISTEN
+        is_windows_owner_row = (
+            os.name == "nt"
+            and connection.status == psutil.CONN_NONE
+            and not connection.raddr
+        )
+        if not is_listener and not is_windows_owner_row:
             continue
         if connection.laddr.ip not in {"127.0.0.1", "::1"}:
             raise ModelSwitchError(f"Port {port} is listening on a non-loopback address; refusing to stop it.")
-        if connection.pid is None:
-            raise ModelSwitchError(f"Cannot identify the process listening on llama.cpp port {port}.")
-        if listener is not None and listener.pid != connection.pid:
-            raise ModelSwitchError(f"Multiple processes are listening on llama.cpp port {port}.")
-        try:
-            listener = psutil.Process(connection.pid)
-        except psutil.Error as error:
-            raise ModelSwitchError(f"Cannot inspect the process listening on llama.cpp port {port}: {error}") from error
-    return listener
+        if connection.pid in (None, 0):
+            unidentified_listener = unidentified_listener or is_listener
+            continue
+        listener_pids.add(connection.pid)
+
+    if len(listener_pids) > 1:
+        raise ModelSwitchError(f"Multiple processes are listening on llama.cpp port {port}.")
+    if not listener_pids:
+        if unidentified_listener:
+            raise ModelSwitchError(
+                f"Windows reported PID 0 for the llama.cpp listener on port {port}; "
+                "the owning process could not be identified safely."
+            )
+        return None
+
+    try:
+        return psutil.Process(listener_pids.pop())
+    except psutil.Error as error:
+        raise ModelSwitchError(f"Cannot inspect the process listening on llama.cpp port {port}: {error}") from error
 
 
 def _validate_server_process(
@@ -266,6 +283,10 @@ def _server_command(executable: Path, model_path: Path, host: str, port: int) ->
         str(settings.llama_cpp_gpu_layers),
         "--ctx-size",
         str(settings.llama_cpp_ctx_size),
+        "--reasoning",
+        "off",
+        "--reasoning-format",
+        "deepseek",
         "--alias",
         model_path.stem,
     ]

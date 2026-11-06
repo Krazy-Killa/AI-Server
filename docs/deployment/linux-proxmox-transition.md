@@ -128,11 +128,13 @@ validated; later nested-lab checks are recorded below.
 The current target is a Proxmox VE 9.x host with one AMD RX 6800 XT, with
 services managed using Podman and Quadlet. The RX 6800 XT is currently in the
 Windows development machine and is planned to move to the server after a
-replacement GPU is acquired. Its intended role is exclusively maintenance AI;
-it is not intended for household-facing inference. GPU passthrough is not
-planned; the GPU will be used directly by the Proxmox host and its AI runtime.
-A possible second GPU for household-facing AI is not selected. Until then,
-single-GPU/single-runtime model handoff remains the interim design. This is a
+replacement GPU is acquired. The proposed single-GPU runtime keeps a
+Qwen2.5 1.5B Utility AI resident alongside either a Qwen3 8B Household model
+or a Qwen2.5 Coder 7B Maintenance model, selected by operating profile.
+Persistent Utility residency, profile routing, and graceful transitions are
+planned only; the current model manager runs one llama.cpp model and restarts
+it to switch. GPU passthrough is not planned; the GPU will be used directly
+by the Proxmox host and its AI runtime. A second GPU is not selected. This is a
 target design, not an installed or compatibility-tested stack.
 
 ## Intended Linux/Proxmox stack
@@ -873,7 +875,11 @@ for the template and limitations.
    host and confirm the GPU is enumerated. Build llama.cpp with its ROCm
    backend; run a small-model inference through `llama-server`, then test
    Qwen2.5-Coder-7B and Qwen3-8B individually with VRAM headroom and
-   repeatable prompts.
+   repeatable prompts. Before enabling the proposed operating profiles, also
+   measure Qwen2.5 1.5B Utility residency together with each profile model,
+   including context/KV cache, runtime overhead, system RAM, steady-state load,
+   latency, and model-swap recovery. Do not assume the 16 GB card can support
+   either combination until measured.
 4. **Port and validate telemetry:** implement provider selection by platform,
    verify the API response schema is unchanged, and test idle/inference load
    and memory against an independent tool. Test missing permissions and

@@ -9,7 +9,8 @@ from unittest.mock import MagicMock, patch
 os.environ.setdefault("AI_SERVER_LOG_DIR", tempfile.mkdtemp(prefix="ai-server-test-logs-"))
 
 from gpu import gpu_llm
-from gpu.gpu_llm import LLMRuntimeError, stream_llm
+from gpu.gpu_llm import LLMRuntimeError, run_llm, stream_llm
+from reasoning_filter import ReasoningFilter, strip_reasoning_blocks
 from auth_test_helpers import TEST_ORIGIN, authenticated_client
 from memory_store import ConversationStore
 from diagnostics import DiagnosticsMonitor, ResourceSnapshot
@@ -38,6 +39,26 @@ def fake_response(lines):
     response.__iter__.return_value = iter(lines)
     response.__enter__.return_value = response
     return response
+
+
+class ReasoningFilterTests(unittest.TestCase):
+    def test_strips_complete_and_nested_reasoning_blocks(self):
+        self.assertEqual(
+            strip_reasoning_blocks(
+                "Before<THINK>private<think>nested</think>private</THINK>after"
+            ),
+            "Beforeafter",
+        )
+
+    def test_unclosed_reasoning_block_is_discarded(self):
+        reasoning_filter = ReasoningFilter()
+        self.assertEqual(reasoning_filter.feed("Visible<think>private"), "Visible")
+        self.assertEqual(reasoning_filter.finish(), "")
+
+    def test_incomplete_tag_suffix_is_not_emitted(self):
+        reasoning_filter = ReasoningFilter()
+        self.assertEqual(reasoning_filter.feed("Visible<thi"), "Visible")
+        self.assertEqual(reasoning_filter.finish(), "")
 
 
 class StreamLlmTests(unittest.TestCase):
@@ -71,6 +92,50 @@ class StreamLlmTests(unittest.TestCase):
             ],
         )
 
+    def test_request_strips_reasoning_from_assistant_history_only(self):
+        with patch.object(gpu_llm, "urlopen", return_value=fake_response(sse(delta("x")))) as urlopen:
+            list(stream_llm(
+                "Continue",
+                history=[
+                    {"role": "user", "content": "Keep <think> literal user text."},
+                    {
+                        "role": "assistant",
+                        "content": "Draft <think>private</think>final",
+                    },
+                ],
+            ))
+        body = json.loads(urlopen.call_args.args[0].data)
+        self.assertEqual(
+            body["messages"],
+            [
+                {"role": "user", "content": "Keep <think> literal user text."},
+                {"role": "assistant", "content": "Draft final"},
+                {"role": "user", "content": "Continue"},
+            ],
+        )
+
+    def test_filters_reasoning_tags_split_across_stream_chunks(self):
+        lines = sse(
+            delta("A "),
+            delta("<thi"),
+            delta("nk>private thought"),
+            delta("</thi"),
+            delta("nk>final"),
+        )
+        with patch.object(gpu_llm, "urlopen", return_value=fake_response(lines)):
+            self.assertEqual("".join(stream_llm("hi")), "A final")
+
+    def test_unclosed_streaming_reasoning_is_not_emitted(self):
+        lines = sse(delta("Visible "), delta("<think>private thought"))
+        with patch.object(gpu_llm, "urlopen", return_value=fake_response(lines)):
+            self.assertEqual(list(stream_llm("hi")), ["Visible "])
+
+    def test_reasoning_only_stream_is_an_empty_reply_error(self):
+        lines = sse(delta("<think>private thought</think>"))
+        with patch.object(gpu_llm, "urlopen", return_value=fake_response(lines)):
+            with self.assertRaisesRegex(LLMRuntimeError, "empty"):
+                list(stream_llm("hi"))
+
     def test_empty_stream_is_an_error(self):
         with patch.object(gpu_llm, "urlopen", return_value=fake_response(sse())):
             with self.assertRaisesRegex(LLMRuntimeError, "empty"):
@@ -85,6 +150,28 @@ class StreamLlmTests(unittest.TestCase):
         with patch.object(gpu_llm, "urlopen", side_effect=OSError("refused")):
             with self.assertRaisesRegex(LLMRuntimeError, "Cannot reach llama.cpp"):
                 list(stream_llm("hi"))
+
+
+class RunLlmTests(unittest.TestCase):
+    def test_strips_reasoning_from_standard_response(self):
+        response = MagicMock()
+        response.read.return_value = json.dumps(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "Before<think>private reasoning</think>after"
+                        }
+                    }
+                ],
+                "usage": {"completion_tokens": 4},
+            }
+        ).encode()
+        response.__enter__.return_value = response
+        with patch.object(gpu_llm, "urlopen", return_value=response):
+            result = run_llm("hi")
+
+        self.assertEqual(result["reply"], "Beforeafter")
 
 
 @unittest.skipIf(TestClient is None, "httpx is required for WebSocket endpoint tests")

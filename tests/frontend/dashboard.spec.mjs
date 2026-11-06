@@ -394,6 +394,38 @@ test('AI Chat reports Household AI offline when no loaded model is available', a
     await expect(page.locator('#household-ai-status-value')).toHaveText('Offline');
 });
 
+test('System Monitor shows session-only one-hour trends for all four resource metrics', async ({ page }) => {
+    await installApiMocks(page);
+    await page.goto('/');
+    await signIn(page, 'admin');
+    await expect(page.locator('[data-panel="system-panel"]')).toContainText('System Monitor');
+    await page.locator('[data-panel="system-panel"]').click();
+
+    await expect(page.locator('#system-trends-heading')).toHaveText('System Health Trends');
+    await expect(page.locator('#system-trends-status')).toContainText('every 10 seconds');
+    await expect(page.locator('#system-trends-status')).toContainText('one hour');
+    await expect(page.locator('#gpu-trend-current')).toHaveText('0.0%');
+    await expect(page.locator('#vram-trend-current')).toHaveText('1.0 / 8.0 GB');
+    await expect(page.locator('#cpu-trend-current')).toHaveText('5.0%');
+    await expect(page.locator('#ram-trend-current')).toHaveText('25.0%');
+    await expect.poll(
+        () => page.locator('#gpu-trend-line').getAttribute('d'),
+        { timeout: 15_000 },
+    ).toContain('L');
+    for (const id of ['vram', 'cpu', 'ram']) {
+        await expect(page.locator(`#${id}-trend-line`)).toHaveAttribute('d', /L/);
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const trendColumns = await page.locator('.system-trends-grid')
+        .evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    expect(trendColumns).toBe(1);
+    const hasHorizontalOverflow = await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+});
+
 test('verifies and discards a signed release bundle without offering apply', async ({ page }) => {
     await installApiMocks(page);
     const staged = [];
@@ -528,6 +560,7 @@ test('shows live CPU values instead of placeholders and a banner when the backen
     await expect(page.locator('#connection-banner')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#connection-banner')).toContainText('backend is unreachable');
     await expect(page.locator('#cpu-header')).toHaveText('N/A');
+    await expect(page.locator('#system-trends-status')).toContainText('Telemetry unavailable');
 });
 
 test('serves self-hosted fonts and a web-app manifest without external requests', async ({ page }) => {
