@@ -93,7 +93,8 @@ concepts are not implemented integrations; see
 ### Frontend
 
 The frontend is static HTML, CSS, and native browser JavaScript ES modules;
-there is no bundler. [index.html](../index.html) loads [js/app.js](../js/app.js),
+there is no bundler. [index.html](https://github.com/Krazy-Killa/AI-Server/blob/main/index.html)
+loads [js/app.js](https://github.com/Krazy-Killa/AI-Server/blob/main/js/app.js),
 which owns authentication, navigation, chat/research, model selection, and bot
 controls. Focused modules handle backend logs, diagnostics/VM inventory,
 system telemetry, and UI preferences. It is served over HTTP/HTTPS to allow
@@ -427,7 +428,7 @@ These are plans or concepts, not implemented behavior:
   operational knowledge so responses can use current evidence without
   permanently expanding model context or VRAM. The general context layer,
   historical-case retrieval, and model-assisted diagnosis are not implemented;
-  see the [roadmap concept](./roadmap/README.md#candidate-backlog--not-scheduled).
+  see the [roadmap concept](./roadmap/README.md#candidate-backlog-not-scheduled).
 - **Network-Aware Diagnostics (Concept):** extend Maintenance AI from server
   health to configured, read-only network and infrastructure evidence.
   Maintenance AI would correlate WAN, LAN, wireless, service, and client
@@ -474,7 +475,7 @@ These are plans or concepts, not implemented behavior:
   compatibility are not implemented or validated. See the
   [GPU plan](./gpu/gpu-plan.md#potential-future-dual-gpu-service-separation)
   and the
-  [roadmap candidate backlog](./roadmap/README.md#candidate-backlog--not-scheduled).
+  [roadmap candidate backlog](./roadmap/README.md#candidate-backlog-not-scheduled).
 - **Infrastructure Awareness:** add verified read-only inventory and health
   sources for network and household services, starting with explicit scope
   and no configuration changes.
@@ -488,7 +489,7 @@ These are plans or concepts, not implemented behavior:
   undecided. No NAS service is implemented.
 
 See the
-[roadmap candidate backlog](./roadmap/README.md#candidate-backlog--not-scheduled).
+[roadmap candidate backlog](./roadmap/README.md#candidate-backlog-not-scheduled).
 
 ## Repository Guide
 

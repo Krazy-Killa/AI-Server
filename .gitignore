@@ -21,6 +21,7 @@ htmlcov/
 node_modules/
 /test-results/
 /playwright-report/
+/site/
 
 # Local model weights, runtime logs, and generated artifacts
 models/

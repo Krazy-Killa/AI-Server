@@ -606,7 +606,9 @@ control, and recovery. Keep the production backend local-only until
 HTTPS/proxy behavior, firewall/network controls, and deployment have been
 validated on the physical target.
 
-## Candidate backlog — not scheduled
+<a id="candidate-backlog--not-scheduled"></a>
+
+## Candidate backlog not scheduled
 
 - **Household File Server / NAS (Concept)**
 

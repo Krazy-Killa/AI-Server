@@ -29,7 +29,7 @@ attributes, so it can be served under a strict Content-Security-Policy.
 `js/theme-init.js` is the small classic script that applies the saved light
 theme before first paint. Keep new code in external modules.
 
-[`ai-backend/dashboard_server.py`](../../ai-backend/dashboard_server.py)
+[`ai-backend/dashboard_server.py`](https://github.com/Krazy-Killa/AI-Server/blob/main/ai-backend/dashboard_server.py)
 defines the policy (`script-src 'self'`, `default-src 'none'`,
 `frame-ancestors 'none'`, `connect-src` limited to the dashboard origin and
 port `8000`) plus `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
@@ -216,12 +216,12 @@ for setup and execution.
 - Network-service UI remains a planning view. Network-aware diagnostics are
   an unscheduled concept; no network telemetry integration or diagnostic
   workflow is implemented. See the
-  [roadmap candidate](../roadmap/README.md#candidate-backlog--not-scheduled).
+  [roadmap candidate](../roadmap/README.md#candidate-backlog-not-scheduled).
 - The conversational household interface is also an unscheduled concept.
   Local speech recognition/synthesis, household-member authorization, and
   proactive incident notifications are not implemented. Voice must not bypass
   the existing role and approval boundaries; see the
-  [roadmap candidate](../roadmap/README.md#candidate-backlog--not-scheduled).
+  [roadmap candidate](../roadmap/README.md#candidate-backlog-not-scheduled).
 - Planned update UI (Stage 2): after a verified upload (implemented, verify-only),
   display target/compatibility, then require an explicit
   admin confirmation before Apply. Show updater progress, health-check result,

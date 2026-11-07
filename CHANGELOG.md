@@ -8,6 +8,7 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added a searchable documentation website and GitHub Pages deployment workflow.
 - Expanded Settings → About with the current dashboard release, a concise
   capability overview, privacy and operational-boundary notes, and links to
   the source repository, documentation, and release notes.

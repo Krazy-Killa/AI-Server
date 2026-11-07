@@ -138,6 +138,8 @@ index.html        Dashboard interface
 
 ## Documentation
 
+- [Documentation website](https://krazy-killa.github.io/AI-Server/) — Browse
+  and search the published guides.
 - [Project context](./docs/project-context.md) — Primary onboarding briefing
   for contributors and AI sessions.
 - [Documentation index](./docs/README.md) — Browse the guides by topic.
@@ -146,3 +148,10 @@ index.html        Dashboard interface
 - [Project overview](./docs/architecture/overview.md)
 - [Windows testing environment](./docs/operations/testing-environment.md)
 - [Linux/Proxmox transition runbook](./docs/deployment/linux-proxmox-transition.md)
+
+To preview the documentation website locally, install the documentation
+dependencies with `python -m pip install -r requirements-docs.txt`, then run
+`python -m mkdocs serve`. GitHub Actions builds and deploys the site from
+`main` to GitHub Pages; pull requests run the documentation build without
+deploying. For the initial setup, select **GitHub Actions** as the source in
+the repository's **Settings → Pages**.
