@@ -37,10 +37,10 @@ nav:
   - Architecture:
       - System architecture: architecture/README.md
       - Project overview: architecture/overview.md
-  - Backend:
+  - Backend & Frontend:
       - Backend overview: backend/README.md
       - API reference: backend/api.md
-  - Frontend: frontend/README.md
+      - Frontend: frontend/README.md
   - Security:
       - Security overview: security/README.md
       - Authentication and sessions: security/authentication.md
