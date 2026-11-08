@@ -25,6 +25,8 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Added quick orientation and section links to the roadmap and Linux/Proxmox
+  runbook.
 - Made the documentation home page easier to navigate and highlighted
   implementation and validation status in key guides.
 - Moved the collapsed Shared Admin Knowledge manager from private AI Chat to

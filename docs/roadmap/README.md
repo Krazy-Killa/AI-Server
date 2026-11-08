@@ -7,6 +7,23 @@
 > target and production Linux/GPU stack still require validation. See the
 > status key and individual phases below for the scope of each result.
 
+## Where to start
+
+This roadmap tracks implemented work, remaining phases, and future concepts.
+Use it to understand current progress and what must be verified before the
+project moves to its intended physical server.
+
+- **New to the project?** Read the [current status summary](#current-status-summary)
+  and the [status key](#status-key).
+- **Looking for next steps?** Start with the [forward-work summary](#forward-work-summary),
+  then review the relevant phase below.
+- **Interested in future ideas?** See the
+  [candidate backlog](#candidate-backlog-not-scheduled); its concepts are not
+  scheduled or implemented unless explicitly stated.
+- **Planning deployment?** Review the
+  [sequencing and portability rule](#sequencing-and-portability-rule) and the
+  [Linux/Proxmox runbook](../deployment/linux-proxmox-transition.md).
+
 ## Status key
 
 - **Done (Windows prototype)** — implemented and verified in the active

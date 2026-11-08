@@ -1,5 +1,23 @@
 # Linux/Proxmox Transition Runbook
 
+## Where to start
+
+This runbook is for operators preparing the move from Windows development to
+Linux/Proxmox. It records nested-lab evidence, deployment decisions, and the
+checks needed for the eventual physical server. Nested-lab success is not
+physical-host acceptance.
+
+- **Check current progress:** Read [purpose and status](#purpose-and-status)
+  and the [Linux blockers](#linux-blockers-to-close).
+- **Configure lab inventory:** See
+  [read-only VM inventory](#read-only-vm-inventory-lab-integration).
+- **Plan the physical transition:** Review the
+  [recommended sequence](#recommended-transition-sequence), including recovery
+  and compatibility checks before making host changes.
+- **Verify the target:** Use the
+  [Linux acceptance checklist](#linux-acceptance-checklist) alongside the
+  detailed procedures and their stated validation scope.
+
 ## Purpose and status
 
 Windows remains the active build and prototype environment for shared
