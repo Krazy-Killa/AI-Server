@@ -3,6 +3,11 @@
 This folder documents the staged transition from Windows development to the
 intended Linux/Proxmox deployment.
 
+> **🧪 Partially validated — nested Proxmox lab**
+>
+> Rootless services and HTTPS access have been tested in the nested lab.
+> Physical-host deployment and production acceptance are still outstanding.
+
 ## Guide
 
 - [Linux/Proxmox Transition Runbook](./linux-proxmox-transition.md) — current

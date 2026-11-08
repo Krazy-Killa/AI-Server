@@ -3,6 +3,15 @@
 This folder records GPU roles, Windows development evidence, and the
 experimental Linux/Proxmox compute and telemetry work.
 
+> **✅ Working — Windows development environment**
+>
+> Vulkan inference and GPU telemetry have been exercised on the RX 6800 XT.
+
+> **⚠️ Not yet validated — target host**
+>
+> Live Linux GPU telemetry and ROCm/HIP inference on the intended Proxmox
+> host still require validation. Concurrent AI profiles remain planned.
+
 ## Guide
 
 - [GPU Integration Plan](./gpu-plan.md) — planned hardware roles, Windows

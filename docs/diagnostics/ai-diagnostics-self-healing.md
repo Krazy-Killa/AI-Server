@@ -1,6 +1,9 @@
 # AI-Powered Diagnostics & Self-Healing
 
-> Status: **design specification with observe-only and portable Phase 3 prototypes**.
+> **🧪 Partially validated — design and prototypes**
+>
+> This is a design specification with observe-only and portable Phase 3
+> prototypes.
 > `ai-backend/diagnostics.py` provides on-demand local health/resource
 > observations and persistent, bounded SQLite observation/incident/audit
 > history. Explicit bounded API routes and a manual-run dashboard view are

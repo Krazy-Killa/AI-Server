@@ -1,32 +1,72 @@
-# AI Server Documentation
+# Welcome to AI Server
 
-AI Server is a local-first AI and homelab dashboard with a browser interface,
-a Python backend, and an optional Discord bot. It is under development on
-Windows, with a Linux/Proxmox deployment planned and partially validated in a
-nested lab. See the [roadmap](./roadmap/README.md) for what is implemented,
-planned, and still awaiting validation.
+AI Server, also called the **AI Command Interface**, is a local-first AI and
+homelab dashboard. It brings local AI chat, model management, system
+monitoring, and an optional Discord bot together in one interface.
 
-Project guides are grouped by subject. Start with the roadmap for current
-implementation status and sequencing; each subsystem guide distinguishes
-implemented behavior from planned or unverified work.
+The project is being developed on Windows, with a Linux/Proxmox deployment
+being prepared and tested in a nested lab.
 
-| Folder | Contents |
-| --- | --- |
-| [architecture/](./architecture/README.md) | Project overview, components, and data flow |
-| [backend/](./backend/README.md) | Backend modules and API contracts |
-| [security/](./security/README.md) | Authentication, sessions, and authorization |
-| [operations/](./operations/README.md) | Configuration, testing, and infrastructure contracts |
-| [deployment/](./deployment/README.md) | Linux and Proxmox transition runbook |
-| [diagnostics/](./diagnostics/README.md) | Observe-only diagnostics and proposed self-healing design |
-| [gpu/](./gpu/README.md) | GPU integration status and deployment considerations |
-| [frontend/](./frontend/README.md) | Dashboard panels and browser-module structure |
-| [roadmap/](./roadmap/README.md) | Project status, phases, and next steps |
+## What can it do today?
 
-## Main references
+> **✅ Working — Windows development environment**
+>
+> Local AI chat, model switching, system telemetry, user authentication,
+> private conversation history, and on-demand, read-only diagnostics are
+> implemented. The optional Discord bot can report status and control the
+> active model.
 
-- [Project context and AI session handoff](./project-context.md)
-- [Project roadmap](./roadmap/README.md)
-- [Architecture overview](./architecture/README.md)
-- [Backend API](./backend/api.md)
-- [Authentication and session management](./security/authentication.md)
-- [Linux/Proxmox transition runbook](./deployment/linux-proxmox-transition.md)
+> **🧪 Partially validated — nested Proxmox lab**
+>
+> The dashboard and backend have been deployed in a nested lab, with HTTPS
+> access and read-only Proxmox inventory exercised there. Lab results do not
+> establish acceptance on the physical server.
+
+> **📋 Planned — not yet implemented**
+>
+> Concurrent AI profiles, live remediation, and production vision and image
+> generation integrations remain future work.
+
+> **⚠️ Not yet validated — target host**
+>
+> Linux GPU/ROCm inference and the physical Proxmox deployment still need
+> target-host validation.
+
+See the [roadmap](./roadmap/README.md) for detailed status and sequencing.
+The [project overview](./architecture/overview.md) explains the components
+and their current capabilities.
+
+## Get started
+
+- **Try the Windows development setup:** Follow the
+  [Windows quick start](https://github.com/Krazy-Killa/AI-Server#windows-quick-start)
+  and the detailed [testing guide](./operations/testing-environment.md).
+- **Understand the project:** Read the
+  [project overview](./architecture/overview.md) and
+  [system architecture](./architecture/README.md).
+- **Explore deployment:** Start with the
+  [deployment guide](./deployment/README.md) and its Linux/Proxmox runbook.
+- **See what's next:** Browse the [project roadmap](./roadmap/README.md).
+
+## Explore the documentation
+
+- [Backend](./backend/README.md) and [API reference](./backend/api.md) —
+  backend modules and API contracts.
+- [Frontend](./frontend/README.md) — dashboard panels and browser modules.
+- [Security](./security/README.md) — authentication, sessions, and access,
+  including the [authentication guide](./security/authentication.md).
+- [Operations](./operations/README.md) — configuration, testing, and
+  infrastructure contracts.
+- [Diagnostics](./diagnostics/README.md) — current observations and the
+  proposed self-healing design.
+- [GPU](./gpu/README.md) — hardware integration and validation.
+- [Project context](./project-context.md) — detailed contributor and AI
+  session onboarding.
+
+## How to read status callouts
+
+Throughout these guides, **Working** identifies implemented behavior in the
+specified environment; **Partially validated** identifies scoped evidence,
+not full acceptance; **Planned** identifies future work; and **Not yet
+validated** identifies behavior that still needs testing. Always check the
+environment and scope stated in each callout.
