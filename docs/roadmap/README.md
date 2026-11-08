@@ -1,5 +1,12 @@
 # Project Roadmap
 
+> **🧪 Partially validated — project status**
+>
+> Shared application behavior is developed on Windows, and selected
+> deployment paths have been exercised in a nested Proxmox lab. The physical
+> target and production Linux/GPU stack still require validation. See the
+> status key and individual phases below for the scope of each result.
+
 ## Status key
 
 - **Done (Windows prototype)** — implemented and verified in the active

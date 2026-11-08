@@ -3,6 +3,16 @@
 This folder describes the current observe-only diagnostics capability and the
 longer-term design for evidence-based maintenance workflows.
 
+> **✅ Working — observe-only diagnostics**
+>
+> Explicit, bounded observations, incident history, reviewed local runbook
+> retrieval, and disconnected simulations are implemented.
+
+> **📋 Planned — not yet implemented**
+>
+> Scheduling, model-driven diagnosis, and live remediation are future work;
+> simulations do not execute host or service operations.
+
 ## Guide
 
 - [AI-Powered Diagnostics & Self-Healing](./ai-diagnostics-self-healing.md) —

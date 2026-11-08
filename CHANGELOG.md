@@ -25,6 +25,8 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Made the documentation home page easier to navigate and highlighted
+  implementation and validation status in key guides.
 - Moved the collapsed Shared Admin Knowledge manager from private AI Chat to
   the admin-shared AI Interface, reducing chat-panel clutter while preserving
   the existing note and context behavior. Not yet deployed.
