@@ -1,0 +1,102 @@
+@font-face {
+  font-family: Manrope;
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../fonts/manrope-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/barlow-condensed-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/dm-mono-400.woff2") format("woff2");
+}
+
+:root {
+  --md-text-font: "Manrope";
+  --md-code-font: "DM Mono";
+}
+
+[data-md-color-scheme="slate"] {
+  color-scheme: dark;
+  --md-default-bg-color: #080c12;
+  --md-default-bg-color--light: #0e151e;
+  --md-default-fg-color: #e9f1f5;
+  --md-default-fg-color--light: #b1c2cc;
+  --md-default-fg-color--lighter: #8295a4;
+  --md-default-fg-color--lightest: rgba(153, 186, 202, 0.13);
+  --md-primary-fg-color: #0e151e;
+  --md-primary-bg-color: #e9f1f5;
+  --md-accent-fg-color: #42f5c5;
+  --md-typeset-a-color: #42f5c5;
+  --md-code-bg-color: #131e2a;
+  --md-code-fg-color: #e9f1f5;
+  --md-footer-bg-color: #0e151e;
+  --md-footer-bg-color--dark: #080c12;
+}
+
+[data-md-color-scheme="default"] {
+  color-scheme: light;
+  --md-default-bg-color: #eef2f6;
+  --md-default-bg-color--light: #ffffff;
+  --md-default-fg-color: #16202a;
+  --md-default-fg-color--light: #42586a;
+  --md-default-fg-color--lighter: #55677a;
+  --md-default-fg-color--lightest: rgba(30, 50, 70, 0.16);
+  --md-primary-fg-color: #ffffff;
+  --md-primary-bg-color: #16202a;
+  --md-accent-fg-color: #006451;
+  --md-typeset-a-color: #006451;
+  --md-code-bg-color: #e4eaf0;
+  --md-code-fg-color: #16202a;
+  --md-footer-bg-color: #e4eaf0;
+  --md-footer-bg-color--dark: #d7e1e9;
+  --md-footer-fg-color: #16202a;
+  --md-footer-fg-color--light: #42586a;
+  --md-footer-fg-color--lighter: #55677a;
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse at 76% 8%, rgba(66, 245, 197, 0.075), transparent 31rem),
+    linear-gradient(rgba(120, 164, 181, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 164, 181, 0.025) 1px, transparent 1px);
+  background-size: auto, 42px 42px, 42px 42px;
+}
+
+.md-header {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-header__title,
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 600;
+}
+
+.md-typeset blockquote {
+  border-left-color: var(--md-accent-fg-color);
+  background: var(--md-code-bg-color);
+  color: var(--md-default-fg-color);
+  padding: 0.4rem 0.8rem;
+}
+
+.md-typeset :focus-visible,
+.md-header :focus-visible,
+.md-nav :focus-visible,
+.md-search :focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}

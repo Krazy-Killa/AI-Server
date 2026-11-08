@@ -25,6 +25,8 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Matched the documentation site's colors and typography to the dashboard,
+  while retaining its navigation and light/dark theme switch.
 - Added quick orientation and section links to the roadmap and Linux/Proxmox
   runbook.
 - Made the documentation home page easier to navigate and highlighted
