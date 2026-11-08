@@ -155,3 +155,7 @@ dependencies with `python -m pip install -r requirements-docs.txt`, then run
 `main` to GitHub Pages; pull requests run the documentation build without
 deploying. For the initial setup, select **GitHub Actions** as the source in
 the repository's **Settings → Pages**.
+
+The documentation theme uses the dashboard's colors and locally hosted fonts.
+Its font copies in `docs/fonts/` come from `css/fonts/`; update both when the
+dashboard fonts change. Readers can switch between dark and light modes.
