@@ -25,16 +25,16 @@ GPU / LLM / Bot / System Stats
 
 - FastAPI application
 - Modular design:
-  - `main.py` assembles the FastAPI app and keeps the `main:app` server entry
-    point stable.
-  - `api/runtime.py` initializes shared configuration, clients, stores, and
-    common request helpers.
-  - `api/middleware.py` applies authentication, authorization, CSRF/origin
-    checks, CORS, and request logging.
-  - `api/routes/` groups authentication, chat, memory, research, and
-    operations endpoints by responsibility.
-  - `system_stats.py`, `model_manager.py`, `bot_manager.py`, and
-    `gpu/` provide focused service and platform modules.
+    - `main.py` assembles the FastAPI app and keeps the `main:app` server entry
+      point stable.
+    - `api/runtime.py` initializes shared configuration, clients, stores, and
+      common request helpers.
+    - `api/middleware.py` applies authentication, authorization, CSRF/origin
+      checks, CORS, and request logging.
+    - `api/routes/` groups authentication, chat, memory, research, and
+      operations endpoints by responsibility.
+    - `system_stats.py`, `model_manager.py`, `bot_manager.py`, and
+      `gpu/` provide focused service and platform modules.
 - The current model manager controls one loopback llama.cpp server and
   restarts it when switching models. A resident Utility AI with routed
   Household/Maintenance profiles is the proposed single-GPU design, not an
