@@ -309,6 +309,15 @@ Diagnostic data, source documents, embeddings, and indexes are stored on local
 server storage. Retrieval and inference must not send diagnostic content to an
 external service. Keep two distinct sources of operational context:
 
+- **Current implementation and deployment gap:** the small reviewed runbook
+  set is defined as Python data in `ai-backend/diagnostic_knowledge.py` and
+  searched in process memory; there is no SQLite runbook/context schema or
+  import/seed workflow. The conversation and diagnostics stores use the
+  configured SQLite memory path for separate conversation/admin-note and
+  observation/incident/audit tables, but do not persist a knowledge catalog.
+  The Stage 1 signed application-bundle verifier rejects database files and
+  releases that require data migrations. It is not a runbook or context-data
+  deployment mechanism.
 - A durable incident and action history records observations, evidence,
   hypotheses, user approvals/denials and reasons, actions attempted, and
   independently verified results, including failures, rollbacks, and
@@ -325,6 +334,14 @@ filtered for platform/version applicability, and presented with their actual
 outcomes; a prior action is not automatically a safe or correct fix. Backups,
 access controls, retention, and recovery of both the case history and
 knowledge sources are part of deployment.
+
+Before persistent runbook/context retrieval is implemented, choose whether its
+curated data belongs in a dedicated persistent store or dedicated tables in
+an existing database. Define source provenance and review state, a versioned
+format, safe idempotent provisioning and update/retirement behavior, and
+backup/rollback tests. Keep knowledge deployment independent of private
+conversation content and do not assume the current application bundle can
+carry or migrate database contents.
 
 The target vector-store implementation is to be selected and validated for the
 deployment. Qdrant is already planned as a local service in the host stack and
@@ -504,6 +521,26 @@ matching, bounded query/limit values, and optional platform filtering. It does
 not search incidents or drafts, invoke embeddings or a model, or send data to
 an external service. Search results preserve the runbook ID, version, owner,
 review date, source, platform, and signal metadata.
+
+### 2.8 Context Collection Framework (planned)
+
+The future Maintenance AI context layer should populate and refresh
+operational snapshots automatically from approved, read-only platform sources.
+Candidate collectors and record requirements are tracked in the
+[roadmap context concept](../roadmap/README.md#candidate-backlog-not-scheduled).
+Define refresh cadence, provenance, freshness/expiry, unavailable-source
+handling, SQLite schema ownership, and retention before implementation.
+
+This collection framework is distinct from executing diagnostics. A
+Diagnostics collector may read previously persisted observations and
+incidents, but must not trigger probes, scheduled evaluation, or remediation;
+the current diagnostics boundary remains manually triggered and observe-only.
+Maintenance AI access is read-only: platform services remain authoritative,
+and model-generated conclusions cannot create or overwrite platform facts.
+Runbooks also remain separate curated, human-reviewed source data; automatic
+context refresh does not replace their review and provisioning workflow.
+No context collector, context-record schema, or authoritative-fact write
+policy is implemented yet.
 
 ---
 

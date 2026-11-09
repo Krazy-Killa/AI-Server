@@ -855,6 +855,64 @@ validated on the physical target.
     runbooks, and relevant historical incidents. Source selection, freshness,
     retrieval method, context budget, and integration with the future
     diagnostic retriever remain to be designed.
+  - **Knowledge-data provisioning is a prerequisite to resolve.** The current
+    reviewed runbooks are Python-defined in `ai-backend/diagnostic_knowledge.py`
+    and searched in process memory; there is no runbook/context SQLite schema,
+    import or seed tool, or separate content-deployment path. The configured
+    SQLite memory file currently holds conversation/admin-note tables and
+    observe-only diagnostic history, not a curated knowledge catalog.
+  - Decide whether curated runbooks and operational context belong in a
+    separate persistent database or in dedicated tables in an existing store.
+    Keep them logically separate from private chats, admin-shared notes, and
+    diagnostic event history, with clear ownership, access, and retention.
+  - Research a reviewed, versioned data format and a validated, idempotent
+    import/seed process. Define provenance and review metadata, schema/content
+    versioning, update and retirement behavior, transaction boundaries,
+    compatibility checks, backup, rollback, and repeat-import tests.
+  - Deployment must not assume a pre-populated database can ship in an
+    application release: the Stage 1 bundle verifier rejects SQLite/database
+    files and releases requiring data migrations, and Stage 1 only verifies
+    and stages bundles. Evaluate a separate signed knowledge-data package or
+    an explicitly designed migration/import workflow; neither exists today.
+
+  **Context Collection Framework:**
+
+  Before Context Inference is implemented, define how operational context is
+  collected, refreshed, validated, stored, and expired. Operational context
+  records should be populated and refreshed automatically from authoritative
+  platform sources, not manually entered or maintained. Collection cadence,
+  refresh triggers, failure handling, and expiry rules remain to be designed.
+
+  **Potential collectors:**
+
+  - Hardware inventory collector
+  - Model inventory collector
+  - Runtime profile collector
+  - Deployment status collector
+  - Diagnostics collector
+  - Proxmox inventory collector
+  - Service state collector
+
+  **Record and authority boundaries:**
+
+  - Store collected snapshots as structured SQLite records. Choose the database
+    and table boundary as part of the storage decision above. Records should
+    retain source identity, observation/refresh time, schema or source version,
+    and freshness/expiry state; stale or unavailable data must not be presented
+    as current.
+  - Platform services remain the source of truth. Collectors may read from
+    approved authoritative sources and update derived context records; the
+    Maintenance AI may retrieve those records but must not create or modify
+    authoritative platform facts. Any model-generated hypotheses must remain
+    separate and explicitly non-authoritative.
+  - A Diagnostics collector may ingest already-persisted observations and
+    incidents. It must not itself trigger probes, scheduled diagnostics, or
+    remediation; those require separate approval and design. This preserves
+    the current manually triggered, observe-only diagnostics boundary.
+  - Automatically refreshed context snapshots are distinct from curated
+    runbooks: runbooks remain versioned, human-reviewed source material and
+    require the separate provisioning path described above.
+
   - Retrieved evidence must be bounded and attributable to its source. Missing
     or stale data must be reported as unavailable rather than inferred.
   - Context retrieval does not grant authority to execute commands, change
@@ -867,8 +925,9 @@ validated on the physical target.
     for the broader future retriever and diagnostics workflow.
 
   **Implementation status:** Planned concept only. No general
-  Maintenance AI context inference layer or historical operational retrieval
-  is implemented.
+  Maintenance AI context inference layer, historical operational retrieval,
+  context collectors, SQLite context schema, or data provisioning path is
+  implemented.
 
 - **Shared Incident Reporting and Administrative Visibility (Concept)**
 

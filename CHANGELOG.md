@@ -28,6 +28,9 @@ principles and [Semantic Versioning](https://semver.org/).
 - Organized the roadmap's current-status summary by topic and added a
   phase-status overview with consistent status, evidence, and next-gate
   callouts. Preserved Phase 3's numbered integration-priority order.
+- Expanded the Maintenance AI context roadmap with the collector framework,
+  automatic read-only SQLite snapshots, authority boundaries, and missing
+  runbook/context provisioning path.
 - Matched the documentation site's colors and typography to the dashboard,
   while retaining its navigation and light/dark theme switch.
 - Added quick orientation and section links to the roadmap and Linux/Proxmox
@@ -57,8 +60,9 @@ principles and [Semantic Versioning](https://semver.org/).
 
 - Maintenance AI Context Inference Layer: request-scoped platform state and
   historical operational retrieval for grounded responses. Planned for future
-  development at medium-high priority; historical-case retrieval,
-  semantic/vector search, and model-assisted diagnosis remain unimplemented.
+  development at medium-high priority. Historical-case retrieval,
+  semantic/vector search, model-assisted diagnosis, automatic context
+  collectors, and a runbook/context data-provisioning path remain unimplemented.
 - Image-generation backend groundwork and later runtime integration.
 - Linux/Proxmox deployment, real-provider authentication, and HTTPS proxy
   validation on the target server.

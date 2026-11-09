@@ -426,9 +426,14 @@ These are plans or concepts, not implemented behavior:
 - **Maintenance AI Context Inference Layer (Planned):** provide a future
   Maintenance AI with bounded, request-scoped platform state and historical
   operational knowledge so responses can use current evidence without
-  permanently expanding model context or VRAM. The general context layer,
-  historical-case retrieval, and model-assisted diagnosis are not implemented;
-  see the [roadmap concept](./roadmap/README.md#candidate-backlog-not-scheduled).
+  permanently expanding model context or VRAM. Future read-only collectors
+  should automatically refresh structured SQLite snapshots from authoritative
+  sources; Maintenance AI must not write authoritative facts. Reviewed
+  runbooks are currently code-defined, not provisioned into SQLite; a versioned,
+  safe data import and update path is unresolved. The context layer,
+  collectors, historical-case retrieval, and model-assisted diagnosis are not
+  implemented; see the
+  [roadmap concept](./roadmap/README.md#candidate-backlog-not-scheduled).
 - **Network-Aware Diagnostics (Concept):** extend Maintenance AI from server
   health to configured, read-only network and infrastructure evidence.
   Maintenance AI would correlate WAN, LAN, wireless, service, and client
