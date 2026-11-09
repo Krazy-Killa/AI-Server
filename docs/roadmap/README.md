@@ -42,34 +42,72 @@ project moves to its intended physical server.
 
 ## Current status summary
 
-Dashboard-owned login/session management and per-account SQLite conversation
-history are implemented and verified in the Windows build/prototype
-environment. Windows is the active server-development environment, not merely
-a disposable mock: shared application and API behavior is built here, then
-carried forward to Proxmox, with the expectation that most changes will be
-limited to platform-specific integration. Verify portability through tests;
-do not assume it solely from the language or framework.
-Explicitly curated, admin-only shared operational notes are also implemented.
-AI Chat transcripts remain private to each account. The AI Interface is a
-separate, single admin-shared operational transcript with attributed turns;
-its context does not load private AI Chat history.
-User-facing AI replies are filtered server-side for raw `<think>` blocks in
-standard and streaming output. Assistant transcripts are sanitized on write,
-read, and reuse as model context; generation-time llama.cpp suppression is
-defense-in-depth, not the Qwen3 safety boundary in the current no-Jinja setup.
-Proxmox API integration and HTTPS access through NGINX have been exercised in
-the nested lab; physical-host and production acceptance remain outstanding.
-The dashboard, Windows backend foundation, operational logging, and interface
-polish are implemented. Transcript history is separate from diagnostic
-incident history and retrieval; automatic fact extraction and model training
-from conversations are not implemented. Observe-only diagnostics and
-persistent incident history are implemented locally. A reviewed, local
-lexical runbook-retrieval prototype and disconnected maintenance/remediation
-simulations are also implemented; semantic/vector retrieval and live
-remediation remain outstanding. The production Linux/Proxmox stack is
-unvalidated. The proposed single-GPU Utility AI plus Household/Maintenance
-profile architecture is planned, not implemented; persistent model residency,
-request routing, and combined VRAM feasibility remain unverified.
+The Windows environment is the active place for shared application and API
+development. Status below distinguishes implemented behavior from nested-lab
+evidence, plans, and physical-host validation; portability must be verified
+through tests rather than assumed.
+
+### Application and account data
+
+- The dashboard, Windows backend foundation, operational logging, and
+  interface polish are implemented. Dashboard-owned login/session management
+  and per-account SQLite conversation history are implemented and verified in
+  the Windows prototype.
+- Explicitly curated admin-only shared operational notes are implemented.
+  AI Chat conversations remain private to each account. The AI Interface is a
+  separate admin-shared transcript with attributed turns and does not load
+  private AI Chat history.
+
+### AI output and conversation memory
+
+- Standard and streaming user-facing replies are filtered server-side for raw
+  `<think>` blocks. Assistant transcripts are sanitized on write, read, and
+  reuse as model context. llama.cpp generation-time suppression is
+  defense-in-depth, not a reliable Qwen3 safety boundary with the current
+  no-Jinja setup.
+- Conversation history is separate from diagnostic incident history and
+  retrieval. Automatic fact extraction and model training from conversations
+  are not implemented.
+
+### Diagnostics and maintenance
+
+- Observe-only diagnostics and persistent incident history are implemented
+  locally. A reviewed local lexical runbook-retrieval prototype and
+  disconnected maintenance/remediation simulations are also implemented.
+- Semantic/vector retrieval and live remediation remain outstanding.
+
+### Deployment and validation
+
+- Shared behavior is developed on Windows and carried forward for Proxmox
+  integration. Verify portability through tests; do not assume that only
+  platform-specific changes will be needed.
+- Proxmox API integration and HTTPS access through NGINX have been exercised
+  in the nested lab. These results do not establish physical-host acceptance.
+- The production Linux/Proxmox stack is unvalidated; physical-host and
+  production acceptance remain outstanding.
+
+### Inference profiles
+
+- The proposed single-GPU Utility AI plus Household/Maintenance profile
+  architecture is planned, not implemented. The current model manager runs
+  one active model at a time.
+- Persistent model residency, request routing, and combined VRAM feasibility
+  remain unverified.
+
+## Phase status at a glance
+
+| Phase | Status | Evidence and next gate |
+|---|---|---|
+| [Phase 1 — Local Test Environment](#phase-1-local-test-environment) | **Done (Windows prototype)** | Core dashboard, backend, bot, telemetry, chat, and logging work in the Windows environment; target-platform work is tracked in later phases. |
+| [Phase 2 — Portable Backend and Reliability](#phase-2-portable-backend-and-reliability) | **Partial** | Major portable behavior is implemented; scheduled maintenance remains not started and physical-host acceptance is outstanding. |
+| [Phase 3 — Mocked Integrations and Portable Feature Work](#phase-3-mocked-integrations-and-portable-feature-work) | **Partial** | Portable contracts and selected nested-lab integration checks are complete; continue using the numbered integration-priority order below. |
+| [Phase 4 — Proxmox Readiness and Compatibility Gate](#phase-4-proxmox-readiness-and-compatibility-gate) | **In progress** | Pre-host planning is underway; actual inventory and recovery details must be confirmed before deployment. |
+| [Phase 5 — Physical Target-Host Deployment and Core Integration](#phase-5-physical-target-host-deployment-and-core-integration) | **Experimental / waiting for server** | Nested-lab checks do not count as physical-host acceptance; the physical Proxmox server is the next gate. |
+| [Phase 6 — Live Server-Dependent Product Integrations](#phase-6-live-server-dependent-product-integrations) | **Not started** | Gated on Phase 5 physical-host core stability, access control, and recovery. |
+| [Phase 7 — Polish](#phase-7-polish) | **Partial** | Core interface polish is implemented; full real-device mobile layout and interaction testing remains. |
+
+Phase status is scoped to the evidence named in each section. Windows tests and
+nested-lab validation do not imply physical-host or production acceptance.
 
 ## Sequencing and portability rule
 
@@ -101,7 +139,17 @@ shared-application build environment, not the deployment target.
 
 ## Phase 1 — Local Test Environment
 
-**Status: Done**
+> **Status:** Done (Windows prototype)
+>
+> **Evidence:** The local dashboard, backend, Discord foundation, system
+> monitoring, chat/model discovery, and operational logging are implemented
+> and exercised in the Windows test environment.
+>
+> **Next gate:** No remaining work is identified within this phase's local
+> test-environment scope. Linux/Proxmox integration and acceptance are tracked
+> in later phases.
+
+### Completed
 
 - Dashboard UI and panel navigation
 - Dashboard behavior is organized into native browser modules without a build
@@ -118,7 +166,18 @@ shared-application build environment, not the deployment target.
 
 ## Phase 2 — Portable Backend and Reliability
 
-### Done
+> **Status:** Partial
+>
+> **Evidence:** The portable backend, authentication, chat/research, saved
+> conversations, observe-only diagnostics, and responsive interface work below
+> have been implemented with Windows test coverage; selected authentication
+> and proxy behavior has also been exercised in the nested lab.
+>
+> **Next gate:** The admin-configurable scheduled-maintenance feature remains
+> not started. Physical Linux/Proxmox behavior remains subject to later
+> target-host validation.
+
+### Completed
 
 - Validated configuration loader
 - FastAPI routes organized into auth, chat, memory, research, and operations
@@ -199,7 +258,7 @@ shared-application build environment, not the deployment target.
   AI must never promote its own authority or infer permission from successful
   monitoring.
 
-### Done — dashboard and responsive-layout refinements
+### Completed — dashboard and responsive-layout refinements
 
 - Optional HTTPS launchers for whole-dashboard testing from a mobile device
   on a trusted private LAN. They bind to one configured private IPv4 address
@@ -225,7 +284,16 @@ shared-application build environment, not the deployment target.
 
 ## Phase 3 — Mocked Integrations and Portable Feature Work
 
-### Done — interface groundwork and read-only inventory implementation
+> **Status:** Partial
+>
+> **Evidence:** Read-only inventory, portable diagnostic knowledge and
+> contracts are implemented; selected deployment, service-lifecycle, and
+> authorization checks have passed in the nested lab only.
+>
+> **Next gate:** Continue the numbered integration-priority order below.
+> Nested-lab results do not satisfy physical-host acceptance.
+
+### Completed — interface groundwork and read-only inventory implementation
 
 - Virtual Machines panel has a read-only Proxmox VM/container inventory
   provider, authenticated viewer-level API route, and refreshable UI. The
@@ -249,7 +317,7 @@ shared-application build environment, not the deployment target.
   monitoring interfaces, and configuration remain undecided; no backend or
   network-service monitoring API is connected.
 
-### Done — portable diagnostics knowledge, simulation, and contracts
+### Completed — portable diagnostics knowledge, simulation, and contracts
 
 - Added versioned, bundled diagnostic runbooks with a deterministic local
   lexical search and viewer-authorized list, detail, and search endpoints.
@@ -298,6 +366,10 @@ shared-application build environment, not the deployment target.
   application releases and physical-host acceptance remain outstanding.
 
 #### Integration-priority order
+
+The numbering is the deliberate rank order for integration work. Update each
+item's status in place; do not reorder the list by completion state or by
+phase.
 
 1. **Linux deployment and service lifecycle — partial, nested-lab checks
    passed.** Podman/Quadlet
@@ -430,11 +502,20 @@ against exposing mutation endpoints stays in force until then.
 
 ## Phase 4 — Proxmox Readiness and Compatibility Gate
 
+> **Status:** In progress — waiting on target details
+>
+> **Evidence:** The planned host, compatibility risks, and deployment
+> constraints are documented; the nested lab supports eligible pre-host
+> validation.
+>
+> **Next gate:** Finalize the readiness decisions and confirm actual hardware,
+> network, storage, and recovery details before starting physical deployment.
+
 This phase closes decisions and preflight work, but does not claim the target
 host has been integrated. Hardware-dependent conclusions remain unverified
 until checked against the actual machine.
 
-### In progress / waiting on target details
+### Readiness work in progress
 
 - Finalize the planned host specification and deployment inputs: intended
   Proxmox point release, CPU/GPU, boot mode, network topology, storage layout,
@@ -488,9 +569,20 @@ until checked against the actual machine.
 
 ## Phase 5 — Physical Target-Host Deployment and Core Integration
 
-**Waiting for the physical Proxmox server.** The nested Hyper-V Proxmox
-installation is a development lab only. Do not mark physical-host acceptance
-complete from Windows runs, mocks, or nested-lab results.
+> **Status:** Experimental / waiting for server
+>
+> **Evidence:** Selected service, HTTPS/authentication, recovery, and updater
+> checks have been exercised in the nested lab. These results are not
+> physical-host acceptance.
+>
+> **Next gate:** The physical Proxmox server must be available to confirm host
+> inventory, validate the target GPU/runtime, and complete core integration.
+
+The nested Hyper-V Proxmox installation is a development lab only. Do not mark
+physical-host acceptance complete from Windows runs, mocks, or nested-lab
+results.
+
+### Physical-host work
 
 - Record the actual host inventory, installed Proxmox release/running kernel,
   and recovery access. Validate the host-preparation script's `--check`,
@@ -562,8 +654,15 @@ complete from Windows runs, mocks, or nested-lab results.
 
 ## Phase 6 — Live Server-Dependent Product Integrations
 
-Begin only after Phase 5 core stability, access control, and recovery have
-been demonstrated on the target host.
+> **Status:** Not started — gated by Phase 5
+>
+> **Evidence:** No live server-dependent product integration in this phase is
+> considered complete.
+>
+> **Next gate:** Begin only after Phase 5 core stability, access control, and
+> recovery have been demonstrated on the physical target host.
+
+### Planned integrations
 
 - Integrate ONNX Runtime ROCm and ComfyUI ROCm. Validate model load, GPU
   offload, VRAM/RAM headroom, latency, output quality, and failure recovery.
@@ -594,7 +693,15 @@ been demonstrated on the target host.
 
 ## Phase 7 — Polish
 
-### Done
+> **Status:** Partial
+>
+> **Evidence:** The interface and navigation polish listed below is
+> implemented.
+>
+> **Next gate:** Complete full real-device mobile layout and interaction
+> testing; LAN HTTPS and certificate trust alone do not satisfy this gate.
+
+### Completed
 
 - Panel fade-in and sidebar transition; reduced-motion preference respected
 - Persistent dark/light theme
@@ -603,7 +710,7 @@ been demonstrated on the target host.
 - Persistent collapsible icon-only desktop sidebar
 - Persistent accent-colour selection
 
-### Not started
+### Remaining
 
 - Full real-device mobile layout and interaction testing; HTTPS LAN access and
   certificate trust have been verified on the phone, but broader device and

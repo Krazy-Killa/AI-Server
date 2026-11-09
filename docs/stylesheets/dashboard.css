@@ -110,12 +110,13 @@ body {
   border-top: 0;
   border-radius: 4px;
   background: var(--docs-panel-bg);
-  box-shadow: var(--docs-shadow);
+  box-shadow: none;
 }
 
 .md-sidebar--secondary .md-nav__title {
   border-bottom: 1px solid var(--docs-border);
   background: var(--docs-panel-raised);
+  box-shadow: none;
   color: var(--md-default-fg-color);
   font-family: var(--md-code-font);
   font-size: 0.72rem;

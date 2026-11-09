@@ -25,6 +25,9 @@ principles and [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Organized the roadmap's current-status summary by topic and added a
+  phase-status overview with consistent status, evidence, and next-gate
+  callouts. Preserved Phase 3's numbered integration-priority order.
 - Matched the documentation site's colors and typography to the dashboard,
   while retaining its navigation and light/dark theme switch.
 - Added quick orientation and section links to the roadmap and Linux/Proxmox
