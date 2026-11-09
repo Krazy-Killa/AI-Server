@@ -104,6 +104,10 @@ body {
   background: var(--docs-sidebar-bg);
 }
 
+.md-sidebar--secondary {
+  background: transparent;
+}
+
 .md-sidebar--secondary .md-nav--secondary {
   overflow: hidden;
   border: 1px solid var(--docs-border);
@@ -121,6 +125,7 @@ body {
   font-family: var(--md-code-font);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
+  padding: 0.55rem 0.8rem;
   text-transform: uppercase;
 }
 
