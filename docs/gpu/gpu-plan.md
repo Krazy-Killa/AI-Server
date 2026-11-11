@@ -196,10 +196,9 @@ the analysis to Maintenance AI while Household AI remains available for
 dashboard conversations and research. No model unloading would be required
 between Household and Maintenance services.
 
-The RX 9070 XT and RX 9090 XT (or an equivalent future flagship) are candidate
-second GPUs, not selections or claims of confirmed availability. Final
-selection depends on ROCm support, VRAM capacity, power/cooling, and measured
-local AI performance.
+The RX 9070 XT is a candidate second GPU, not a selection or claim of
+confirmed suitability. Final selection depends on ROCm support, VRAM capacity,
+power/cooling, and measured local AI performance.
 
 This is a concept, not current runtime behavior. The physical server has not
 been built, no second GPU has been selected or acquired, and the current model

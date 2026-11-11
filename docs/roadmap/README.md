@@ -1102,10 +1102,9 @@ validated on the physical target.
 
   **Design notes:**
 
-  - Candidate second GPUs are RX 9070 XT and RX 9090 XT (or an equivalent
-    future flagship); availability and suitability are not assumed. Selection
-    depends on ROCm support, VRAM, power/cooling, and measured local AI
-    performance.
+  - The RX 9070 XT is the current second-GPU candidate, not a selection or
+    claim of confirmed suitability. Selection depends on ROCm support, VRAM,
+    power/cooling, and measured local AI performance.
   - This is a service-per-GPU workload split, not a proposal to combine VRAM
     by splitting one model across both cards.
   - The physical server is not built and the second GPU is not selected or

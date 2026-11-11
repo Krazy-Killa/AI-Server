@@ -73,9 +73,8 @@ principles and [Semantic Versioning](https://semver.org/).
   remain outstanding.
 - Future dual-GPU service-separation concept: the planned RX 6800 XT Operations
   GPU serves Utility and Maintenance AI, while an unselected second GPU serves
-  Household AI. The RX 9070 XT and RX 9090 XT (or equivalent future flagship)
-  remain candidates; concurrent operation and hardware compatibility are not
-  implemented or validated.
+  Household AI. The RX 9070 XT remains an unselected candidate; concurrent
+  operation and hardware compatibility are not implemented or validated.
 - Separate signed model-package workflow for installing large model weights
   into persistent storage without coupling them to application updates or
   rollback; planned, not implemented.

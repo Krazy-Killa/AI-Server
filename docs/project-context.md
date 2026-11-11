@@ -321,11 +321,11 @@ Qwen3 8B and possible household-specific models. The goal is simultaneous,
 service-oriented operation rather than model selection and swapping between
 Household and Maintenance.
 
-The RX 9070 XT and RX 9090 XT (or an equivalent future flagship) are
-unselected candidates. Selection depends on ROCm support, VRAM, power/cooling,
-and measured local AI performance. The physical server is not built, and the
-current model manager still supports one active model; concurrent residency,
-per-GPU routing, compatibility, and recovery are unimplemented and unverified.
+The RX 9070 XT is an unselected candidate. Selection depends on ROCm support,
+VRAM, power/cooling, and measured local AI performance. The physical server is
+not built, and the current model manager still supports one active model;
+concurrent residency, per-GPU routing, compatibility, and recovery are
+unimplemented and unverified.
 See the [GPU plan](./gpu/gpu-plan.md#potential-future-dual-gpu-service-separation).
 
 ## Completed Milestones
@@ -475,9 +475,8 @@ These are plans or concepts, not implemented behavior:
   telemetry.
 - **Dual-GPU Service Separation (Concept):** keep Utility and Maintenance AI
   on the planned RX 6800 XT Operations GPU, with Household AI on a future
-  second GPU. The RX 9070 XT and RX 9090 XT (or an equivalent future flagship)
-  are unselected candidates. Concurrent residency, routing, and hardware
-  compatibility are not implemented or validated. See the
+  second GPU. The RX 9070 XT is an unselected candidate. Concurrent residency,
+  routing, and hardware compatibility are not implemented or validated. See the
   [GPU plan](./gpu/gpu-plan.md#potential-future-dual-gpu-service-separation)
   and the
   [roadmap candidate backlog](./roadmap/README.md#candidate-backlog-not-scheduled).
