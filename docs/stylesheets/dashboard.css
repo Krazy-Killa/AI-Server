@@ -111,7 +111,7 @@ body {
 .md-sidebar--secondary .md-nav--secondary {
   overflow: hidden;
   border: 1px solid var(--docs-border);
-  border-top: 0;
+  border-top: 1px solid var(--docs-border);
   border-radius: 4px;
   background: var(--docs-panel-bg);
   box-shadow: none;
